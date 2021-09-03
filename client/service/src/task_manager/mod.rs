@@ -241,6 +241,8 @@ pub struct TaskManager {
 	/// terminates and gracefully shutdown. Also ends the parent `future()` if a child's essential
 	/// task fails.
 	children: Vec<TaskManager>,
+	/// the executor for ipfs (why does it need to be pub?)
+	pub ipfs_rt: std::sync::Arc<parking_lot::Mutex<tokio::runtime::Runtime>>,
 }
 
 impl TaskManager {
@@ -248,7 +250,8 @@ impl TaskManager {
 	/// service tasks.
 	pub fn new(
 		executor: TaskExecutor,
-		prometheus_registry: Option<&Registry>,
+		ipfs_rt: tokio::runtime::Runtime,
+		prometheus_registry: Option<&Registry>
 	) -> Result<Self, PrometheusError> {
 		let (signal, on_exit) = exit_future::signal();
 
@@ -264,6 +267,8 @@ impl TaskManager {
 		let completion_future = executor
 			.spawn(Box::pin(background_tasks.for_each_concurrent(None, |x| x)), TaskType::Async);
 
+		let ipfs_rt = std::sync::Arc::new(parking_lot::Mutex::new(ipfs_rt));
+
 		Ok(Self {
 			on_exit,
 			signal: Some(signal),
@@ -275,6 +280,7 @@ impl TaskManager {
 			task_notifier,
 			completion_future,
 			children: Vec::new(),
+			ipfs_rt,
 		})
 	}
 

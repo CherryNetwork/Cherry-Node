@@ -31,6 +31,9 @@ sp-offchain = { version = "4.0.0-dev", path = "../../primitives/offchain" }
 sp-runtime = { version = "4.0.0-dev", path = "../../primitives/runtime" }
 sp-utils = { version = "4.0.0-dev", path = "../../primitives/utils" }
 threadpool = "1.7"
+cid = "0.5"
+ipfs = { git = "https://github.com/rs-ipfs/rust-ipfs", branch="master" }
+tokio = { version = "1.10", default-features = false }
 
 [target.'cfg(not(target_os = "unknown"))'.dependencies]
 hyper = "0.14.11"
@@ -44,7 +47,6 @@ sc-transaction-pool-api = { version = "4.0.0-dev", path = "../transaction-pool/a
 sp-tracing = { version = "4.0.0-dev", path = "../../primitives/tracing" }
 sp-consensus = { version = "0.10.0-dev", path = "../../primitives/consensus/common" }
 substrate-test-runtime-client = { version = "2.0.0", path = "../../test-utils/runtime/client" }
-tokio = "1.10"
 lazy_static = "1.4.0"
 
 [features]

@@ -18,6 +18,7 @@ name = "node-template"
 
 [dependencies]
 structopt = "0.3.8"
+ipfs = { git = "https://github.com/rs-ipfs/rust-ipfs" }
 
 sc-cli = { version = "0.10.0-dev", path = "../../../client/cli", features = ["wasmtime"] }
 sp-core = { version = "4.0.0-dev", path = "../../../primitives/core" }
