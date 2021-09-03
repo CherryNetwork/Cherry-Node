@@ -18,6 +18,7 @@
 //! A collection of higher lever helpers for offchain calls.
 
 pub mod http;
+pub mod ipfs;
 pub mod storage;
 pub mod storage_lock;
 
