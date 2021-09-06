@@ -4787,7 +4787,6 @@ version = "3.0.0"
 dependencies = [
  "frame-benchmarking",
  "frame-benchmarking-cli",
- "ipfs 0.2.1 (git+https://github.com/rs-ipfs/rust-ipfs)",
  "jsonrpc-core",
  "node-template-runtime",
  "pallet-transaction-payment-rpc",
@@ -4830,6 +4829,7 @@ dependencies = [
  "frame-system-benchmarking",
  "frame-system-rpc-runtime-api",
  "hex-literal",
+ "log 0.4.14",
  "pallet-aura",
  "pallet-balances",
  "pallet-grandpa",
@@ -5913,10 +5913,13 @@ dependencies = [
  "frame-benchmarking",
  "frame-support",
  "frame-system",
+ "log 0.4.14",
  "parity-scale-codec",
  "sp-core",
  "sp-io",
+ "sp-keystore",
  "sp-runtime",
+ "sp-std",
 ]
 
 [[package]]
