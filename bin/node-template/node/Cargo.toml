@@ -36,6 +36,7 @@ sp-finality-grandpa = { version = "4.0.0-dev", path = "../../../primitives/final
 sc-client-api = { version = "4.0.0-dev", path = "../../../client/api" }
 sp-runtime = { version = "4.0.0-dev", path = "../../../primitives/runtime" }
 sp-timestamp = { version = "4.0.0-dev", path = "../../../primitives/timestamp" }
+sp-keystore = { version = "0.10.0-dev", path = "../../../primitives/keystore" }
 
 # These dependencies are used for the node template's RPCs
 jsonrpc-core = "18.0.0"

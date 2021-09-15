@@ -25,7 +25,6 @@ use sp_runtime::{
 use sp_std::{str, vec::Vec, prelude::*};
 
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"ipfs");
-const ONCHAIN_TX_KEY: &[u8] = b"ipfs::storage::tx";
 
 pub mod crypto {
 	use crate::KEY_TYPE;
@@ -79,19 +78,6 @@ pub enum DhtCommand {
     GetProviders(Vec<u8>),
 }
 
-// /// The pallet's configuration trait.
-// pub trait Trait: system::Trait + CreateSignedTransaction<Call<Self>> {
-//     /// The overarching event type.
-//     type Event: From<Event<Self>> + Into<<Self as system::Trait>::Event>;
-//     /// The identifier type for an offchain worker.
-// 	type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
-// 	/// The overarching dispatch call type.
-// 	type Call: From<Call<Self>>;
-// }
-
-/// Edit this file to define custom logic or remove it if it is not needed.
-/// Learn more about FRAME and the core library of Substrate FRAME pallets:
-/// <https://substrate.dev/docs/en/knowledgebase/runtime/frame>
 pub use pallet::*;
 
 #[cfg(test)]
@@ -232,8 +218,8 @@ pub mod pallet {
                 log::error!("IPFS: Encountered an error while processing DHT requests: {:?}", e);
             }
 
-            // process Ipfs::{add, get} queues every other block
-            if block_number % 2u32.into() == 1u32.into() {
+            // process Ipfs::{add, cat, pin, remove block} queues every other block
+            if block_number % 3u32.into() == 1u32.into() {
                 // TODO: should let user specify a default account
                 if let Err(e) = Self::handle_data_requests() {
                     log::error!("IPFS: Encountered an error while processing data requests: {:?}", e);
@@ -256,7 +242,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
 		 /// Mark a `Multiaddr` as a desired connection target. The connection will be established
         /// during the next run of the off-chain `connection_housekeeping` process.
-        #[pallet::weight(1_000)]
+        #[pallet::weight(0)]
         pub fn ipfs_connect(origin: OriginFor<T>, addr: Vec<u8>) -> DispatchResult {
             let who = ensure_signed(origin)?;
             let cmd = ConnectionCommand::ConnectTo(OpaqueMultiaddr(addr));
@@ -267,7 +253,7 @@ pub mod pallet {
 
         /// Queues a `Multiaddr` to be disconnected. The connection will be severed during the next
         /// run of the off-chain `connection_housekeeping` process.
-        #[pallet::weight(1_000)]
+        #[pallet::weight(0)]
         pub fn ipfs_disconnect(origin: OriginFor<T>, addr: Vec<u8>) -> DispatchResult {
             let who = ensure_signed(origin)?;
             let cmd = ConnectionCommand::DisconnectFrom(OpaqueMultiaddr(addr));
@@ -276,9 +262,8 @@ pub mod pallet {
 			Ok(())
         }
 
-        /// Add arbitrary bytes to the IPFS repository. The registered `Cid` is printed out in the
-        /// logs.
-        #[pallet::weight(1_000)]
+        /// Add bytes and associated data to IPFS.
+        #[pallet::weight(0)]
         pub fn ipfs_add_bytes(origin: OriginFor<T>, data: Vec<u8>, name: Vec<u8>) -> DispatchResult {
             let who = ensure_signed(origin)?;
             <DataQueue<T>>::mutate(|queue| queue.push(DataCommand::AddBytes(data, name)));
@@ -288,7 +273,7 @@ pub mod pallet {
 
         /// Find IPFS data pointed to by the given `Cid`; if it is valid UTF-8, it is printed in the
         /// logs verbatim; otherwise, the decimal representation of the bytes is displayed instead.
-        #[pallet::weight(1_000)]
+        #[pallet::weight(0)]
         pub fn ipfs_cat_bytes(origin: OriginFor<T>, cid: Vec<u8>) -> DispatchResult {
             let who = ensure_signed(origin)?;
             <DataQueue<T>>::mutate(|queue| queue.push(DataCommand::CatBytes(cid)));
@@ -298,7 +283,7 @@ pub mod pallet {
 
         /// Add arbitrary bytes to the IPFS repository. The registered `Cid` is printed out in the
         /// logs.
-        #[pallet::weight(1_000)]
+        #[pallet::weight(0)]
         pub fn ipfs_remove_block(origin: OriginFor<T>, cid: Vec<u8>) -> DispatchResult {
             let who = ensure_signed(origin)?;
             <DataQueue<T>>::mutate(|queue| queue.push(DataCommand::RemoveBlock(cid)));
@@ -307,7 +292,7 @@ pub mod pallet {
         }
 
         /// Pins a given `Cid` non-recursively.
-        #[pallet::weight(1_000)]
+        #[pallet::weight(0)]
         pub fn ipfs_insert_pin(origin: OriginFor<T>, cid: Vec<u8>) -> DispatchResult {
             let who = ensure_signed(origin)?;
             <DataQueue<T>>::mutate(|queue| queue.push(DataCommand::InsertPin(cid)));
@@ -316,7 +301,7 @@ pub mod pallet {
         }
 
         /// Unpins a given `Cid` non-recursively.
-        #[pallet::weight(1_000)]
+        #[pallet::weight(0)]
         pub fn ipfs_remove_pin(origin: OriginFor<T>, cid: Vec<u8>) -> DispatchResult {
             let who = ensure_signed(origin)?;
             <DataQueue<T>>::mutate(|queue| queue.push(DataCommand::RemovePin(cid)));
@@ -325,7 +310,7 @@ pub mod pallet {
         }
 
         /// Find addresses associated with the given `PeerId`.
-        #[pallet::weight(1_000)]
+        #[pallet::weight(0)]
         pub fn ipfs_dht_find_peer(origin: OriginFor<T>, peer_id: Vec<u8>) -> DispatchResult {
             let who = ensure_signed(origin)?;
             <DhtQueue<T>>::mutate(|queue| queue.push(DhtCommand::FindPeer(peer_id)));
@@ -334,7 +319,7 @@ pub mod pallet {
         }
 
         /// Find the list of `PeerId`s known to be hosting the given `Cid`.
-        #[pallet::weight(1_000)]
+        #[pallet::weight(0)]
         pub fn ipfs_dht_find_providers(origin: OriginFor<T>, cid: Vec<u8>) -> DispatchResult {
             let who = ensure_signed(origin)?;
             <DhtQueue<T>>::mutate(|queue| queue.push(DhtCommand::GetProviders(cid)));
@@ -342,7 +327,7 @@ pub mod pallet {
 			Ok(())
         }
 
-        #[pallet::weight(1_000)]
+        #[pallet::weight(0)]
         pub fn submit_ipfs_results(origin: OriginFor<T>, cid: Vec<u8>, name: Vec<u8>) -> DispatchResult {
             let who = ensure_signed(origin)?;
             <FsMap::<T>>::insert(cid.clone(), name.clone());
@@ -350,13 +335,13 @@ pub mod pallet {
             Ok(())
         }
 
-        #[pallet::weight(1_000)]
+        #[pallet::weight(0)]
         pub fn trigger_download_event(origin: OriginFor<T>, data: Vec<u8>, filename: Vec<u8>) -> DispatchResult {
             Self::deposit_event(Event::DataReady(data, filename));
             Ok(())
         }
 
-        #[pallet::weight(1_000)]
+        #[pallet::weight(0)]
         pub fn submit_providers_result(origin: OriginFor<T>, cid: Vec<u8>, providers: Vec<Vec<u8>>) -> DispatchResult {
             Self::deposit_event(Event::ProvidersResult(cid, providers));
             Ok(())
@@ -482,7 +467,7 @@ impl<T: Config> Pallet<T> {
 
         Ok(())
     }
-    // signer: Signer::<T, T::AuthorityId>
+
     fn handle_data_requests() -> Result<(), Error<T>> {
         let data_queue = DataQueue::<T>::get();
         let len = data_queue.len();
@@ -490,7 +475,7 @@ impl<T: Config> Pallet<T> {
             log::info!("IPFS: {} entr{} in the data queue", len, if len == 1 { "y" } else { "ies" });
         }
 
-        let deadline = Some(timestamp().add(Duration::from_millis(1_000)));
+        let deadline = Some(timestamp().add(Duration::from_millis(5_000)));
         for cmd in data_queue.into_iter() {
             match cmd {
                 DataCommand::AddBytes(data, name) => {
@@ -527,7 +512,6 @@ impl<T: Config> Pallet<T> {
                 DataCommand::CatBytes(cid) => {
                     match Self::ipfs_request(IpfsRequest::CatBytes(cid.clone()), deadline) {
                         Ok(IpfsResponse::CatBytes(data)) => {
-                            // TODO should check for existence
                             let filename = FsMap::<T>::get(cid);
                             let signer = Signer::<T, T::AuthorityId>::all_accounts();
                             if !signer.can_sign() {
