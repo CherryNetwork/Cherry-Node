@@ -11,6 +11,7 @@ use sc_telemetry::{Telemetry, TelemetryWorker};
 use sp_consensus::SlotData;
 use sp_consensus_aura::sr25519::AuthorityPair as AuraPair;
 use std::{sync::Arc, time::Duration};
+use sp_core::crypto::KeyTypeId;
 
 // Our native executor instance.
 pub struct ExecutorDispatch;
@@ -192,8 +193,13 @@ pub fn new_full(mut config: Configuration) -> Result<TaskManager, ServiceError> 
 			block_announce_validator_builder: None,
 			warp_sync: Some(warp_sync),
 		})?;
-
+	let keystore = keystore_container.sync_keystore();
 	if config.offchain_worker.enabled {
+		sp_keystore::SyncCryptoStore::sr25519_generate_new(
+			&*keystore,
+			KeyTypeId(*b"ipfs"),
+			Some("//Alice"),
+		).expect("Creating key with account Alice should succeed.");
 		sc_service::build_offchain_workers(
 			&config,
 			task_manager.spawn_handle(),
