@@ -1,11 +1,25 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+// Permisionless functions
+// "Owner" functions
+// ipfs_add(data, filename, cost)
+// fund_registry(item_id, locked_fund_amount)
+//
+// "Consumer" functions
+// request_access(item_id, amount)
+// ipfs_cat_bytes(item_id)
+//
+// "Storage Provider" functions <-- need to formalize this...
+// ipfs_pin(item_id)
+// ipfs_unpin(item_id) 
+//
+
 use codec::{Encode, Decode};
 use frame_support::debug;
 use frame_system::{
     self as system, ensure_signed,
     offchain::{
-        AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer,
+        AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer, SubmitTransaction,
     },
 };
 
@@ -20,7 +34,10 @@ use sp_io::{
 };
 use sp_runtime::{
     offchain::ipfs,
-    RuntimeDebug
+    RuntimeDebug,
+    transaction_validity::{
+		InvalidTransaction, TransactionSource, TransactionValidity, ValidTransaction,
+	},
 };
 use sp_std::{str, vec::Vec, prelude::*};
 
@@ -165,8 +182,8 @@ pub mod pallet {
         FindProvidersIssued(T::AccountId),
         // TODO: should cache this locally, just in case you miss the event being emitted?
         // should add to offchain storage
-        /// signer, cid, filename
-        NewCID(Option<T::AccountId>, Vec<u8>, Vec<u8>),
+        /// cid, filename
+        NewCID(Vec<u8>, Vec<u8>),
         // filedata, filename
         DataReady(Vec<u8>, Vec<u8>),
         // cid, peerids
@@ -189,7 +206,6 @@ pub mod pallet {
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-
          // needs to be synchronized with offchain_worker actitivies
          fn on_initialize(block_number: T::BlockNumber) -> Weight {
             <ConnectionQueue<T>>::kill();
@@ -201,7 +217,6 @@ pub mod pallet {
 
             0
         }
-
 
         fn offchain_worker(block_number: T::BlockNumber) {
             // process connect/disconnect commands
@@ -234,6 +249,24 @@ pub mod pallet {
             }
         }
     }
+
+    #[pallet::validate_unsigned]
+	impl<T: Config> ValidateUnsigned for Pallet<T> {
+		type Call = Call<T>;
+
+		/// Validate unsigned call to this module.
+		///
+		/// By default unsigned transactions are disallowed, but implementing the validator
+		/// here we make sure that some particular calls (the ones produced by offchain worker)
+		/// are marked as valid.
+		fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
+			if let Call::submit_ipfs_results(cid, file_name) = call {
+				Self::validate_transaction_parameters(cid.to_vec(), file_name.to_vec())
+			} else {
+				InvalidTransaction::Call.into()
+			}
+		}
+	}
 
 	// Dispatchable functions allows users to interact with the pallet and invoke state changes.
 	// These functions materialize as "extrinsics", which are often compared to transactions.
@@ -329,9 +362,9 @@ pub mod pallet {
 
         #[pallet::weight(0)]
         pub fn submit_ipfs_results(origin: OriginFor<T>, cid: Vec<u8>, name: Vec<u8>) -> DispatchResult {
-            let who = ensure_signed(origin)?;
+            ensure_none(origin)?;
             <FsMap::<T>>::insert(cid.clone(), name.clone());
-			Self::deposit_event(Event::NewCID(Some(who), cid, name));
+			Self::deposit_event(Event::NewCID(cid, name));
             Ok(())
         }
 
@@ -485,25 +518,9 @@ impl<T: Config> Pallet<T> {
                                 "IPFS: added data with Cid {}",
                                 str::from_utf8(&cid).expect("our own IPFS node can be trusted here; qed")
                             );
-                            log::info!("IPFS: added data with name {}",
-                                str::from_utf8(&name).expect("our own IPFS node can be trusted here; qed")
-                            );
-                            let signer = Signer::<T, T::AuthorityId>::all_accounts();
-                            if !signer.can_sign() {
-                                log::error!("No local account available. Consider adding one via 'author_insertkey' RPC.");
-                            }
-                            let results = signer.send_signed_transaction(|_acct|
-                                // This is the on-chain function
-                                Call::submit_ipfs_results(cid.clone(), name.clone())
-                            );
-                            for (_acc, res) in &results {
-                                match res {
-                                    Ok(()) => log::info!(
-                                        "IPFS: Sent signed transaction."
-                                    ),
-                                    Err(e) => log::error!("No local account available: {:?}", e),
-                                }
-                            }
+                            let call = Call::submit_ipfs_results(cid.clone(), name.clone());
+                            SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into())
+                                .map_err(|()| "Unable to submit unsigned transaction.");
                         },
                         Ok(_) => unreachable!("only AddBytes can be a response for that request type; qed"),
                         Err(e) => log::error!("IPFS: add error: {:?}", e),
@@ -593,5 +610,13 @@ impl<T: Config> Pallet<T> {
         );
 
         Ok(())
+    }
+
+    fn validate_transaction_parameters(cid: Vec<u8>, file_name: Vec<u8>) -> TransactionValidity {
+        /// for now assume everything is valid
+        ValidTransaction::with_tag_prefix("ipfs")
+            .longevity(5)
+            .propagate(true)
+            .build()
     }
 }
