@@ -240,7 +240,7 @@ pub struct TaskManager {
 	/// task fails.
 	children: Vec<TaskManager>,
 	/// the executor for ipfs
-	ipfs_rt: std::sync::Arc<parking_lot::Mutex<tokio::runtime::Runtime>>,
+	pub ipfs_rt: std::sync::Arc<parking_lot::Mutex<tokio::runtime::Runtime>>,
 }
 
 impl TaskManager {
@@ -267,8 +267,6 @@ impl TaskManager {
 			tokio_handle.spawn(background_tasks.for_each_concurrent(None, |x| async move {
 				let _ = x.await;
 			}));
-
-		let ipfs_rt = std::sync::Arc::new(parking_lot::Mutex::new(ipfs_rt));
 
 		let ipfs_rt = std::sync::Arc::new(parking_lot::Mutex::new(ipfs_rt));
 

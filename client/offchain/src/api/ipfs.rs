@@ -19,7 +19,7 @@ use ipfs::{
 use log::error;
 use sp_core::offchain::{IpfsRequest, IpfsRequestId, IpfsRequestStatus, IpfsResponse, OpaqueMultiaddr, Timestamp};
 use std::{collections::BTreeMap, convert::TryInto, fmt, mem, pin::Pin, str, task::{Context, Poll}};
-use sp_utils::mpsc::{tracing_unbounded, TracingUnboundedSender, TracingUnboundedReceiver};
+use sc_utils::mpsc::{tracing_unbounded, TracingUnboundedSender, TracingUnboundedReceiver};
 
 // wasm-friendly implementations of Ipfs::{add, get}
 async fn ipfs_add<T: IpfsTypes>(ipfs: &Ipfs<T>, data: Vec<u8>) -> Result<Cid, ipfs::Error> {

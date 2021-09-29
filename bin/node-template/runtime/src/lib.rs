@@ -280,8 +280,8 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Configure the pallet-template in pallets/template.
 impl pallet_template::Config for Runtime {
 	type Event = Event;
-	type Call = Call;
-	type AuthorityId = pallet_template::crypto::TestAuthId;
+	// type Call = Call;
+	// type AuthorityId = pallet_template::crypto::TestAuthId;
 }
 
 impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
@@ -355,9 +355,10 @@ construct_runtime!(
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage},
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>},
 		// Include the custom logic from the pallet-template in the runtime.
-		TemplateModule: pallet_template::{Pallet, Call, Storage, Event<T>, ValidateUnsigned},
+		TemplateModule: pallet_template::{Pallet, Call, Storage, Event<T>},
 	}
 );
+// TemplateModule: pallet_template::{Pallet, Call, Storage, Event<T>, ValidateUnsigned},
 
 /// The address format for describing accounts.
 pub type Address = sp_runtime::MultiAddress<AccountId, ()>;

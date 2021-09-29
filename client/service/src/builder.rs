@@ -288,7 +288,7 @@ where
 
 	let task_manager = {
 		let registry = config.prometheus_config.as_ref().map(|cfg| &cfg.registry);
-		TaskManager::new(config.task_executor.clone(), ipfs_rt, registry)?
+		TaskManager::new(config.tokio_handle.clone(), ipfs_rt, registry)?
 	};
 
 	let chain_spec = &config.chain_spec;
@@ -375,7 +375,7 @@ where
 	let ipfs_rt = tokio::runtime::Runtime::new().expect("couldn't start the IPFS runtime");
 	let task_manager = {
 		let registry = config.prometheus_config.as_ref().map(|cfg| &cfg.registry);
-		TaskManager::new(config.task_executor.clone(), ipfs_rt, registry)?
+		TaskManager::new(config.tokio_handle.clone(), ipfs_rt, registry)?
 	};
 
 	let db_storage = {
