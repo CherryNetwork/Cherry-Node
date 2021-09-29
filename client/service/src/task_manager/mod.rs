@@ -270,6 +270,8 @@ impl TaskManager {
 
 		let ipfs_rt = std::sync::Arc::new(parking_lot::Mutex::new(ipfs_rt));
 
+		let ipfs_rt = std::sync::Arc::new(parking_lot::Mutex::new(ipfs_rt));
+
 		Ok(Self {
 			on_exit,
 			signal: Some(signal),

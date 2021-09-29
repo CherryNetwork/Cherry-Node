@@ -34,8 +34,6 @@ pub use sp_offchain::STORAGE_PREFIX;
 
 mod http;
 
-<<<<<<< HEAD
-=======
 mod ipfs;
 
 #[cfg(target_os = "unknown")]
@@ -43,7 +41,6 @@ use http_dummy as http;
 #[cfg(target_os = "unknown")]
 mod http_dummy;
 
->>>>>>> cf74e7657... integrate rust-ipfs into substrate
 mod timestamp;
 
 fn unavailable_yet<R: Default>(name: &str) -> R {
