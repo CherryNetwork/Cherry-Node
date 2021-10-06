@@ -280,8 +280,8 @@ pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 /// Configure the pallet-template in pallets/template.
 impl pallet_template::Config for Runtime {
 	type Event = Event;
-	// type Call = Call;
-	// type AuthorityId = pallet_template::crypto::TestAuthId;
+	type Call = Call;
+	type AuthorityId = pallet_template::crypto::TestAuthId;
 }
 
 impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
