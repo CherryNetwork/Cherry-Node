@@ -282,6 +282,7 @@ impl pallet_template::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
 	type AuthorityId = pallet_template::crypto::TestAuthId;
+	type LocalCurrency = Balances;
 }
 
 impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime

@@ -1,19 +1,29 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+// ## Overview
+// Disclaimer: This pallet is in the tadpole state
 //
-// Permissionless functions
-// ipfs_add_bytes
-// mint_ticket
+// 
+// ## Interface
+// 
+// ### Dispatchable Functions 
 //
-// Permissioned Functions
-// submit_ipfs_results (private?)
-// destroy_ticket
-// ipfs_cat_bytes
+// #### Permissionless functions
+// * ipfs_add_bytes
+// * mint_ticket
+//
+// #### Permissioned Functions
+// * submit_ipfs_results (private?)
+// * destroy_ticket
+// * ipfs_cat_bytes
 //
 
 use scale_info::TypeInfo;
 use codec::{Encode, Decode};
-use frame_support::debug;
+use frame_support::{
+    debug,
+    traits::Currency,
+};
 use frame_system::{
     self as system, ensure_signed,
     offchain::{
@@ -71,6 +81,8 @@ pub mod crypto {
 pub enum DataCommand<AccountId> {
     /// (ipfs_address, cid, requesting node address, ticket_config)
     AddBytes(OpaqueMultiaddr, Vec<u8>, AccountId, TicketConfig),
+    /// owner, cid
+    CatBytes(AccountId, Vec<u8>),
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -79,6 +91,12 @@ pub struct TicketConfig {
     name: Vec<u8>,
     // the cost to be associated with the cid
     cost: i32,
+}
+
+#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
+pub struct Ticket<AccountId> {
+    owner: AccountId,
+	cid: Vec<u8>,
 }
 
 pub use pallet::*;
@@ -113,6 +131,7 @@ pub mod pallet {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
 	    type Call: From<Call<Self>>;
+        type LocalCurrency: Currency<Self::AccountId>;
 	}
 
     #[deprecated(note = "use `Event` instead")]
@@ -125,20 +144,26 @@ pub mod pallet {
 	#[pallet::storage]
     #[pallet::getter(fn data_queue)]
 	// A queue of data to publish or obtain on IPFS.
-	pub(super) type DataQueue<T: Config> = StorageValue<_, Vec<DataCommand<T::AccountId>>, ValueQuery>;
+	pub(super) type DataQueue<T: Config> = 
+		StorageValue<_, Vec<DataCommand<T::AccountId>>, ValueQuery>;
 
     #[pallet::storage]
-    #[pallet::getter(fn fs_map)]
-    pub(super) type TicketConfigMap<T: Config> = StorageDoubleMap<_, Blake2_128Concat, T::AccountId, Blake2_128Concat, Vec<u8>, TicketConfig, OptionQuery>;
-	// A list of requests to the DHT.
-	// pub(super) type FsMap<T> = StorageMap<_, Blake2_128Concat, Vec<u8>, Vec<u8>, ValueQuery>;
+    #[pallet::getter(fn ticket_config_map)]
+    pub(super) type TicketConfigMap<T: Config> = 
+		StorageDoubleMap<_, Blake2_128Concat, T::AccountId, Blake2_128Concat, Vec<u8>, TicketConfig, OptionQuery>;
 	
+    #[pallet::storage]
+    #[pallet::getter(fn ticket_map)]
+    pub(super) type TicketOwnership<T: Config> = 
+		StorageMap<_, Blake2_128Concat, T::AccountId, Vec<Ticket<T::AccountId>>, ValueQuery>;
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
         QueuedDataToAdd(T::AccountId),
+        QueuedDataToCat(T::AccountId),
         TicketConfigCreated(T::AccountId),
-        TicketPurchased(T::AccountId),
+        TicketMinted(T::AccountId),
 	}
 
 	#[pallet::error]
@@ -196,7 +221,13 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
         /// Add bytes and associated data to IPFS.
         #[pallet::weight(0)]
-        pub fn ipfs_add_bytes(origin: OriginFor<T>, addr: Vec<u8>, cid: Vec<u8>, name: Vec<u8>, cost: i32) -> DispatchResult {
+        pub fn ipfs_add_bytes(
+            origin: OriginFor<T>,
+            addr: Vec<u8>,
+            cid: Vec<u8>,
+            name: Vec<u8>,
+            cost: i32,
+        ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             let multiaddr = OpaqueMultiaddr(addr);
             let ticket_config = TicketConfig{
@@ -207,9 +238,15 @@ pub mod pallet {
             Self::deposit_event(Event::QueuedDataToAdd(who.clone()));
 			Ok(())
         }
-
+        /// should only be called by offchain workers
+        /// submits IPFS results on chain and creates new ticket config in runtime storage
         #[pallet::weight(0)]
-        pub fn submit_ipfs_results(origin: OriginFor<T>, owner: T::AccountId, cid: Vec<u8>, ticket_config: TicketConfig) -> DispatchResult {
+        pub fn submit_ipfs_results(
+            origin: OriginFor<T>,
+            owner: T::AccountId,
+            cid: Vec<u8>,
+            ticket_config: TicketConfig,
+        ) -> DispatchResult {
             ensure_none(origin)?;
             <TicketConfigMap<T>>::insert(owner.clone(), cid.clone(), ticket_config.clone());
 			Self::deposit_event(Event::TicketConfigCreated(owner.clone()));
@@ -217,7 +254,28 @@ pub mod pallet {
         }
 
         #[pallet::weight(0)]
-        pub fn mint_ticket(origin: OriginFor<T>) -> DispatchResult {
+        pub fn mint_ticket(
+            origin: OriginFor<T>,
+            owner: T::AccountId,
+            cid: Vec<u8>,
+            value: i32,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            let ticket = Ticket{
+                owner: owner.clone(),
+                cid: cid.clone(),
+            };
+            <TicketOwnership<T>>::insert(who, ticket);
+            Self::deposit_event(Event::TicketMinted(who.clone()));
+            Ok(())
+        }
+
+		#[pallet::weight(0)]
+        pub fn redeem_ticket(origin: OriginFor<T>, owner: T::AccountId, cid: Vec<u8>) -> DispatchResult {
+            let who = ensure_signed(origin);
+            // use the owner+cid to id the ticket config
+            // use the ticket config to generate the ticket_id hash(pubkey + Ticket{ownerpubkey, cid})
+            // use the ticket_id to get the owned ticket
             Ok(())
         }
 	}
@@ -252,54 +310,38 @@ impl<T: Config> Pallet<T> {
             match cmd {
                 // ticket_config
                 DataCommand::AddBytes(addr, cid, owner, ticket_config) => {
-                    // TODO: this needs to be cleaned up
-                    match Self::ipfs_request(IpfsRequest::Connect(addr.clone()), deadline) {
-                        Ok(IpfsResponse::Success) => {
+                    Self::ipfs_request(IpfsRequest::Connect(addr.clone()), deadline)?;
+                    log::info!(
+                        "IPFS: connected to {}",
+                        str::from_utf8(&addr.0).expect("our own calls can be trusted to be UTF-8; qed")
+                    );
+                    match Self::ipfs_request(IpfsRequest::CatBytes(cid.clone()), deadline) {
+                        Ok(IpfsResponse::CatBytes(data)) => {
+                            Self::ipfs_request(IpfsRequest::Disconnect(addr.clone()), deadline)?;
                             log::info!(
-                                "IPFS: connected to {}",
+                                "IPFS: disconnected from {}",
                                 str::from_utf8(&addr.0).expect("our own calls can be trusted to be UTF-8; qed")
                             );
-                            // fetch the bytes from the newly connected node
-                            match Self::ipfs_request(IpfsRequest::CatBytes(cid.clone()), deadline) {
-                                Ok(IpfsResponse::CatBytes(data)) => {
-                                    // fetched the data -> disconnect from the multiaddr
-                                    match Self::ipfs_request(IpfsRequest::Disconnect(addr.clone()), deadline) {
-                                        Ok(IpfsResponse::Success) => {
-                                            log::info!(
-                                                "IPFS: disconnected from {}",
-                                                str::from_utf8(&addr.0).expect("our own calls can be trusted to be UTF-8; qed")
-                                            );
-                                            // disconnected succesfully, ready to add data to node
-                                            match Self::ipfs_request(IpfsRequest::AddBytes(data.clone()), deadline) {
-                                                Ok(IpfsResponse::AddBytes(new_cid)) => {
-                                                    // TODO: should verify that the CID matches the CID provided in the original request!
-                                                    log::info!(
-                                                        "IPFS: added data with Cid {}",
-                                                        str::from_utf8(&new_cid).expect("our own IPFS node can be trusted here; qed")
-                                                    );
-                                                    let call = Call::submit_ipfs_results{
-                                                        owner: owner,
-                                                        cid: new_cid,
-                                                        ticket_config: ticket_config,
-                                                    };
-                                                    SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into())
-                                                        .map_err(|()| "Unable to submit unsigned transaction.");
-                                                },
-                                                Ok(_) => unreachable!("only AddBytes can be a response for that request type; qed"),
-                                                Err(e) => log::error!("IPFS: add error: {:?}", e),
-                                            }
-                                        }
-                                        Ok(_) => unreachable!("only Success can be a response for that request type; qed"),
-                                        Err(e) => log::error!("IPFS: disconnect error: {:?}", e),
-                                    }
-
+                            match Self::ipfs_request(IpfsRequest::AddBytes(data.clone()), deadline) {
+                                Ok(IpfsResponse::AddBytes(new_cid)) => {
+                                    log::info!(
+                                        "IPFS: added data with Cid {}",
+                                        str::from_utf8(&new_cid).expect("our own IPFS node can be trusted here; qed")
+                                    );
+                                    let call = Call::submit_ipfs_results{
+                                        owner: owner,
+                                        cid: new_cid,
+                                        ticket_config: ticket_config,
+                                    };
+                                    SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into())
+                                        .map_err(|()| "Unable to submit unsigned transaction.");
                                 },
-                                Ok(_) => unreachable!("only CatBytes can be a response for that request type; qed"),
-                                Err(e) => log::error!("IPFS: error: {:?}", e),
+                                Ok(_) => unreachable!("only AddBytes can be a response for that request type."),
+                                Err(e) => log::error!("IPFS: add error: {:?}", e),
                             }
-                        }
-                        Ok(_) => unreachable!("only Success can be a response for that request type; qed"),
-                        Err(e) => log::error!("IPFS: connect error: {:?}", e),
+                        },
+                        Ok(_) => unreachable!("only CatBytes can be a response for that request type."),
+                        Err(e) => log::error!("IPFS: cat error: {:?}", e),
                     }
                 }
             }
