@@ -5034,6 +5034,7 @@ dependencies = [
  "frame-system-rpc-runtime-api",
  "hex-literal",
  "log 0.4.14",
+ "pallet-assets",
  "pallet-aura",
  "pallet-balances",
  "pallet-grandpa",

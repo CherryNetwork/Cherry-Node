@@ -1,22 +1,28 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-// ## Overview
-// Disclaimer: This pallet is in the tadpole state
-//
-// 
-// ## Interface
-// 
-// ### Dispatchable Functions 
-//
-// #### Permissionless functions
-// * ipfs_add_bytes
-// * mint_ticket
-//
-// #### Permissioned Functions
-// * submit_ipfs_results (private?)
-// * destroy_ticket
-// * ipfs_cat_bytes
-//
+//! # Iris Storage Pallet
+//!
+//! A module to interact with Iris Storage
+//!
+//! ## Overview
+//! Disclaimer: This pallet is in the tadpole state
+//!
+//! ### Goals
+//! 
+//! ## Interface
+//!
+//! The Iris module provides functionality for creation and management of storage assets 
+//! ### Dispatchable Functions 
+//!
+//! #### Permissionless functions
+//! * ipfs_add_bytes
+//! * mint_ticket
+//!
+//! #### Permissioned Functions
+//! * submit_ipfs_results (private?)
+//! * destroy_ticket
+//! * ipfs_cat_bytes
+//!
 
 use scale_info::TypeInfo;
 use codec::{Encode, Decode};
@@ -80,9 +86,9 @@ pub mod crypto {
 #[derive(Encode, Decode, RuntimeDebug, PartialEq, TypeInfo)]
 pub enum DataCommand<AccountId> {
     /// (ipfs_address, cid, requesting node address, ticket_config)
-    AddBytes(OpaqueMultiaddr, Vec<u8>, AccountId, TicketConfig),
-    /// owner, cid
-    CatBytes(AccountId, Vec<u8>),
+    AddBytes(OpaqueMultiaddr, Vec<u8>, AccountId, Vec<u8>, i32),
+    // /// owner, cid
+    // CatBytes(AccountId, Vec<u8>),
 }
 
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
@@ -127,7 +133,7 @@ pub mod pallet {
 	use sp_std::{str, vec::Vec, prelude::*};
 
 	#[pallet::config]
-	pub trait Config: CreateSignedTransaction<Call<Self>> + frame_system::Config {
+	pub trait Config:CreateSignedTransaction<Call<Self>> + frame_system::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
 	    type Call: From<Call<Self>>;
@@ -155,7 +161,7 @@ pub mod pallet {
     #[pallet::storage]
     #[pallet::getter(fn ticket_map)]
     pub(super) type TicketOwnership<T: Config> = 
-		StorageMap<_, Blake2_128Concat, T::AccountId, Vec<Ticket<T::AccountId>>, ValueQuery>;
+		StorageMap<_, Blake2_128Concat, T::AccountId, Vec<Ticket<T::AccountId>>, OptionQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -230,11 +236,7 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             let multiaddr = OpaqueMultiaddr(addr);
-            let ticket_config = TicketConfig{
-                name: name.clone(),
-                cost: cost.clone(),
-            };
-            <DataQueue<T>>::mutate(|queue| queue.push(DataCommand::AddBytes(multiaddr, cid, who.clone(), ticket_config)));
+            <DataQueue<T>>::mutate(|queue| queue.push(DataCommand::AddBytes(multiaddr, cid, who.clone(), name.clone(), cost.clone())));
             Self::deposit_event(Event::QueuedDataToAdd(who.clone()));
 			Ok(())
         }
@@ -245,9 +247,16 @@ pub mod pallet {
             origin: OriginFor<T>,
             owner: T::AccountId,
             cid: Vec<u8>,
-            ticket_config: TicketConfig,
+            name: Vec<u8>,
+            cost: i32,
         ) -> DispatchResult {
             ensure_none(origin)?;
+            // create new asset class: TicketConfig
+            // T::Asset::create();
+            let ticket_config = TicketConfig{
+                name: name.clone(),
+                cost: cost.clone(),
+            };
             <TicketConfigMap<T>>::insert(owner.clone(), cid.clone(), ticket_config.clone());
 			Self::deposit_event(Event::TicketConfigCreated(owner.clone()));
             Ok(())
@@ -265,7 +274,7 @@ pub mod pallet {
                 owner: owner.clone(),
                 cid: cid.clone(),
             };
-            <TicketOwnership<T>>::insert(who, ticket);
+            // <TicketOwnership<T>>::mutate(|tickets| tickets.push()));
             Self::deposit_event(Event::TicketMinted(who.clone()));
             Ok(())
         }
@@ -273,6 +282,7 @@ pub mod pallet {
 		#[pallet::weight(0)]
         pub fn redeem_ticket(origin: OriginFor<T>, owner: T::AccountId, cid: Vec<u8>) -> DispatchResult {
             let who = ensure_signed(origin);
+            // <DataQueue<T>>::mutate(|queue| queue.push(DataCommand::CatBytes(owner.clone(), cid.clone() )));
             // use the owner+cid to id the ticket config
             // use the ticket config to generate the ticket_id hash(pubkey + Ticket{ownerpubkey, cid})
             // use the ticket_id to get the owned ticket

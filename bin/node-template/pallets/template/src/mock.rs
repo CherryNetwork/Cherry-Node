@@ -6,6 +6,7 @@ use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 };
+use pallet_balances;
 
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
@@ -18,6 +19,7 @@ frame_support::construct_runtime!(
 		UncheckedExtrinsic = UncheckedExtrinsic,
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
+		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>}
 		TemplateModule: pallet_template::{Pallet, Call, Storage, Event<T>},
 	}
 );
@@ -53,8 +55,15 @@ impl system::Config for Test {
 	type OnSetCode = ();
 }
 
+impl CreateSignedTransaction<pallet::Call<mock::Test>> for Test {
+	type AuthorityId = pallet_template::KEY_TYPE;
+}
+
 impl pallet_template::Config for Test {
 	type Event = Event;
+	type Call = Call;
+	type AuthorityId = pallet_template::KEY_TYPE;
+	type LocalCurrency = Balances;
 }
 
 // Build genesis storage according to the mock runtime.
