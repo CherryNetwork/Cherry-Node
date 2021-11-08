@@ -52,10 +52,14 @@ use sp_runtime::{
     transaction_validity::{
 		InvalidTransaction, TransactionSource, TransactionValidity, ValidTransaction,
 	},
+    traits::{
+        StaticLookup,
+    }
 };
 use sp_std::{str, vec::Vec, prelude::*};
 
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"ipfs");
+
 
 pub mod crypto {
 	use crate::KEY_TYPE;
@@ -84,9 +88,9 @@ pub mod crypto {
 }
 
 #[derive(Encode, Decode, RuntimeDebug, PartialEq, TypeInfo)]
-pub enum DataCommand<AccountId> {
+pub enum DataCommand<LookupSource, AssetId, Balance> {
     /// (ipfs_address, cid, requesting node address, ticket_config)
-    AddBytes(OpaqueMultiaddr, Vec<u8>, AccountId, Vec<u8>, i32),
+    AddBytes(OpaqueMultiaddr, Vec<u8>, LookupSource, AssetId, Balance),
     // /// owner, cid
     // CatBytes(AccountId, Vec<u8>),
 }
@@ -133,7 +137,7 @@ pub mod pallet {
 	use sp_std::{str, vec::Vec, prelude::*};
 
 	#[pallet::config]
-	pub trait Config:CreateSignedTransaction<Call<Self>> + frame_system::Config {
+	pub trait Config:CreateSignedTransaction<Call<Self>> + frame_system::Config + pallet_assets::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
         type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
 	    type Call: From<Call<Self>>;
@@ -150,18 +154,15 @@ pub mod pallet {
 	#[pallet::storage]
     #[pallet::getter(fn data_queue)]
 	// A queue of data to publish or obtain on IPFS.
-	pub(super) type DataQueue<T: Config> = 
-		StorageValue<_, Vec<DataCommand<T::AccountId>>, ValueQuery>;
-
-    #[pallet::storage]
-    #[pallet::getter(fn ticket_config_map)]
-    pub(super) type TicketConfigMap<T: Config> = 
-		StorageDoubleMap<_, Blake2_128Concat, T::AccountId, Blake2_128Concat, Vec<u8>, TicketConfig, OptionQuery>;
-	
-    #[pallet::storage]
-    #[pallet::getter(fn ticket_map)]
-    pub(super) type TicketOwnership<T: Config> = 
-		StorageMap<_, Blake2_128Concat, T::AccountId, Vec<Ticket<T::AccountId>>, OptionQuery>;
+	pub(super) type DataQueue<T: Config> = StorageValue<
+        _,
+        Vec<DataCommand<
+            <T::Lookup as StaticLookup>::Source,
+            T::AssetId,
+            T::Balance,
+        >>,
+        ValueQuery
+    >;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -215,7 +216,7 @@ pub mod pallet {
 		/// here we make sure that some particular calls (the ones produced by offchain worker)
 		/// are marked as valid.
 		fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
-			if let Call::submit_ipfs_results{owner, cid, ticket_config} = call {
+			if let Call::submit_ipfs_results{admin, cid, id, balance} = call {
 				Self::validate_transaction_parameters(cid.to_vec())
 			} else {
 				InvalidTransaction::Call.into()
@@ -229,14 +230,15 @@ pub mod pallet {
         #[pallet::weight(0)]
         pub fn ipfs_add_bytes(
             origin: OriginFor<T>,
+            admin: <T::Lookup as StaticLookup>::Source,
             addr: Vec<u8>,
             cid: Vec<u8>,
-            name: Vec<u8>,
-            cost: i32,
+            id: T::AssetId,
+            balance: T::Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             let multiaddr = OpaqueMultiaddr(addr);
-            <DataQueue<T>>::mutate(|queue| queue.push(DataCommand::AddBytes(multiaddr, cid, who.clone(), name.clone(), cost.clone())));
+            <DataQueue<T>>::mutate(|queue| queue.push(DataCommand::AddBytes(multiaddr, cid, admin.clone(), id.clone(), balance.clone())));
             Self::deposit_event(Event::QueuedDataToAdd(who.clone()));
 			Ok(())
         }
@@ -245,21 +247,15 @@ pub mod pallet {
         #[pallet::weight(0)]
         pub fn submit_ipfs_results(
             origin: OriginFor<T>,
-            owner: T::AccountId,
+            admin: <T::Lookup as StaticLookup>::Source,
             cid: Vec<u8>,
-            name: Vec<u8>,
-            cost: i32,
+            id: T::AssetId,
+            balance: T::Balance,
         ) -> DispatchResult {
-            ensure_none(origin)?;
-            // create new asset class: TicketConfig
-            // T::Asset::create();
-            let ticket_config = TicketConfig{
-                name: name.clone(),
-                cost: cost.clone(),
-            };
-            <TicketConfigMap<T>>::insert(owner.clone(), cid.clone(), ticket_config.clone());
-			Self::deposit_event(Event::TicketConfigCreated(owner.clone()));
-            Ok(())
+            // ensure_none(origin)?;
+            let who = ensure_signed(origin)?;
+            let new_origin = system::RawOrigin::Signed(who).into();
+            <pallet_assets::Pallet<T>>::create(new_origin, id, admin, balance)
         }
 
         #[pallet::weight(0)]
@@ -274,7 +270,6 @@ pub mod pallet {
                 owner: owner.clone(),
                 cid: cid.clone(),
             };
-            // <TicketOwnership<T>>::mutate(|tickets| tickets.push()));
             Self::deposit_event(Event::TicketMinted(who.clone()));
             Ok(())
         }
@@ -283,9 +278,6 @@ pub mod pallet {
         pub fn redeem_ticket(origin: OriginFor<T>, owner: T::AccountId, cid: Vec<u8>) -> DispatchResult {
             let who = ensure_signed(origin);
             // <DataQueue<T>>::mutate(|queue| queue.push(DataCommand::CatBytes(owner.clone(), cid.clone() )));
-            // use the owner+cid to id the ticket config
-            // use the ticket config to generate the ticket_id hash(pubkey + Ticket{ownerpubkey, cid})
-            // use the ticket_id to get the owned ticket
             Ok(())
         }
 	}
@@ -319,7 +311,7 @@ impl<T: Config> Pallet<T> {
         for cmd in data_queue.into_iter() {
             match cmd {
                 // ticket_config
-                DataCommand::AddBytes(addr, cid, owner, ticket_config) => {
+                DataCommand::AddBytes(addr, cid, admin, id, balance) => {
                     Self::ipfs_request(IpfsRequest::Connect(addr.clone()), deadline)?;
                     log::info!(
                         "IPFS: connected to {}",
@@ -339,9 +331,10 @@ impl<T: Config> Pallet<T> {
                                         str::from_utf8(&new_cid).expect("our own IPFS node can be trusted here; qed")
                                     );
                                     let call = Call::submit_ipfs_results{
-                                        owner: owner,
+                                        admin: admin,
                                         cid: new_cid,
-                                        ticket_config: ticket_config,
+                                        id: id,
+                                        balance: balance,
                                     };
                                     SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into())
                                         .map_err(|()| "Unable to submit unsigned transaction.");

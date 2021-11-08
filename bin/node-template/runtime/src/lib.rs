@@ -283,6 +283,15 @@ parameter_types! {
 	pub const MetadataDepositPerByte: Balance = 1 * DOLLARS;
 }
 
+impl pallet_sudo::Config for Runtime {
+	type Event = Event;
+	type Call = Call;
+}
+
+/// Payload data to be signed when making signed transaction from off-chain workers,
+///   inside `create_transaction` function.
+pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
+
 impl pallet_assets::Config for Runtime {
 	type Event = Event;
 	type Balance = u64;
@@ -299,21 +308,24 @@ impl pallet_assets::Config for Runtime {
 	type WeightInfo = pallet_assets::weights::SubstrateWeight<Runtime>;
 }
 
-impl pallet_sudo::Config for Runtime {
-	type Event = Event;
-	type Call = Call;
-}
-
-/// Payload data to be signed when making signed transaction from off-chain workers,
-///   inside `create_transaction` function.
-pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
-
 /// Configure the pallet-template in pallets/template.
 impl pallet_template::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
 	type AuthorityId = pallet_template::crypto::TestAuthId;
 	type LocalCurrency = Balances;
+	// type Assets = Assets;
+	// type AssetId = u32;
+	// type Currency = Balances;
+	// type ForceOrigin = EnsureRoot<AccountId>;
+	// type AssetDeposit = AssetDeposit;
+	// type MetadataDepositBase = MetadataDepositBase;
+	// type MetadataDepositPerByte = MetadataDepositPerByte;
+	// type ApprovalDeposit = ApprovalDeposit;
+	// type StringLimit = StringLimit;
+	// type Freezer = ();
+	// type Extra = ();
+	// type WeightInfo = pallet_assets::weights::SubstrateWeight<Runtime>;
 }
 
 impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
@@ -388,7 +400,8 @@ construct_runtime!(
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>},
 		// Include the custom logic from the pallet-template in the runtime.
 		TemplateModule: pallet_template::{Pallet, Call, Storage, Event<T>, ValidateUnsigned},
-		Assets: pallet_assets::{Pallet, Call, Storage, Event<T>},
+		// removed call to make extrinsics uncallable
+		Assets: pallet_assets::{Pallet, Storage, Event<T>},
 	}
 );
 // TemplateModule: pallet_template::{Pallet, Call, Storage, Event<T>, ValidateUnsigned},
