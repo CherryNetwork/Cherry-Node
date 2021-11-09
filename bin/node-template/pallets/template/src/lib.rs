@@ -95,20 +95,6 @@ pub enum DataCommand<LookupSource, AssetId, Balance> {
     // CatBytes(AccountId, Vec<u8>),
 }
 
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
-pub struct TicketConfig {
-    // the name to be associated with an (owner, cid)
-    name: Vec<u8>,
-    // the cost to be associated with the cid
-    cost: i32,
-}
-
-#[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
-pub struct Ticket<AccountId> {
-    owner: AccountId,
-	cid: Vec<u8>,
-}
-
 pub use pallet::*;
 
 #[cfg(test)]
@@ -156,11 +142,19 @@ pub mod pallet {
 	// A queue of data to publish or obtain on IPFS.
 	pub(super) type DataQueue<T: Config> = StorageValue<
         _,
-        Vec<DataCommand<
-            <T::Lookup as StaticLookup>::Source,
-            T::AssetId,
-            T::Balance,
-        >>,
+        Vec<DataCommand<<T::Lookup as StaticLookup>::Source, T::AssetId, T::Balance, >>,
+        ValueQuery
+    >;
+
+    #[pallet::storage]
+    #[pallet::getter(fn cid_map)]
+    pub(super) type CidMap<T: Config> = StorageDoubleMap<
+        _,
+        Blake2_128Concat,
+        Vec<u8>,
+        Blake2_128Concat,
+        T::AccountId,
+        T::AssetId,
         ValueQuery
     >;
 
@@ -170,7 +164,8 @@ pub mod pallet {
         QueuedDataToAdd(T::AccountId),
         QueuedDataToCat(T::AccountId),
         TicketConfigCreated(T::AccountId),
-        TicketMinted(T::AccountId),
+        AssetClassCreated(T::AssetId),
+        AssetCreated(T::AssetId),
 	}
 
 	#[pallet::error]
@@ -228,7 +223,7 @@ pub mod pallet {
 	impl<T: Config> Pallet<T> {
         /// Add bytes and associated data to IPFS.
         #[pallet::weight(0)]
-        pub fn ipfs_add_bytes(
+        pub fn create_storage_asset(
             origin: OriginFor<T>,
             admin: <T::Lookup as StaticLookup>::Source,
             addr: Vec<u8>,
@@ -238,11 +233,18 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             let multiaddr = OpaqueMultiaddr(addr);
-            <DataQueue<T>>::mutate(|queue| queue.push(DataCommand::AddBytes(multiaddr, cid, admin.clone(), id.clone(), balance.clone())));
+            <DataQueue<T>>::mutate(
+                |queue| queue.push(DataCommand::AddBytes(
+                    multiaddr,
+                    cid,
+                    admin.clone(),
+                    id.clone(),
+                    balance.clone(),
+                )));
             Self::deposit_event(Event::QueuedDataToAdd(who.clone()));
 			Ok(())
         }
-        /// should only be called by offchain workers
+        /// should only be called by offchain workers... how to ensure this?
         /// submits IPFS results on chain and creates new ticket config in runtime storage
         #[pallet::weight(0)]
         pub fn submit_ipfs_results(
@@ -252,32 +254,57 @@ pub mod pallet {
             id: T::AssetId,
             balance: T::Balance,
         ) -> DispatchResult {
+            log::info!("************************** CALLED SUBMIT_IPFS_RESULTS **************************");
             // ensure_none(origin)?;
             let who = ensure_signed(origin)?;
             let new_origin = system::RawOrigin::Signed(who).into();
-            <pallet_assets::Pallet<T>>::create(new_origin, id, admin, balance)
+            <pallet_assets::Pallet<T>>::create(new_origin, id.clone(), admin.clone(), balance);
+            let which_admin = T::Lookup::lookup(admin.clone())?;
+            <CidMap<T>>::insert(cid.clone(), which_admin, id.clone());
+            Self::deposit_event(Event::AssetClassCreated(id.clone()));
+            Ok(())
+        }
+
+        /// Only callable by the owner of the asset class 
+        /// mint a static number of assets (tickets) for some asset class
+        //
+        // origin should be the owner of the asset class
+        // beneficiary is the address to which the newly minted assets are assigned
+        // the cid should be a cid owned by the origin, for which an asset class exists
+        //
+        #[pallet::weight(0)]
+        pub fn mint_tickets(
+            origin: OriginFor<T>,
+            beneficiary: <T::Lookup as StaticLookup>::Source,
+            cid: Vec<u8>,
+            #[pallet::compact] amount: T::Balance,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            let new_origin = system::RawOrigin::Signed(who.clone()).into();
+            // assumes its existence
+            let asset_id = CidMap::<T>::get(cid.clone(), who.clone());
+            <pallet_assets::Pallet<T>>::mint(new_origin, asset_id.clone(), beneficiary, amount);
+            Self::deposit_event(Event::AssetCreated(asset_id.clone()));
+            Ok(())
         }
 
         #[pallet::weight(0)]
-        pub fn mint_ticket(
+        pub fn purchase_ticket(
             origin: OriginFor<T>,
-            owner: T::AccountId,
+            owner: <T::Lookup as StaticLookup>::Source,
             cid: Vec<u8>,
-            value: i32,
         ) -> DispatchResult {
-            let who = ensure_signed(origin)?;
-            let ticket = Ticket{
-                owner: owner.clone(),
-                cid: cid.clone(),
-            };
-            Self::deposit_event(Event::TicketMinted(who.clone()));
+            let who = ensure_signed(origin);
             Ok(())
         }
 
 		#[pallet::weight(0)]
-        pub fn redeem_ticket(origin: OriginFor<T>, owner: T::AccountId, cid: Vec<u8>) -> DispatchResult {
+        pub fn redeem_ticket(
+            origin: OriginFor<T>,
+            owner: <T::Lookup as StaticLookup>::Source,
+            cid: Vec<u8>,
+        ) -> DispatchResult {
             let who = ensure_signed(origin);
-            // <DataQueue<T>>::mutate(|queue| queue.push(DataCommand::CatBytes(owner.clone(), cid.clone() )));
             Ok(())
         }
 	}
