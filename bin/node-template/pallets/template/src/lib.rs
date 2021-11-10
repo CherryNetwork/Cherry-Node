@@ -89,11 +89,11 @@ pub mod crypto {
 }
 
 #[derive(Encode, Decode, RuntimeDebug, PartialEq, TypeInfo)]
-pub enum DataCommand<LookupSource, AssetId, Balance> {
+pub enum DataCommand<LookupSource, AssetId, Balance, AccountId> {
     /// (ipfs_address, cid, requesting node address, ticket_config)
     AddBytes(OpaqueMultiaddr, Vec<u8>, LookupSource, AssetId, Balance),
     // /// owner, cid
-    // CatBytes(AccountId, Vec<u8>),
+    CatBytes(AccountId, Vec<u8>, AccountId),
 }
 
 pub use pallet::*;
@@ -145,7 +145,7 @@ pub mod pallet {
 	/// A queue of data to publish or obtain on IPFS.
 	pub(super) type DataQueue<T: Config> = StorageValue<
         _,
-        Vec<DataCommand<<T::Lookup as StaticLookup>::Source, T::AssetId, T::Balance>>,
+        Vec<DataCommand<<T::Lookup as StaticLookup>::Source, T::AssetId, T::Balance, T::AccountId>>,
         ValueQuery
     >;
 
@@ -161,7 +161,7 @@ pub mod pallet {
         Blake2_128Concat,
         T::AccountId,
         T::AssetId,
-        ValueQuery
+        ValueQuery,
     >;
 
 	#[pallet::event]
@@ -186,6 +186,9 @@ pub mod pallet {
         NoLocalAcctForSigning,
         CantCreateAssetClass,
         CantMintAssets,
+        NoSuchOwnedContent,
+        NoSuchAssetClass,
+        InsufficientBalance,
 	}
 
     #[pallet::hooks]
@@ -198,13 +201,15 @@ pub mod pallet {
 
             0
         }
-
+        /// The offchain worker processes requests queued by other nodes
         fn offchain_worker(block_number: T::BlockNumber) {
+            // process a request every three blocks
             if block_number % 3u32.into() == 1u32.into() {
                 if let Err(e) = Self::handle_data_requests() {
                     log::error!("IPFS: Encountered an error while processing data requests: {:?}", e);
                 }
             }
+            // print metadata every five blocks
             if block_number % 5u32.into() == 0u32.into() {
                 if let Err(e) = Self::print_metadata() {
                     log::error!("IPFS: Encountered an error while obtaining metadata: {:?}", e);
@@ -267,6 +272,31 @@ pub mod pallet {
             Self::deposit_event(Event::QueuedDataToAdd(who.clone()));
 			Ok(())
         }
+
+        /// Queue a request to retrieve data behind some owned CID from the IPFS network
+        ///
+        /// * origin: any origin
+        /// * owner: The owner node
+        /// * cid: the cid to which you are requesting access
+        ///
+		#[pallet::weight(0)]
+        pub fn request_data(
+            origin: OriginFor<T>,
+            owner: <T::Lookup as StaticLookup>::Source,
+            cid: Vec<u8>,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            let owner_account = T::Lookup::lookup(owner)?;
+            <DataQueue<T>>::mutate(
+                |queue| queue.push(DataCommand::CatBytes(
+                    owner_account.clone(),
+                    cid.clone(),
+                    who.clone(),
+                )));
+            Self::deposit_event(Event::QueuedDataToCat(who.clone()));
+            Ok(())
+        }
+
         /// should only be called by offchain workers... how to ensure this?
         /// submits IPFS results on chain and creates new ticket config in runtime storage
         ///
@@ -313,14 +343,22 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             let new_origin = system::RawOrigin::Signed(who.clone()).into();
+            ensure!(CidMap::<T>::contains_key(cid.clone(), who.clone()), Error::<T>::NoSuchOwnedContent);
             let asset_id = CidMap::<T>::get(cid.clone(), who.clone());
-            // we leave validations on balance and ownership to the assets pallet
             <pallet_assets::Pallet<T>>::mint(new_origin, asset_id.clone(), beneficiary, amount)
                 .map_err(|_| Error::<T>::CantMintAssets);
+            log::info!("Minted {:?} tickets", amount);
             Self::deposit_event(Event::AssetCreated(asset_id.clone()));
             Ok(())
         }
 
+        /// TODO: leaving this as is for now... I feel like this will require some further thought. We almost need a dex-like feature
+        /// Purchase a ticket to access some content. The purchase is done in the native currency (OBOL).
+        ///
+        /// * origin: any origin
+        /// * owner: The owner to identify the asset class for which a ticket is to be purchased
+        /// * cid: The CID to identify the asset class for which a ticket is to be purchased
+        /// * amount: The number of tickets to purchase
         #[pallet::weight(0)]
         pub fn purchase_ticket(
             origin: OriginFor<T>,
@@ -329,18 +367,13 @@ pub mod pallet {
             #[pallet::compact] amount: T::Balance,
         ) -> DispatchResult {
             let who = ensure_signed(origin);
+            // determine price for amount of asset and verify origin has a min balance
             // transfer native currency to asset class admin
             // admin transfers the requested amount of tokens to the buyer
-            Ok(())
-        }
-
-		#[pallet::weight(0)]
-        pub fn redeem_ticket(
-            origin: OriginFor<T>,
-            owner: <T::Lookup as StaticLookup>::Source,
-            cid: Vec<u8>,
-        ) -> DispatchResult {
-            let who = ensure_signed(origin);
+            // for now, going with a simplified approach: tickets are all free
+            // let asset_id = CidMap::<T>::get(cid.clone(), who.clone());
+            // log.info!("found an asset id");
+            // <pallet_assets::Pallet<T>>::transfer();
             Ok(())
         }
 	}
@@ -382,6 +415,7 @@ impl<T: Config> Pallet<T> {
                     );
                     match Self::ipfs_request(IpfsRequest::CatBytes(cid.clone()), deadline) {
                         Ok(IpfsResponse::CatBytes(data)) => {
+                            log::info!("IPFS: fetched data");
                             Self::ipfs_request(IpfsRequest::Disconnect(addr.clone()), deadline)?;
                             log::info!(
                                 "IPFS: disconnected from {}",
@@ -427,6 +461,21 @@ impl<T: Config> Pallet<T> {
                                 Ok(_) => unreachable!("only AddBytes can be a response for that request type."),
                                 Err(e) => log::error!("IPFS: add error: {:?}", e),
                             }
+                        },
+                        Ok(_) => unreachable!("only CatBytes can be a response for that request type."),
+                        Err(e) => log::error!("IPFS: cat error: {:?}", e),
+                    }
+                },
+                DataCommand::CatBytes(owner, cid, recipient) => {
+                    // verify that the recipient owns at least one ticket
+                    ensure!(CidMap::<T>::contains_key(cid.clone(), owner.clone()), Error::<T>::NoSuchOwnedContent);
+                    let asset_id = CidMap::<T>::get(cid.clone(), owner.clone());
+                    let balance = <pallet_assets::Pallet<T>>::balance(asset_id.clone(), recipient.clone());
+                    ensure!(balance > 0, Error::<T>::InsufficientBalance);
+                    log::info!("found balance {:?}", balance);
+                    match Self::ipfs_request(IpfsRequest::CatBytes(cid.clone()), deadline) {
+                        Ok(IpfsResponse::CatBytes(data)) => {
+                            log::info!("IPFS: Fetched data from IPFS succesfully. What should I do with it now?");
                         },
                         Ok(_) => unreachable!("only CatBytes can be a response for that request type."),
                         Err(e) => log::error!("IPFS: cat error: {:?}", e),
