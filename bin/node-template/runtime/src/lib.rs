@@ -313,7 +313,7 @@ impl pallet_template::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
 	type AuthorityId = pallet_template::crypto::TestAuthId;
-	type LocalCurrency = Balances;
+	type Currency = Balances;
 	// type Assets = Assets;
 	// type AssetId = u32;
 	// type Currency = Balances;
