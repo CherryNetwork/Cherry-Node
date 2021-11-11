@@ -28,6 +28,7 @@ use scale_info::TypeInfo;
 use codec::{Encode, Decode};
 use frame_support::{
     debug,
+    ensure,
     traits::ReservableCurrency,
 };
 use frame_system::{
@@ -132,13 +133,17 @@ pub mod pallet {
         type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
         /// the overarching call type
 	    type Call: From<Call<Self>>;
-        /// the currency used (OBOL)
+        /// the currency used
         type Currency: ReservableCurrency<Self::AccountId>;
 	}
 
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
+
+    #[pallet::storage]
+    #[pallet::getter(fn next_asset_id)]
+    pub(super) type NextAssetId<T: Config> = StorageValue<_, T::AssetId, ValueQuery>;
 
 	#[pallet::storage]
     #[pallet::getter(fn data_queue)]
@@ -150,17 +155,29 @@ pub mod pallet {
     >;
 
     #[pallet::storage]
-    #[pallet::getter(fn cid_map)]
+    #[pallet::getter(fn created_asset_classes)]
     /// Store the map associating owned CID to a specific asset ID
     /// currently: cid -> accountid -> assetid
     /// might change: accountid -> cid -> assetid
-    pub(super) type CidMap<T: Config> = StorageDoubleMap<
+    pub(super) type AssetClassOwnership<T: Config> = StorageDoubleMap<
         _,
         Blake2_128Concat,
+        T::AccountId,
+        Blake2_128Concat,
         Vec<u8>,
+        T::AssetId,
+        ValueQuery,
+    >;
+
+    #[pallet::storage]
+    #[pallet::getter(fn asset_access)]
+    pub(super) type AssetAccess<T: Config> = StorageDoubleMap<
+        _,
         Blake2_128Concat,
         T::AccountId,
-        T::AssetId,
+        Blake2_128Concat,
+        Vec<u8>,
+        T::AccountId,
         ValueQuery,
     >;
 
@@ -287,13 +304,17 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             let owner_account = T::Lookup::lookup(owner)?;
+
             <DataQueue<T>>::mutate(
                 |queue| queue.push(DataCommand::CatBytes(
                     owner_account.clone(),
                     cid.clone(),
                     who.clone(),
-                )));
+                )
+            ));
+
             Self::deposit_event(Event::QueuedDataToCat(who.clone()));
+            
             Ok(())
         }
 
@@ -314,15 +335,21 @@ pub mod pallet {
             id: T::AssetId,
             balance: T::Balance,
         ) -> DispatchResult {
+            // DANGER: This can currently be called by anyone, not just an OCW.
+            // if we send an unsigned transaction then we can ensure there is no origin
+            // however, the call to create the asset requires an origin, which is a little problematic
             // ensure_none(origin)?;
             let who = ensure_signed(origin)?;
             let new_origin = system::RawOrigin::Signed(who).into();
+
             <pallet_assets::Pallet<T>>::create(new_origin, id.clone(), admin.clone(), balance)
                 .map_err(|_| Error::<T>::CantCreateAssetClass);
+            
             let which_admin = T::Lookup::lookup(admin.clone())?;
-            <CidMap<T>>::insert(cid.clone(), which_admin, id.clone());
-            log::info!("inserted entry into storage");
+            <AssetClassOwnership<T>>::insert(which_admin, cid.clone(), id.clone());
+            
             Self::deposit_event(Event::AssetClassCreated(id.clone()));
+            
             Ok(())
         }
 
@@ -343,11 +370,16 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             let new_origin = system::RawOrigin::Signed(who.clone()).into();
-            ensure!(CidMap::<T>::contains_key(cid.clone(), who.clone()), Error::<T>::NoSuchOwnedContent);
-            let asset_id = CidMap::<T>::get(cid.clone(), who.clone());
-            <pallet_assets::Pallet<T>>::mint(new_origin, asset_id.clone(), beneficiary, amount)
+            let beneficiary_accountid = T::Lookup::lookup(beneficiary.clone())?;
+
+            ensure!(AssetClassOwnership::<T>::contains_key(who.clone(), cid.clone()), Error::<T>::NoSuchOwnedContent);
+            
+            let asset_id = AssetClassOwnership::<T>::get(who.clone(), cid.clone(),);
+            <pallet_assets::Pallet<T>>::mint(new_origin, asset_id.clone(), beneficiary.clone(), amount)
                 .map_err(|_| Error::<T>::CantMintAssets);
-            log::info!("Minted {:?} tickets", amount);
+            
+            <AssetAccess<T>>::insert(beneficiary_accountid.clone(), cid.clone(), who.clone());
+        
             Self::deposit_event(Event::AssetCreated(asset_id.clone()));
             Ok(())
         }
@@ -468,10 +500,11 @@ impl<T: Config> Pallet<T> {
                 },
                 DataCommand::CatBytes(owner, cid, recipient) => {
                     // verify that the recipient owns at least one ticket
-                    ensure!(CidMap::<T>::contains_key(cid.clone(), owner.clone()), Error::<T>::NoSuchOwnedContent);
-                    let asset_id = CidMap::<T>::get(cid.clone(), owner.clone());
+                    ensure!(AssetClassOwnership::<T>::contains_key(owner.clone(), cid.clone()), Error::<T>::NoSuchOwnedContent);
+                    let asset_id = AssetClassOwnership::<T>::get(owner.clone(), cid.clone());
                     let balance = <pallet_assets::Pallet<T>>::balance(asset_id.clone(), recipient.clone());
-                    ensure!(balance > 0, Error::<T>::InsufficientBalance);
+                    // TODO: what's the best way to verify a balance is positive?
+                    // ensure!(balance > 0, Error::<T>::InsufficientBalance);
                     log::info!("found balance {:?}", balance);
                     match Self::ipfs_request(IpfsRequest::CatBytes(cid.clone()), deadline) {
                         Ok(IpfsResponse::CatBytes(data)) => {
