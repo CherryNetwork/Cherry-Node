@@ -57,7 +57,12 @@ use sp_runtime::{
         AtLeast32BitUnsigned, StaticLookup,
     }
 };
-use sp_std::{str, vec::Vec, prelude::*};
+use sp_std::{
+    str,
+    vec::Vec,
+    prelude::*,
+    convert::TryInto,
+};
 use codec::HasCompact;
 
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"ipfs");
@@ -292,7 +297,6 @@ pub mod pallet {
 
         /// Queue a request to retrieve data behind some owned CID from the IPFS network
         ///
-        /// * origin: any origin
         /// * owner: The owner node
         /// * cid: the cid to which you are requesting access
         ///
@@ -385,7 +389,7 @@ pub mod pallet {
         }
 
         /// TODO: leaving this as is for now... I feel like this will require some further thought. We almost need a dex-like feature
-        /// Purchase a ticket to access some content. The purchase is done in the native currency (OBOL).
+        /// Purchase a ticket to access some content.
         ///
         /// * origin: any origin
         /// * owner: The owner to identify the asset class for which a ticket is to be purchased
@@ -503,6 +507,8 @@ impl<T: Config> Pallet<T> {
                     ensure!(AssetClassOwnership::<T>::contains_key(owner.clone(), cid.clone()), Error::<T>::NoSuchOwnedContent);
                     let asset_id = AssetClassOwnership::<T>::get(owner.clone(), cid.clone());
                     let balance = <pallet_assets::Pallet<T>>::balance(asset_id.clone(), recipient.clone());
+                    let balance_primitive = TryInto::<u64>::try_into(balance).ok();
+                    ensure!(balance_primitive == Some(0), Error::<T>::InsufficientBalance);
                     // TODO: what's the best way to verify a balance is positive?
                     // ensure!(balance > 0, Error::<T>::InsufficientBalance);
                     log::info!("found balance {:?}", balance);
@@ -519,7 +525,7 @@ impl<T: Config> Pallet<T> {
 
         Ok(())
     }
-
+    
     fn print_metadata() -> Result<(), Error<T>> {
         let deadline = Some(timestamp().add(Duration::from_millis(200)));
 
