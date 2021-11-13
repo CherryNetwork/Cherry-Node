@@ -39,6 +39,7 @@ pub use frame_support::{
 };
 pub use pallet_balances::Call as BalancesCall;
 pub use pallet_timestamp::Call as TimestampCall;
+pub use pallet_assets::Call as AssetsCall;
 use pallet_transaction_payment::CurrencyAdapter;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
@@ -288,10 +289,6 @@ impl pallet_sudo::Config for Runtime {
 	type Call = Call;
 }
 
-/// Payload data to be signed when making signed transaction from off-chain workers,
-///   inside `create_transaction` function.
-pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
-
 impl pallet_assets::Config for Runtime {
 	type Event = Event;
 	type Balance = u64;
@@ -307,6 +304,10 @@ impl pallet_assets::Config for Runtime {
 	type Extra = ();
 	type WeightInfo = pallet_assets::weights::SubstrateWeight<Runtime>;
 }
+
+/// Payload data to be signed when making signed transaction from off-chain workers,
+///   inside `create_transaction` function.
+pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 
 /// Configure the pallet-template in pallets/template.
 impl pallet_template::Config for Runtime {
