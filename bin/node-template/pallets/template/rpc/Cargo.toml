@@ -18,9 +18,10 @@ jsonrpc-core = "18.0.0"
 jsonrpc-core-client = "18.0.0"
 jsonrpc-derive = "18.0.0"
 
-sp-api = { version = "4.0.0-dev", path = "../../../primitives/api" }
-sp-blockchain = { version = "4.0.0-dev", path = "../../../primitives/blockchain" }
-sp-core = { version = "4.0.0-dev", path = "../../../primitives/core" }
-sp-rpc = { version = "4.0.0-dev", path = "../../../primitives/rpc" }
-sp-runtime = { version = "4.0.0-dev", path = "../../../primitives/runtime" }
-pallet-ipfs-rpc-runtime-api = { version = "4.0.0-dev", path = "./runtime-api" }
+sp-api = { version = "4.0.0-dev", path = "../../../../../primitives/api" }
+sp-blockchain = { version = "4.0.0-dev", path = "../../../../../primitives/blockchain" }
+sp-core = { version = "4.0.0-dev", path = "../../../../../primitives/core" }
+sp-rpc = { version = "4.0.0-dev", path = "../../../../../primitives/rpc" }
+sp-runtime = { version = "4.0.0-dev", path = "../../../../../primitives/runtime" }
+pallet-iris-rpc-runtime-api = { version = "4.0.0-dev", path = "./runtime-api" }
+

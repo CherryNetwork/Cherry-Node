@@ -1,5 +1,5 @@
 [package]
-name = "pallet-ipfs-rpc-runtime-api"
+name = "pallet-iris-rpc-runtime-api"
 version = "4.0.0-dev"
 authors = ["Parity Technologies <admin@parity.io>"]
 edition = "2018"
@@ -14,9 +14,9 @@ targets = ["x86_64-unknown-linux-gnu"]
 
 [dependencies]
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = ["derive"] }
-sp-api = { version = "4.0.0-dev", default-features = false, path = "../../../../primitives/api" }
-sp-runtime = { version = "4.0.0-dev", default-features = false, path = "../../../../primitives/runtime" }
-pallet-template = { version = "4.0.0-dev", default-features = false, path = "../../../template" }
+sp-api = { version = "4.0.0-dev", default-features = false, path = "../../../../../../primitives/api" }
+sp-runtime = { version = "4.0.0-dev", default-features = false, path = "../../../../../../primitives/runtime" }
+pallet-template = { version = "3.0.0", default-features = false, path = "../../../template" }
 
 [features]
 default = ["std"]

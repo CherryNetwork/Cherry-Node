@@ -415,7 +415,20 @@ pub mod pallet {
 	}
 }
 
+//// Stateless retrieval of local offchain storage
+//// 
+//// This function can be used to retrieve data stored
+//// in a node's local offchain storage
+////
+// pub fn retrieve_storage_by_key() -> u32 {
+//     0   
+// }
+
+
 impl<T: Config> Pallet<T> {
+    pub fn retrieve_bytes() -> u64 {
+        64
+    }
     // send a request to the local IPFS node; can only be called be an off-chain worker
     fn ipfs_request(req: IpfsRequest, deadline: impl Into<Option<Timestamp>>) -> Result<IpfsResponse, Error<T>> {
         let ipfs_request = ipfs::PendingRequest::new(req).map_err(|_| Error::<T>::CantCreateRequest)?;

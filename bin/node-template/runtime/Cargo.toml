@@ -41,6 +41,7 @@ sp-version = { version = "4.0.0-dev", default-features = false, path = "../../..
 # Used for the node template's RPCs
 frame-system-rpc-runtime-api = { version = "4.0.0-dev", default-features = false, path = "../../../frame/system/rpc/runtime-api/" }
 pallet-transaction-payment-rpc-runtime-api = { version = "4.0.0-dev", default-features = false, path = "../../../frame/transaction-payment/rpc/runtime-api/" }
+pallet-iris-rpc-runtime-api = { version = "4.0.0-dev", default-features = false, path = "../pallets/template/rpc/runtime-api/" }
 
 # Used for runtime benchmarking
 frame-benchmarking = { version = "4.0.0-dev", default-features = false, path = "../../../frame/benchmarking", optional = true }
@@ -70,6 +71,7 @@ std = [
 	"pallet-template/std",
 	"pallet-timestamp/std",
 	"pallet-transaction-payment-rpc-runtime-api/std",
+	"pallet-iris-rpc-runtime-api/std",
 	"pallet-transaction-payment/std",
 	"pallet-assets/std",
 	"sp-api/std",
