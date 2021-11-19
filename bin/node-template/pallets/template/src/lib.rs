@@ -197,7 +197,7 @@ pub mod pallet {
         /// A new asset was created (tickets minted)
         AssetCreated(T::AssetId),
         /// A node's request to access data via the RPC endpoint has been processed
-        DataReady(T::AccountId, Vec<u8>),
+        DataReady(T::AccountId),
 	}
 
 	#[pallet::error]
@@ -367,9 +367,9 @@ pub mod pallet {
         pub fn submit_rpc_ready(
             origin: OriginFor<T>,
             beneficiary: T::AccountId,
-            host: Vec<u8>,
+            // host: Vec<u8>,
         ) -> DispatchResult {
-            Self::deposit_event(Event::DataReady(beneficiary, host));
+            Self::deposit_event(Event::DataReady(beneficiary));
             Ok(())
         }
 
@@ -429,19 +429,14 @@ pub mod pallet {
 }
 
 impl<T: Config> Pallet<T> {
-    /// retrieve bytes from IPFS
+    /// retrieve bytes from the node's local storage
     pub fn retrieve_bytes(
         signed_message: Bytes,
     ) -> Bytes {
         let message_vec: Vec<u8> = signed_message.to_vec();
-        log::info!("you sent the signed message: {}", 
-            str::from_utf8(&message_vec).expect("should be properly formatted")
-        );
         if let Some(data) = sp_io::offchain::local_storage_get(StorageKind::PERSISTENT, &message_vec) {
-            log::info!("************* data found");
             Bytes(data.clone())
         } else {
-            log::info!("************** data NOT found");
             Bytes(Vec::new())
         }
     }
@@ -532,11 +527,7 @@ impl<T: Config> Pallet<T> {
                     ensure!(AssetClassOwnership::<T>::contains_key(owner.clone(), cid.clone()), Error::<T>::NoSuchOwnedContent);
                     let asset_id = AssetClassOwnership::<T>::get(owner.clone(), cid.clone());
                     let balance = <pallet_assets::Pallet<T>>::balance(asset_id.clone(), recipient.clone());
-
-                    log::info!("found balance {:?}", balance);
-                    // ensure!(balance.into() == 0, Error::<T>::InsufficientBalance);
                     let balance_primitive = TryInto::<u64>::try_into(balance).ok();
-                    // log::info!("found balance_primitive {:?}", balance_primitive);
                     ensure!(balance_primitive != Some(0), Error::<T>::InsufficientBalance);
                     match Self::ipfs_request(IpfsRequest::CatBytes(cid.clone()), deadline) {
                         Ok(IpfsResponse::CatBytes(data)) => {
@@ -547,13 +538,12 @@ impl<T: Config> Pallet<T> {
                                 &cid,
                                 &data,
                             );
-                                let call = Call::submit_rpc_ready{
-                                    beneficiary: recipient.clone(),
-                                    host: "".as_bytes().to_vec(),
-                                };
-                                SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into())
-                                    .map_err(|()| "Unable to submit unsigned transaction.")
-                                    .map(|()| "done");
+                            let call = Call::submit_rpc_ready {
+                                beneficiary: recipient.clone(),
+                            };
+                            SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into())
+                                .map_err(|()| "Unable to submit unsigned transaction.")
+                                .map(|()| "done");
                         },
                         Ok(_) => unreachable!("only CatBytes can be a response for that request type."),
                         Err(e) => log::error!("IPFS: cat error: {:?}", e),
