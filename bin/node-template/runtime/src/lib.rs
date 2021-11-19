@@ -11,7 +11,7 @@ use pallet_grandpa::{
 };
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-use sp_core::{crypto::KeyTypeId, OpaqueMetadata, Encode};
+use sp_core::{crypto::KeyTypeId, OpaqueMetadata, Encode, Bytes};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{AccountIdLookup, BlakeTwo256, Block as BlockT, IdentifyAccount, NumberFor, Verify, Saturating, SaturatedConversion },
@@ -569,8 +569,8 @@ impl_runtime_apis! {
 		the iris RPC runtime api
 	*/
 	impl pallet_iris_rpc_runtime_api::IrisApi<Block> for Runtime {
-		fn retrieve_bytes() -> u64 {
-			Iris::retrieve_bytes()
+		fn retrieve_bytes(signed_message: Bytes) -> Bytes {
+			Iris::retrieve_bytes(signed_message)
 		}
 	}
 

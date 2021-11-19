@@ -5871,6 +5871,7 @@ dependencies = [
  "pallet-template",
  "parity-scale-codec",
  "sp-api",
+ "sp-core",
  "sp-runtime",
 ]
 
