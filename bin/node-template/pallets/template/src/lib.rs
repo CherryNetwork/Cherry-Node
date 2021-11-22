@@ -15,13 +15,13 @@
 //! ### Dispatchable Functions 
 //!
 //! #### Permissionless functions
-//! * ipfs_add_bytes
-//! * mint_ticket
+//! * create_storage_asset
+//! * 
 //!
 //! #### Permissioned Functions
 //! * submit_ipfs_results (private?)
 //! * destroy_ticket
-//! * ipfs_cat_bytes
+//! * mint_tickets
 //!
 
 use scale_info::TypeInfo;
@@ -99,8 +99,8 @@ pub mod crypto {
 
 #[derive(Encode, Decode, RuntimeDebug, PartialEq, TypeInfo)]
 pub enum DataCommand<LookupSource, AssetId, Balance, AccountId> {
-    /// (ipfs_address, cid, requesting node address, ticket_config)
-    AddBytes(OpaqueMultiaddr, Vec<u8>, LookupSource, AssetId, Balance),
+    /// (ipfs_address, cid, requesting node address, filename, asset id, balance)
+    AddBytes(OpaqueMultiaddr, Vec<u8>, LookupSource, Vec<u8>, AssetId, Balance),
     // /// owner, cid
     CatBytes(AccountId, Vec<u8>, AccountId),
 }
@@ -149,12 +149,28 @@ pub mod pallet {
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
+    /// map the public key to a list of multiaddresses
+    #[pallet::storage]
+    #[pallet::getter(fn bootstrap_nodes)]
+    pub(super) type BootstrapNodes<T: Config> = StorageMap<
+        _,
+        Blake2_128Concat,
+        Vec<u8>,
+        Vec<OpaqueMultiaddr>,
+        ValueQuery,
+    >;
+
     /// A queue of data to publish or obtain on IPFS.
 	#[pallet::storage]
     #[pallet::getter(fn data_queue)]
 	pub(super) type DataQueue<T: Config> = StorageValue<
         _,
-        Vec<DataCommand<<T::Lookup as StaticLookup>::Source, T::AssetId, T::Balance, T::AccountId>>,
+        Vec<DataCommand<
+            <T::Lookup as StaticLookup>::Source, 
+            T::AssetId,
+            T::Balance,
+            T::AccountId>
+        >,
         ValueQuery
     >;
 
@@ -202,37 +218,51 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
+        /// could not build the ipfs request
 		CantCreateRequest,
+        /// the request to IPFS timed out
         RequestTimeout,
+        /// the request to IPFS failed
         RequestFailed,
+        /// The tx could not be signed
         OffchainSignedTxError,
+        /// you cannot sign a tx
         NoLocalAcctForSigning,
+        /// could not create a new asset
         CantCreateAssetClass,
+        /// could not mint a new asset
         CantMintAssets,
+        /// there is no asset associated with the specified cid
         NoSuchOwnedContent,
+        /// 
         NoSuchAssetClass,
+        ///
         InsufficientBalance,
 	}
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-         // needs to be synchronized with offchain_worker actitivies
          fn on_initialize(block_number: T::BlockNumber) -> Weight {
+            // needs to be synchronized with offchain_worker actitivies
             if block_number % 2u32.into() == 1u32.into() {
                 <DataQueue<T>>::kill();
             }
 
             0
         }
-        /// The offchain worker processes requests queued by other nodes
         fn offchain_worker(block_number: T::BlockNumber) {
-            // process a request every three blocks
-            if block_number % 3u32.into() == 1u32.into() {
-                if let Err(e) = Self::handle_data_requests() {
+            // every 10 blocks
+            if block_number % 10u32.into() == 0u32.into() {
+                if let Err(e) = Self::connection_housekeeping() {
                     log::error!("IPFS: Encountered an error while processing data requests: {:?}", e);
                 }
             }
-            // print metadata every five blocks
+
+            if let Err(e) = Self::handle_data_requests() {
+                log::error!("IPFS: Encountered an error while processing data requests: {:?}", e);
+            }
+
+            // every 5 blocks
             if block_number % 5u32.into() == 0u32.into() {
                 if let Err(e) = Self::print_metadata() {
                     log::error!("IPFS: Encountered an error while obtaining metadata: {:?}", e);
@@ -280,6 +310,7 @@ pub mod pallet {
             admin: <T::Lookup as StaticLookup>::Source,
             addr: Vec<u8>,
             cid: Vec<u8>,
+            name: Vec<u8>,
             id: T::AssetId,
             balance: T::Balance,
         ) -> DispatchResult {
@@ -290,6 +321,7 @@ pub mod pallet {
                     multiaddr,
                     cid,
                     admin.clone(),
+                    name.clone(),
                     id.clone(),
                     balance.clone(),
                 )));
@@ -431,9 +463,12 @@ pub mod pallet {
 impl<T: Config> Pallet<T> {
     /// retrieve bytes from the node's local storage
     pub fn retrieve_bytes(
-        signed_message: Bytes,
+        public_key: Bytes,
+		signature: Bytes,
+		message: Bytes,
     ) -> Bytes {
-        let message_vec: Vec<u8> = signed_message.to_vec();
+        // TODO: Verify signature, update offchain storage keys...
+        let message_vec: Vec<u8> = message.to_vec();
         if let Some(data) = sp_io::offchain::local_storage_get(StorageKind::PERSISTENT, &message_vec) {
             Bytes(data.clone())
         } else {
@@ -459,6 +494,43 @@ impl<T: Config> Pallet<T> {
                 Error::<T>::RequestFailed
             })
     }
+    /// manage connection to the iris ipfs swarm
+    fn connection_housekeeping() -> Result<(), Error<T>> {
+        // if you aren't in the bootstrap nodes list, add yourself
+        let deadline = Some(timestamp().add(Duration::from_millis(5_000)));
+        match Self::ipfs_request(IpfsRequest::Identity, deadline) {
+            Ok(IpfsResponse::Identity(public_key, addrs)) => {
+                log::info!("fetched the ipfs addrs: {:?}", addrs.clone());
+                // this would be the scenario where you have already connected but 
+                // your public key has not been purged from the collection
+                if (<BootstrapNodes<T>>::contains_key(public_key.clone())) {
+                    <BootstrapNodes<T>>::remove(public_key.clone());
+                }
+                // can we do this without iter_keys?
+                if let Some(bootnode) = <BootstrapNodes<T>>::iter_keys().next() {
+                    let maddrs = <BootstrapNodes<T>>::get(bootnode);
+                    log::info!("the bootnode data: {:?}", maddrs);
+                    // do we need to check if maddrs is empty?
+                    if let Some(maddr) = maddrs.first() {
+                        log::info!("using the multiaddress: {:?}", maddr.clone());
+                        match Self::ipfs_request(IpfsRequest::Connect(maddr.clone()), deadline) {
+                            Ok(IpfsResponse::Success) => {
+                                log::info!("Succesfully synced with the Iris IPFS swarm.");
+                            },
+                            Ok(_) => unreachable!("only Success is a valid response for that request type."),
+                            Err(e) => log::error!("IPFS: connect error: {:?}", e),
+                        }
+                    } else {
+                        log::info!("uhoh we failed to find a valid multiaddress");
+                    }
+                    <BootstrapNodes<T>>::insert(public_key.clone(), addrs);
+                }
+            },
+            Ok(_) => unreachable!("Only Identity is a valid response type for the request"),
+            Err(e) => log::error!("IPFS: Encountered an error while trying to get the node identity: {:?}", e),
+        }
+        Ok(())
+    }
 
     /// process any requests in the DataQueue
     fn handle_data_requests() -> Result<(), Error<T>> {
@@ -472,7 +544,7 @@ impl<T: Config> Pallet<T> {
         for cmd in data_queue.into_iter() {
             match cmd {
                 // ticket_config
-                DataCommand::AddBytes(addr, cid, admin, id, balance) => {
+                DataCommand::AddBytes(addr, cid, admin, name, id, balance) => {
                     Self::ipfs_request(IpfsRequest::Connect(addr.clone()), deadline)?;
                     log::info!(
                         "IPFS: connected to {}",

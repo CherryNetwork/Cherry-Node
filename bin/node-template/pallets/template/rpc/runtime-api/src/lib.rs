@@ -12,7 +12,9 @@ sp_api::decl_runtime_apis! {
 	pub trait IrisApi
 	{
 		fn retrieve_bytes(
-			signed_message: Bytes,
+			public_key: Bytes,
+			signature: Bytes,
+			message: Bytes,
 		) -> Bytes;
 	}
 }
