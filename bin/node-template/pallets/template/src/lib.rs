@@ -214,6 +214,8 @@ pub mod pallet {
         AssetCreated(T::AssetId),
         /// A node's request to access data via the RPC endpoint has been processed
         DataReady(T::AccountId),
+        /// A node has published ipfs identity results on chain
+        PublishedIdentity(T::AccountId),
 	}
 
 	#[pallet::error]
@@ -252,7 +254,7 @@ pub mod pallet {
         }
         fn offchain_worker(block_number: T::BlockNumber) {
             // every 10 blocks
-            if block_number % 10u32.into() == 0u32.into() {
+            if block_number % 5u32.into() == 0u32.into() {
                 if let Err(e) = Self::connection_housekeeping() {
                     log::error!("IPFS: Encountered an error while processing data requests: {:?}", e);
                 }
@@ -391,6 +393,27 @@ pub mod pallet {
             Ok(())
         }
 
+        /// Should only be callable by OCWs (TODO)
+        /// Submit the results of an `ipfs identity` call to be stored on chain
+        ///
+        /// * origin: a validator node
+        /// * public_key: The IPFS node's public key
+        /// * multiaddresses: A vector of multiaddresses associate with the public key
+        ///
+        #[pallet::weight(0)]
+        pub fn submit_ipfs_identity(
+            origin: OriginFor<T>,
+            public_key: Vec<u8>,
+            multiaddresses: Vec<OpaqueMultiaddr>,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            <BootstrapNodes::<T>>::insert(public_key.clone(), multiaddresses.clone());
+            Self::deposit_event(Event::PublishedIdentity(who.clone()));
+            Ok(())
+        }
+
+        /// Should only be callable by OCWs (TODO)
+        /// Submit the results onchain to notify a beneficiary that their data is available: TODO: how to safely share host? spam protection on rpc endpoints?
         ///
         /// * `beneficiary`: The account that requested the data
         /// * `host`: The node's host where the data has been made available (RPC endpoint)
@@ -443,6 +466,7 @@ pub mod pallet {
         /// * owner: The owner to identify the asset class for which a ticket is to be purchased
         /// * cid: The CID to identify the asset class for which a ticket is to be purchased
         /// * amount: The number of tickets to purchase
+        ///
         #[pallet::weight(0)]
         pub fn purchase_ticket(
             origin: OriginFor<T>,
@@ -461,7 +485,13 @@ pub mod pallet {
 }
 
 impl<T: Config> Pallet<T> {
+
     /// retrieve bytes from the node's local storage
+    ///
+    /// * public_key: The account's public key as bytes
+    /// * signature: The signer's signature as bytes
+    /// * message: The signed message as bytes
+    ///
     pub fn retrieve_bytes(
         public_key: Bytes,
 		signature: Bytes,
@@ -496,38 +526,45 @@ impl<T: Config> Pallet<T> {
     }
     /// manage connection to the iris ipfs swarm
     fn connection_housekeeping() -> Result<(), Error<T>> {
-        // if you aren't in the bootstrap nodes list, add yourself
         let deadline = Some(timestamp().add(Duration::from_millis(5_000)));
-        match Self::ipfs_request(IpfsRequest::Identity, deadline) {
-            Ok(IpfsResponse::Identity(public_key, addrs)) => {
-                log::info!("fetched the ipfs addrs: {:?}", addrs.clone());
-                // this would be the scenario where you have already connected but 
-                // your public key has not been purged from the collection
-                if (<BootstrapNodes<T>>::contains_key(public_key.clone())) {
-                    <BootstrapNodes<T>>::remove(public_key.clone());
+        
+        let (public_key, addrs) = if let IpfsResponse::Identity(public_key, addrs) = Self::ipfs_request(IpfsRequest::Identity, deadline)? {
+            (public_key, addrs)
+        } else {
+            unreachable!("only `Identity` is a valid response type.");
+        };
+
+        let len = <BootstrapNodes::<T>>::iter().count();
+        log::info!("*************************************** There are {:?} bootnodes", len);
+        if (!<BootstrapNodes::<T>>::contains_key(public_key.clone())) {
+            if let Some(bootstrap_node) = &<BootstrapNodes::<T>>::iter().nth(0) {
+                if let Some(bootnode_maddr) = bootstrap_node.1.clone().pop() {
+                    log::info!(
+                        "*************************************** using multiaddress: {:?} ",
+                        str::from_utf8(&bootnode_maddr.0).expect("our own node can be trusted here."));
+                    Self::ipfs_request(IpfsRequest::Connect(bootnode_maddr.clone()), deadline)?;
                 }
-                // can we do this without iter_keys?
-                if let Some(bootnode) = <BootstrapNodes<T>>::iter_keys().next() {
-                    let maddrs = <BootstrapNodes<T>>::get(bootnode);
-                    log::info!("the bootnode data: {:?}", maddrs);
-                    // do we need to check if maddrs is empty?
-                    if let Some(maddr) = maddrs.first() {
-                        log::info!("using the multiaddress: {:?}", maddr.clone());
-                        match Self::ipfs_request(IpfsRequest::Connect(maddr.clone()), deadline) {
-                            Ok(IpfsResponse::Success) => {
-                                log::info!("Succesfully synced with the Iris IPFS swarm.");
-                            },
-                            Ok(_) => unreachable!("only Success is a valid response for that request type."),
-                            Err(e) => log::error!("IPFS: connect error: {:?}", e),
-                        }
-                    } else {
-                        log::info!("uhoh we failed to find a valid multiaddress");
-                    }
-                    <BootstrapNodes<T>>::insert(public_key.clone(), addrs);
+            }
+            let signer = Signer::<T, T::AuthorityId>::all_accounts();
+            if !signer.can_sign() {
+                log::error!(
+                    "No local accounts available. Consider adding one via `author_insertKey` RPC.",
+                );
+            }
+            let results = signer.send_signed_transaction(|_account| { 
+                Call::submit_ipfs_identity{
+                    public_key: public_key.clone(),
+                    multiaddresses: addrs.clone(),
                 }
-            },
-            Ok(_) => unreachable!("Only Identity is a valid response type for the request"),
-            Err(e) => log::error!("IPFS: Encountered an error while trying to get the node identity: {:?}", e),
+            });
+    
+            for (acc, res) in &results {
+                match res {
+                    Ok(()) => log::info!("Submitted ipfs identity results"),
+                    Err(e) => log::error!("Failed to submit transaction: {:?}",  e),
+                }
+            }
+
         }
         Ok(())
     }
