@@ -51,7 +51,10 @@ use sp_io::{
     offchain_index,
 };
 use sp_runtime::{
-    offchain::ipfs,
+    offchain::{ 
+        ipfs,
+        http,
+    },
     RuntimeDebug,
     transaction_validity::{
 		InvalidTransaction, TransactionSource, TransactionValidity, ValidTransaction,
@@ -96,6 +99,108 @@ pub mod crypto {
 		type GenericPublic = sp_core::sr25519::Public;
 	}
 }
+
+// TODO: could probably move this to a types.rs
+mod request_item {
+	use super::*;
+
+	/// A request_item type.
+	#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug)]
+	pub struct RequestItem {
+		name: Vec<u8>,
+		value: Vec<u8>,
+	}
+
+	impl RequestItem {
+		/// Creates new request_item given it's name and value.
+		pub fn new(name: &str, value: &str) -> Self {
+			RequestItem { name: name.as_bytes().to_vec(), value: value.as_bytes().to_vec() }
+		}
+
+		/// Returns the name of this request_item.
+		pub fn name(&self) -> &str {
+			// request_item keys are always produced from `&str` so this is safe.
+			// we don't store them as `Strings` to avoid bringing `alloc::String` to sp-std
+			// or here.
+			unsafe { str::from_utf8_unchecked(&self.name) }
+		}
+
+		/// Returns the value of this request_item.
+		pub fn value(&self) -> &str {
+			// request_item values are always produced from `&str` so this is safe.
+			// we don't store them as `Strings` to avoid bringing `alloc::String` to sp-std
+			// or here.
+			unsafe { str::from_utf8_unchecked(&self.value) }
+		}
+	}
+}
+
+#[derive(Encode, Decode, RuntimeDebug, PartialEq, Clone)]
+pub struct SystemRequest {
+    pub args: Vec<request_item::RequestItem>
+}
+
+impl Default for SystemRequest {
+    fn default() -> Self {
+        SystemRequest {
+            args: Vec::new(),
+        }
+    }
+}
+
+impl SystemRequest {
+    pub fn new_local_listen_addresses_request() -> Self {
+        let args: Vec<request_item::RequestItem> = Vec::new();
+        args.push(request_item::RequestItem::new("jsonrpc", "2.0"));
+        args.push(request_item::RequestItem::new("id", "1"));
+        args.push(request_item::RequestItem::new("method", "system_localListenAddresses"));
+        args.push(request_item::RequestItem::new("params", "[]"));
+        SystemRequest{ args: args }
+
+        // self.args.push("id".as_byte().to_vec(), "1".as_bytes().to_vec());
+        // self.args.push("method".as_byte().to_vec(), "system_localListenAddresses".as_bytes().to_vec());
+        // self.args.push("params".as_byte().to_vec(), "[]".as_bytes().to_vec());
+    }
+    // pub fn into_iter(&self) -> SystemRequestIterator {
+    //     SystemRequestIterator{
+    //         args: &self.args,
+    //         index: None,
+    //     }
+    // }
+}
+
+// impl <'a, I: AsRef<[u8]>, T: IntoIterator<Item = I>> SystemRequest {
+    // pub fn send(self) -> Result<http::PendingRequest, HttpError> {
+
+    // }
+// } 
+
+/// a custom iterator traversing all the request args
+// #[derive(Clone, RuntimeDebug)]
+// pub struct SystemRequestIterator<'a> {
+//     args: &'a [(Vec<u8>, Vec<u8>)],
+//     index: Option<usize>,
+// }
+
+// impl<'a> SystemRequestIterator<'a> {
+//     /// Move the iterator to the next position.
+// 	///
+// 	/// Returns `true` is `current` has been set by this call.
+// 	pub fn next(&mut self) -> bool {
+// 		let index = self.index.map(|x| x + 1).unwrap_or(0);
+// 		self.index = Some(index);
+// 		index < self.args.len()
+// 	}
+
+// 	/// Returns current element (if any).
+// 	///
+// 	/// Note that you have to call `next` prior to calling this
+// 	pub fn current(&self) -> Option<(&str, &str)> {
+// 		self.args
+// 			.get(self.index?)
+// 			.map(|val| (str::from_utf8(&val.0).unwrap_or(""), str::from_utf8(&val.1).unwrap_or("")))
+// 	}
+// }
 
 #[derive(Encode, Decode, RuntimeDebug, PartialEq, TypeInfo)]
 pub enum DataCommand<LookupSource, AssetId, Balance, AccountId> {
@@ -236,9 +341,9 @@ pub mod pallet {
         CantMintAssets,
         /// there is no asset associated with the specified cid
         NoSuchOwnedContent,
-        /// 
+        /// the specified asset class does not exist
         NoSuchAssetClass,
-        ///
+        /// the account does not have a sufficient balance
         InsufficientBalance,
 	}
 
@@ -524,33 +629,65 @@ impl<T: Config> Pallet<T> {
                 Error::<T>::RequestFailed
             })
     }
+
+    fn fetch_local_listen_addresses() -> Result<Vec<u8>, http::Error> {
+        let deadline = timestamp().add(Duration::from_millis(2_000));
+        // "{
+        //     \"jsonrpc\": \"2.0\",
+        //     \"id\": \"1\",
+        //     \"method\": \"system_localListenAddresses\",
+        //     \"params\": []
+        // }"
+        let request_body: SystemRequest = SystemRequest::new_local_listen_addresses_request();
+        let request = http::Request::post("localhost:9933", request_body);
+        let pending = request.deadline(deadline).send().map_err(|_| http::Error::IoError)?;
+        let response = pending.try_wait(deadline).map_err(|_| http::Error::DeadlineReached)??;
+        // if response.code != 200 {
+        //     log::error!("System: Failed to retreive local addresses with response code: {:?}", response.code);
+        //     return Err(http::Error::Unknown)
+        // }
+
+        let body = response.body().collect::<Vec<u8>>();
+        let body_str = str::from_utf8(&body).map_err(|_| {
+            log::warn!("No UTF8 body");
+            http::Error::Unknown
+        })?;
+        log::info!("retrieved the body string: {:?}", body_str);
+        Ok(body.to_vec())
+    }
+
     /// manage connection to the iris ipfs swarm
+    ///
+    /// If the node is already a bootstrap node, do nothing. Potherwise, submits a signed tx 
+    /// containing the public key and multiaddresses of the embedded ipfs node.
+    ///
     fn connection_housekeeping() -> Result<(), Error<T>> {
         let deadline = Some(timestamp().add(Duration::from_millis(5_000)));
-        
+
+        // identity
         let (public_key, addrs) = if let IpfsResponse::Identity(public_key, addrs) = Self::ipfs_request(IpfsRequest::Identity, deadline)? {
             (public_key, addrs)
         } else {
             unreachable!("only `Identity` is a valid response type.");
         };
 
-        let len = <BootstrapNodes::<T>>::iter().count();
-        log::info!("*************************************** There are {:?} bootnodes", len);
+        log::info!("going to fetch local listen addresses");
+        Self::fetch_local_listen_addresses();
+
         if (!<BootstrapNodes::<T>>::contains_key(public_key.clone())) {
             if let Some(bootstrap_node) = &<BootstrapNodes::<T>>::iter().nth(0) {
                 if let Some(bootnode_maddr) = bootstrap_node.1.clone().pop() {
-                    log::info!(
-                        "*************************************** using multiaddress: {:?} ",
-                        str::from_utf8(&bootnode_maddr.0).expect("our own node can be trusted here."));
                     Self::ipfs_request(IpfsRequest::Connect(bootnode_maddr.clone()), deadline)?;
                 }
             }
+            // TODO: should create func to handle the below logic
             let signer = Signer::<T, T::AuthorityId>::all_accounts();
             if !signer.can_sign() {
                 log::error!(
                     "No local accounts available. Consider adding one via `author_insertKey` RPC.",
                 );
             }
+             
             let results = signer.send_signed_transaction(|_account| { 
                 Call::submit_ipfs_identity{
                     public_key: public_key.clone(),
@@ -570,13 +707,15 @@ impl<T: Config> Pallet<T> {
     }
 
     /// process any requests in the DataQueue
+    ///
+    ///
     fn handle_data_requests() -> Result<(), Error<T>> {
         let data_queue = DataQueue::<T>::get();
         let len = data_queue.len();
         if len != 0 {
             log::info!("IPFS: {} entr{} in the data queue", len, if len == 1 { "y" } else { "ies" });
         }
-
+        // TODO: Needs refactoring
         let deadline = Some(timestamp().add(Duration::from_millis(5_000)));
         for cmd in data_queue.into_iter() {
             match cmd {
