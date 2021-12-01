@@ -419,6 +419,9 @@ impl<T: Config> Pallet<T> {
     // send a request to the local IPFS node; can only be called be an off-chain worker
     fn ipfs_request(req: IpfsRequest, deadline: impl Into<Option<Timestamp>>) -> Result<IpfsResponse, Error<T>> {
         let ipfs_request = ipfs::PendingRequest::new(req).map_err(|_| Error::<T>::CantCreateRequest)?;
+
+        log::info!("{:?}", ipfs_request.request);
+
         ipfs_request.try_wait(deadline)
             .map_err(|_| Error::<T>::RequestTimeout)?
             .map(|r| r.response)
