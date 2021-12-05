@@ -100,107 +100,91 @@ pub mod crypto {
 	}
 }
 
-// TODO: could probably move this to a types.rs
-mod request_item {
-	use super::*;
+// #[derive(Encode, Decode, RuntimeDebug, PartialEq, Clone)]
+// pub struct SystemRequest {
+//     pub args: Vec<u8>
+// }
 
-	/// A request_item type.
-	#[derive(Encode, Decode, Clone, PartialEq, Eq, RuntimeDebug)]
-	pub struct RequestItem {
-		name: Vec<u8>,
-		value: Vec<u8>,
-	}
+// impl Default for SystemRequest {
+//     fn default() -> Self {
+//         SystemRequest {
+//             args: Vec::new(),
+//         }
+//     }
+// }
 
-	impl RequestItem {
-		/// Creates new request_item given it's name and value.
-		pub fn new(name: &str, value: &str) -> Self {
-			RequestItem { name: name.as_bytes().to_vec(), value: value.as_bytes().to_vec() }
-		}
+// impl SystemRequest {
+//     pub fn new_local_listen_addresses_request() -> Self {
+//         let args: Vec<request_item::RequestItem> = Vec::new();
+//         args.push(request_item::RequestItem::new("jsonrpc", "2.0"));
+//         args.push(request_item::RequestItem::new("id", "1"));
+//         args.push(request_item::RequestItem::new("method", "system_localListenAddresses"));
+//         args.push(request_item::RequestItem::new("params", "[]"));
+//         SystemRequest{ args: args }
+//     }
+// }
 
-		/// Returns the name of this request_item.
-		pub fn name(&self) -> &str {
-			// request_item keys are always produced from `&str` so this is safe.
-			// we don't store them as `Strings` to avoid bringing `alloc::String` to sp-std
-			// or here.
-			unsafe { str::from_utf8_unchecked(&self.name) }
-		}
 
-		/// Returns the value of this request_item.
-		pub fn value(&self) -> &str {
-			// request_item values are always produced from `&str` so this is safe.
-			// we don't store them as `Strings` to avoid bringing `alloc::String` to sp-std
-			// or here.
-			unsafe { str::from_utf8_unchecked(&self.value) }
-		}
-	}
+// struct VecWrapper(Vec<i32>);
+
+// impl VecWrapper {
+//     fn iter(&self) -> Iter {
+//         Iter(Box::new(self.0.iter()))
+//     }
+// }
+
+// struct Iter<'a>(Box<dyn Iterator<Item = &'a i32> + 'a>);
+
+// impl<'a> Iterator for Iter<'a> {
+//     type Item = &'a i32;
+
+//     fn next(&mut self) -> Option<Self::Item> {
+//         self.0.next()
+//     }
+// }
+
+// impl<'a> IntoIterator for &'a VecWrapper {
+//     type Item = &'a i32;
+//     type IntoIter = Iter<'a>;
+
+//     fn into_iter(self) -> Self::IntoIter {
+//         self.iter()
+//     }
+// }
+
+struct VecWrapper {
+    data: Vec<u8>,
 }
 
-#[derive(Encode, Decode, RuntimeDebug, PartialEq, Clone)]
-pub struct SystemRequest {
-    pub args: Vec<request_item::RequestItem>
-}
+impl IntoIterator for VecWrapper {
+    type Item = Vec<u8>;
+    type IntoIter = VecWrapperIntoIterator;
 
-impl Default for SystemRequest {
-    fn default() -> Self {
-        SystemRequest {
-            args: Vec::new(),
+    fn into_iter(self) -> Self::IntoIter {
+        VecWrapperIntoIterator {
+            vec_wrapper: self,
+            index: 0,
         }
     }
 }
 
-impl SystemRequest {
-    pub fn new_local_listen_addresses_request() -> Self {
-        let args: Vec<request_item::RequestItem> = Vec::new();
-        args.push(request_item::RequestItem::new("jsonrpc", "2.0"));
-        args.push(request_item::RequestItem::new("id", "1"));
-        args.push(request_item::RequestItem::new("method", "system_localListenAddresses"));
-        args.push(request_item::RequestItem::new("params", "[]"));
-        SystemRequest{ args: args }
-
-        // self.args.push("id".as_byte().to_vec(), "1".as_bytes().to_vec());
-        // self.args.push("method".as_byte().to_vec(), "system_localListenAddresses".as_bytes().to_vec());
-        // self.args.push("params".as_byte().to_vec(), "[]".as_bytes().to_vec());
-    }
-    // pub fn into_iter(&self) -> SystemRequestIterator {
-    //     SystemRequestIterator{
-    //         args: &self.args,
-    //         index: None,
-    //     }
-    // }
+pub struct VecWrapperIntoIterator {
+    vec_wrapper: VecWrapper,
+    index: usize,
 }
 
-// impl <'a, I: AsRef<[u8]>, T: IntoIterator<Item = I>> SystemRequest {
-    // pub fn send(self) -> Result<http::PendingRequest, HttpError> {
-
-    // }
-// } 
-
-/// a custom iterator traversing all the request args
-// #[derive(Clone, RuntimeDebug)]
-// pub struct SystemRequestIterator<'a> {
-//     args: &'a [(Vec<u8>, Vec<u8>)],
-//     index: Option<usize>,
-// }
-
-// impl<'a> SystemRequestIterator<'a> {
-//     /// Move the iterator to the next position.
-// 	///
-// 	/// Returns `true` is `current` has been set by this call.
-// 	pub fn next(&mut self) -> bool {
-// 		let index = self.index.map(|x| x + 1).unwrap_or(0);
-// 		self.index = Some(index);
-// 		index < self.args.len()
-// 	}
-
-// 	/// Returns current element (if any).
-// 	///
-// 	/// Note that you have to call `next` prior to calling this
-// 	pub fn current(&self) -> Option<(&str, &str)> {
-// 		self.args
-// 			.get(self.index?)
-// 			.map(|val| (str::from_utf8(&val.0).unwrap_or(""), str::from_utf8(&val.1).unwrap_or("")))
-// 	}
-// }
+impl Iterator for VecWrapperIntoIterator {
+    type Item = Vec<u8>;
+    fn next(&mut self) -> Option<Vec<u8>> {
+        let result = match self.index {
+            0 => &self.vec_wrapper.data,
+            _ => return None,
+        };
+        self.index += 1;
+        let s = result.clone();
+        Some((*s).to_vec())
+    }
+}
 
 #[derive(Encode, Decode, RuntimeDebug, PartialEq, TypeInfo)]
 pub enum DataCommand<LookupSource, AssetId, Balance, AccountId> {
@@ -638,21 +622,27 @@ impl<T: Config> Pallet<T> {
         //     \"method\": \"system_localListenAddresses\",
         //     \"params\": []
         // }"
-        let request_body: SystemRequest = SystemRequest::new_local_listen_addresses_request();
-        let request = http::Request::post("localhost:9933", request_body);
-        let pending = request.deadline(deadline).send().map_err(|_| http::Error::IoError)?;
+        let p = VecWrapper {
+            data: "{\"jsonrpc\": \"2.0\", \"id\": \"1\", \"method\": \"system_localListenAddresses\", \"params\": []}"
+                .as_bytes()
+                .to_vec(),
+        };
+        let request = http::Request::post("localhost:9933", p);
+        let pending = request.send().map_err(|e| {
+            log::info!("{:?}", e);
+            http::Error::IoError
+        })?;
         let response = pending.try_wait(deadline).map_err(|_| http::Error::DeadlineReached)??;
-        // if response.code != 200 {
-        //     log::error!("System: Failed to retreive local addresses with response code: {:?}", response.code);
-        //     return Err(http::Error::Unknown)
-        // }
+        if response.code != 200 {
+            log::error!("System: Failed to retreive local addresses with response code: {:?}", response.code);
+            return Err(http::Error::Unknown)
+        }
 
         let body = response.body().collect::<Vec<u8>>();
         let body_str = str::from_utf8(&body).map_err(|_| {
             log::warn!("No UTF8 body");
             http::Error::Unknown
         })?;
-        log::info!("retrieved the body string: {:?}", body_str);
         Ok(body.to_vec())
     }
 
@@ -672,9 +662,10 @@ impl<T: Config> Pallet<T> {
         };
 
         log::info!("going to fetch local listen addresses");
-        Self::fetch_local_listen_addresses();
+        let local_listen_addrs_res = Self::fetch_local_listen_addresses();
+        log::info!("fetched the local listen addresses {:?}", local_listen_addrs_res);
 
-        if (!<BootstrapNodes::<T>>::contains_key(public_key.clone())) {
+        if !<BootstrapNodes::<T>>::contains_key(public_key.clone()) {
             if let Some(bootstrap_node) = &<BootstrapNodes::<T>>::iter().nth(0) {
                 if let Some(bootnode_maddr) = bootstrap_node.1.clone().pop() {
                     Self::ipfs_request(IpfsRequest::Connect(bootnode_maddr.clone()), deadline)?;
