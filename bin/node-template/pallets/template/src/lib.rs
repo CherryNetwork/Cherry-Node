@@ -100,92 +100,6 @@ pub mod crypto {
 	}
 }
 
-// #[derive(Encode, Decode, RuntimeDebug, PartialEq, Clone)]
-// pub struct SystemRequest {
-//     pub args: Vec<u8>
-// }
-
-// impl Default for SystemRequest {
-//     fn default() -> Self {
-//         SystemRequest {
-//             args: Vec::new(),
-//         }
-//     }
-// }
-
-// impl SystemRequest {
-//     pub fn new_local_listen_addresses_request() -> Self {
-//         let args: Vec<request_item::RequestItem> = Vec::new();
-//         args.push(request_item::RequestItem::new("jsonrpc", "2.0"));
-//         args.push(request_item::RequestItem::new("id", "1"));
-//         args.push(request_item::RequestItem::new("method", "system_localListenAddresses"));
-//         args.push(request_item::RequestItem::new("params", "[]"));
-//         SystemRequest{ args: args }
-//     }
-// }
-
-
-// struct VecWrapper(Vec<i32>);
-
-// impl VecWrapper {
-//     fn iter(&self) -> Iter {
-//         Iter(Box::new(self.0.iter()))
-//     }
-// }
-
-// struct Iter<'a>(Box<dyn Iterator<Item = &'a i32> + 'a>);
-
-// impl<'a> Iterator for Iter<'a> {
-//     type Item = &'a i32;
-
-//     fn next(&mut self) -> Option<Self::Item> {
-//         self.0.next()
-//     }
-// }
-
-// impl<'a> IntoIterator for &'a VecWrapper {
-//     type Item = &'a i32;
-//     type IntoIter = Iter<'a>;
-
-//     fn into_iter(self) -> Self::IntoIter {
-//         self.iter()
-//     }
-// }
-
-struct VecWrapper {
-    data: Vec<u8>,
-}
-
-impl IntoIterator for VecWrapper {
-    type Item = Vec<u8>;
-    type IntoIter = VecWrapperIntoIterator;
-
-    fn into_iter(self) -> Self::IntoIter {
-        VecWrapperIntoIterator {
-            vec_wrapper: self,
-            index: 0,
-        }
-    }
-}
-
-pub struct VecWrapperIntoIterator {
-    vec_wrapper: VecWrapper,
-    index: usize,
-}
-
-impl Iterator for VecWrapperIntoIterator {
-    type Item = Vec<u8>;
-    fn next(&mut self) -> Option<Vec<u8>> {
-        let result = match self.index {
-            0 => &self.vec_wrapper.data,
-            _ => return None,
-        };
-        self.index += 1;
-        let s = result.clone();
-        Some((*s).to_vec())
-    }
-}
-
 #[derive(Encode, Decode, RuntimeDebug, PartialEq, TypeInfo)]
 pub enum DataCommand<LookupSource, AssetId, Balance, AccountId> {
     /// (ipfs_address, cid, requesting node address, filename, asset id, balance)
@@ -342,13 +256,14 @@ pub mod pallet {
             0
         }
         fn offchain_worker(block_number: T::BlockNumber) {
-            // every 10 blocks
+            // every 5 blocks
             if block_number % 5u32.into() == 0u32.into() {
                 if let Err(e) = Self::connection_housekeeping() {
                     log::error!("IPFS: Encountered an error while processing data requests: {:?}", e);
                 }
             }
 
+            // handle data requests each block
             if let Err(e) = Self::handle_data_requests() {
                 log::error!("IPFS: Encountered an error while processing data requests: {:?}", e);
             }
@@ -497,6 +412,7 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             <BootstrapNodes::<T>>::insert(public_key.clone(), multiaddresses.clone());
+            log::info!("************************************************* added new bootstrap node!");
             Self::deposit_event(Event::PublishedIdentity(who.clone()));
             Ok(())
         }
@@ -574,9 +490,8 @@ pub mod pallet {
 }
 
 impl<T: Config> Pallet<T> {
-
-    /// retrieve bytes from the node's local storage
-    ///
+    /// implementation for RPC runtime aPI to retrieve bytes from the node's local storage
+    /// 
     /// * public_key: The account's public key as bytes
     /// * signature: The signer's signature as bytes
     /// * message: The signed message as bytes
@@ -597,7 +512,7 @@ impl<T: Config> Pallet<T> {
 
     /// send a request to the local IPFS node; can only be called be an off-chain worker
     fn ipfs_request(
-        req: IpfsRequest, 
+        req: IpfsRequest,
         deadline: impl Into<Option<Timestamp>>,
     ) -> Result<IpfsResponse, Error<T>> {
         let ipfs_request = ipfs::PendingRequest::new(req).map_err(|_| Error::<T>::CantCreateRequest)?;
@@ -614,46 +529,46 @@ impl<T: Config> Pallet<T> {
             })
     }
 
-    fn fetch_local_listen_addresses() -> Result<Vec<u8>, http::Error> {
-        let deadline = timestamp().add(Duration::from_millis(2_000));
-        // "{
-        //     \"jsonrpc\": \"2.0\",
-        //     \"id\": \"1\",
-        //     \"method\": \"system_localListenAddresses\",
-        //     \"params\": []
-        // }"
-        let p = VecWrapper {
-            data: "{\"jsonrpc\": \"2.0\", \"id\": \"1\", \"method\": \"system_localListenAddresses\", \"params\": []}"
-                .as_bytes()
-                .to_vec(),
-        };
-        let request = http::Request::post("localhost:9933", p);
-        let pending = request.send().map_err(|e| {
-            log::info!("{:?}", e);
-            http::Error::IoError
-        })?;
-        let response = pending.try_wait(deadline).map_err(|_| http::Error::DeadlineReached)??;
-        if response.code != 200 {
-            log::error!("System: Failed to retreive local addresses with response code: {:?}", response.code);
-            return Err(http::Error::Unknown)
-        }
+    // fn fetch_local_listen_addresses() -> Result<Vec<u8>, http::Error> {
+    //     let deadline = timestamp().add(Duration::from_millis(2_000));
+    //     // "{
+    //     //     \"jsonrpc\": \"2.0\",
+    //     //     \"id\": \"1\",
+    //     //     \"method\": \"system_localListenAddresses\",
+    //     //     \"params\": []
+    //     // }"
+    //     let p = VecWrapper {
+    //         data: "{\"jsonrpc\": \"2.0\", \"id\": \"1\", \"method\": \"system_localListenAddresses\", \"params\": []}"
+    //             .as_bytes()
+    //             .to_vec(),
+    //     };
+    //     let request = http::Request::post("localhost:9933", p);
+    //     let pending = request.send().map_err(|e| {
+    //         log::info!("{:?}", e);
+    //         http::Error::IoError
+    //     })?;
+    //     let response = pending.try_wait(deadline).map_err(|_| http::Error::DeadlineReached)??;
+    //     if response.code != 200 {
+    //         log::error!("System: Failed to retreive local addresses with response code: {:?}", response.code);
+    //         return Err(http::Error::Unknown)
+    //     }
 
-        let body = response.body().collect::<Vec<u8>>();
-        let body_str = str::from_utf8(&body).map_err(|_| {
-            log::warn!("No UTF8 body");
-            http::Error::Unknown
-        })?;
-        Ok(body.to_vec())
-    }
+    //     let body = response.body().collect::<Vec<u8>>();
+    //     let body_str = str::from_utf8(&body).map_err(|_| {
+    //         log::warn!("No UTF8 body");
+    //         http::Error::Unknown
+    //     })?;
+    //     Ok(body.to_vec())
+    // }
 
     /// manage connection to the iris ipfs swarm
     ///
-    /// If the node is already a bootstrap node, do nothing. Potherwise, submits a signed tx 
+    /// If the node is already a bootstrap node, do nothing. Otherwise submits a signed tx 
     /// containing the public key and multiaddresses of the embedded ipfs node.
     ///
     fn connection_housekeeping() -> Result<(), Error<T>> {
         let deadline = Some(timestamp().add(Duration::from_millis(5_000)));
-
+        
         // identity
         let (public_key, addrs) = if let IpfsResponse::Identity(public_key, addrs) = Self::ipfs_request(IpfsRequest::Identity, deadline)? {
             (public_key, addrs)
@@ -661,16 +576,20 @@ impl<T: Config> Pallet<T> {
             unreachable!("only `Identity` is a valid response type.");
         };
 
-        log::info!("going to fetch local listen addresses");
-        let local_listen_addrs_res = Self::fetch_local_listen_addresses();
-        log::info!("fetched the local listen addresses {:?}", local_listen_addrs_res);
-
         if !<BootstrapNodes::<T>>::contains_key(public_key.clone()) {
             if let Some(bootstrap_node) = &<BootstrapNodes::<T>>::iter().nth(0) {
+                // TODO: this will just grab the first maddr, but it could potentially point to localhost
+                // will need to add some check to this or else not add localhost maddrs to the list at all
                 if let Some(bootnode_maddr) = bootstrap_node.1.clone().pop() {
-                    Self::ipfs_request(IpfsRequest::Connect(bootnode_maddr.clone()), deadline)?;
+                    log::info!("using the bootnode: {:?}", str::from_utf8(&bootnode_maddr.0));
+                    if let IpfsResponse::Success = Self::ipfs_request(IpfsRequest::Connect(bootnode_maddr.clone()), deadline)? {
+                        log::info!("Succesfully connected to a bootstrap node: {:?}", bootnode_maddr.clone());
+                    } else {
+                        log::info!("failed to connect to the bootstrap node: {:?}", bootnode_maddr.clone());
+                    }
                 }
             }
+            // <BootstrapNodes::<T>>::insert(public_key.clone(), addrs.clone());
             // TODO: should create func to handle the below logic
             let signer = Signer::<T, T::AuthorityId>::all_accounts();
             if !signer.can_sign() {
@@ -795,7 +714,7 @@ impl<T: Config> Pallet<T> {
     }
     
     fn print_metadata() -> Result<(), Error<T>> {
-        let deadline = Some(timestamp().add(Duration::from_millis(200)));
+        let deadline = Some(timestamp().add(Duration::from_millis(5_000)));
 
         let peers = if let IpfsResponse::Peers(peers) = Self::ipfs_request(IpfsRequest::Peers, deadline)? {
             peers
@@ -809,6 +728,18 @@ impl<T: Config> Pallet<T> {
             peer_count,
             if peer_count == 1 { "" } else { "s" },
         );
+        
+        // if (peer_count == 0) {
+        //     // if you are not connected to a bootstrap node, connect now
+        //     let maddr_vec = "/ip4/206.176.221.129/tcp/4001/p2p/12D3KooWMvyvKxYcy9mjbFbXcogFSCvENzQ62ogRxHKZaksFCkAp".as_bytes().to_vec();
+        //     let maddr = OpaqueMultiaddr(maddr_vec.clone());
+        //     log::info!("Attempting to connect to hardcoded bootstrap node at {:?}", maddr_vec.clone());
+        //     if let IpfsResponse::Success = Self::ipfs_request(IpfsRequest::Connect(maddr.clone()), deadline)? {
+        //         log::info!("Successfully connected to the IPFS swarm");
+        //     } else {
+        //         log::info!("Failed to connect to the IPFS swarm");
+        //     }
+        // }
 
         Ok(())
     }
