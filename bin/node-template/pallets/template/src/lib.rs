@@ -412,7 +412,6 @@ pub mod pallet {
         ) -> DispatchResult {
             let who = ensure_signed(origin)?;
             <BootstrapNodes::<T>>::insert(public_key.clone(), multiaddresses.clone());
-            log::info!("************************************************* added new bootstrap node!");
             Self::deposit_event(Event::PublishedIdentity(who.clone()));
             Ok(())
         }
@@ -529,47 +528,15 @@ impl<T: Config> Pallet<T> {
             })
     }
 
-    // fn fetch_local_listen_addresses() -> Result<Vec<u8>, http::Error> {
-    //     let deadline = timestamp().add(Duration::from_millis(2_000));
-    //     // "{
-    //     //     \"jsonrpc\": \"2.0\",
-    //     //     \"id\": \"1\",
-    //     //     \"method\": \"system_localListenAddresses\",
-    //     //     \"params\": []
-    //     // }"
-    //     let p = VecWrapper {
-    //         data: "{\"jsonrpc\": \"2.0\", \"id\": \"1\", \"method\": \"system_localListenAddresses\", \"params\": []}"
-    //             .as_bytes()
-    //             .to_vec(),
-    //     };
-    //     let request = http::Request::post("localhost:9933", p);
-    //     let pending = request.send().map_err(|e| {
-    //         log::info!("{:?}", e);
-    //         http::Error::IoError
-    //     })?;
-    //     let response = pending.try_wait(deadline).map_err(|_| http::Error::DeadlineReached)??;
-    //     if response.code != 200 {
-    //         log::error!("System: Failed to retreive local addresses with response code: {:?}", response.code);
-    //         return Err(http::Error::Unknown)
-    //     }
-
-    //     let body = response.body().collect::<Vec<u8>>();
-    //     let body_str = str::from_utf8(&body).map_err(|_| {
-    //         log::warn!("No UTF8 body");
-    //         http::Error::Unknown
-    //     })?;
-    //     Ok(body.to_vec())
-    // }
-
     /// manage connection to the iris ipfs swarm
     ///
     /// If the node is already a bootstrap node, do nothing. Otherwise submits a signed tx 
     /// containing the public key and multiaddresses of the embedded ipfs node.
-    ///
+    /// 
+    /// Returns an error if communication with the embedded IPFS fails
     fn connection_housekeeping() -> Result<(), Error<T>> {
         let deadline = Some(timestamp().add(Duration::from_millis(5_000)));
         
-        // identity
         let (public_key, addrs) = if let IpfsResponse::Identity(public_key, addrs) = Self::ipfs_request(IpfsRequest::Identity, deadline)? {
             (public_key, addrs)
         } else {
@@ -579,18 +546,16 @@ impl<T: Config> Pallet<T> {
         if !<BootstrapNodes::<T>>::contains_key(public_key.clone()) {
             if let Some(bootstrap_node) = &<BootstrapNodes::<T>>::iter().nth(0) {
                 // TODO: this will just grab the first maddr, but it could potentially point to localhost
-                // will need to add some check to this or else not add localhost maddrs to the list at all
+                // will need to add some check to this or else not add localhost maddrs to the list at allf
                 if let Some(bootnode_maddr) = bootstrap_node.1.clone().pop() {
-                    log::info!("using the bootnode: {:?}", str::from_utf8(&bootnode_maddr.0));
                     if let IpfsResponse::Success = Self::ipfs_request(IpfsRequest::Connect(bootnode_maddr.clone()), deadline)? {
-                        log::info!("Succesfully connected to a bootstrap node: {:?}", bootnode_maddr.clone());
+                        log::info!("Succesfully connected to a bootstrap node: {:?}", &bootnode_maddr.0);
                     } else {
-                        log::info!("failed to connect to the bootstrap node: {:?}", bootnode_maddr.clone());
+                        log::info!("failed to connect to the bootstrap node: {:?}", &bootnode_maddr.0);
                     }
                 }
             }
-            // <BootstrapNodes::<T>>::insert(public_key.clone(), addrs.clone());
-            // TODO: should create func to handle the below logic
+            // TODO: should create func to handle the below logic 
             let signer = Signer::<T, T::AuthorityId>::all_accounts();
             if !signer.can_sign() {
                 log::error!(
@@ -617,8 +582,6 @@ impl<T: Config> Pallet<T> {
     }
 
     /// process any requests in the DataQueue
-    ///
-    ///
     fn handle_data_requests() -> Result<(), Error<T>> {
         let data_queue = DataQueue::<T>::get();
         let len = data_queue.len();
@@ -626,7 +589,8 @@ impl<T: Config> Pallet<T> {
             log::info!("IPFS: {} entr{} in the data queue", len, if len == 1 { "y" } else { "ies" });
         }
         // TODO: Needs refactoring
-        let deadline = Some(timestamp().add(Duration::from_millis(5_000)));
+        // TODO: change duration... setting to 10s because I have a horrible network connection and keeps timing out
+        let deadline = Some(timestamp().add(Duration::from_millis(10_000)));
         for cmd in data_queue.into_iter() {
             match cmd {
                 // ticket_config
@@ -636,6 +600,7 @@ impl<T: Config> Pallet<T> {
                         "IPFS: connected to {}",
                         str::from_utf8(&addr.0).expect("our own calls can be trusted to be UTF-8; qed")
                     );
+
                     match Self::ipfs_request(IpfsRequest::CatBytes(cid.clone()), deadline) {
                         Ok(IpfsResponse::CatBytes(data)) => {
                             log::info!("IPFS: fetched data");
@@ -728,19 +693,6 @@ impl<T: Config> Pallet<T> {
             peer_count,
             if peer_count == 1 { "" } else { "s" },
         );
-        
-        // if (peer_count == 0) {
-        //     // if you are not connected to a bootstrap node, connect now
-        //     let maddr_vec = "/ip4/206.176.221.129/tcp/4001/p2p/12D3KooWMvyvKxYcy9mjbFbXcogFSCvENzQ62ogRxHKZaksFCkAp".as_bytes().to_vec();
-        //     let maddr = OpaqueMultiaddr(maddr_vec.clone());
-        //     log::info!("Attempting to connect to hardcoded bootstrap node at {:?}", maddr_vec.clone());
-        //     if let IpfsResponse::Success = Self::ipfs_request(IpfsRequest::Connect(maddr.clone()), deadline)? {
-        //         log::info!("Successfully connected to the IPFS swarm");
-        //     } else {
-        //         log::info!("Failed to connect to the IPFS swarm");
-        //     }
-        // }
-
         Ok(())
     }
 
