@@ -545,17 +545,23 @@ impl<T: Config> Pallet<T> {
 
         if !<BootstrapNodes::<T>>::contains_key(public_key.clone()) {
             if let Some(bootstrap_node) = &<BootstrapNodes::<T>>::iter().nth(0) {
-                // TODO: this will just grab the first maddr, but it could potentially point to localhost
-                // will need to add some check to this or else not add localhost maddrs to the list at allf
                 if let Some(bootnode_maddr) = bootstrap_node.1.clone().pop() {
                     if let IpfsResponse::Success = Self::ipfs_request(IpfsRequest::Connect(bootnode_maddr.clone()), deadline)? {
                         log::info!("Succesfully connected to a bootstrap node: {:?}", &bootnode_maddr.0);
                     } else {
-                        log::info!("failed to connect to the bootstrap node: {:?}", &bootnode_maddr.0);
+                        log::info!("Failed to connect to the bootstrap node with multiaddress: {:?}", &bootnode_maddr.0);
+                        // TODO: this should probably be some recursive function? but we should never exceed a depth of 2 so maybe not
+                        if let Some(next_bootnode_maddr) = bootstrap_node.1.clone().pop() {
+                            if let IpfsResponse::Success = Self::ipfs_request(IpfsRequest::Connect(next_bootnode_maddr.clone()), deadline)? {
+                                log::info!("Succesfully connected to a bootstrap node: {:?}", &next_bootnode_maddr.0);
+                            } else {
+                                log::info!("Failed to connect to the bootstrap node with multiaddress: {:?}", &next_bootnode_maddr.0);
+                            }       
+                        }
                     }
                 }
             }
-            // TODO: should create func to handle the below logic 
+            // TODO: should create func to encompass the below logic 
             let signer = Signer::<T, T::AuthorityId>::all_accounts();
             if !signer.can_sign() {
                 log::error!(
@@ -589,8 +595,7 @@ impl<T: Config> Pallet<T> {
             log::info!("IPFS: {} entr{} in the data queue", len, if len == 1 { "y" } else { "ies" });
         }
         // TODO: Needs refactoring
-        // TODO: change duration... setting to 10s because I have a horrible network connection and keeps timing out
-        let deadline = Some(timestamp().add(Duration::from_millis(10_000)));
+        let deadline = Some(timestamp().add(Duration::from_millis(5_000)));
         for cmd in data_queue.into_iter() {
             match cmd {
                 // ticket_config
@@ -600,7 +605,6 @@ impl<T: Config> Pallet<T> {
                         "IPFS: connected to {}",
                         str::from_utf8(&addr.0).expect("our own calls can be trusted to be UTF-8; qed")
                     );
-
                     match Self::ipfs_request(IpfsRequest::CatBytes(cid.clone()), deadline) {
                         Ok(IpfsResponse::CatBytes(data)) => {
                             log::info!("IPFS: fetched data");
