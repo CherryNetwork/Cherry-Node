@@ -1,4 +1,4 @@
-use crate as pallet_template;
+use crate as pallet_iris;
 use frame_support::parameter_types;
 use frame_system as system;
 use sp_core::H256;
@@ -20,7 +20,7 @@ frame_support::construct_runtime!(
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>}
-		TemplateModule: pallet_template::{Pallet, Call, Storage, Event<T>},
+		Iris: pallet_iris::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
@@ -59,7 +59,7 @@ impl CreateSignedTransaction<pallet::Call<mock::Test>> for Test {
 	type AuthorityId = pallet_template::KEY_TYPE;
 }
 
-impl pallet_template::Config for Test {
+impl pallet_iris::Config for Test {
 	type Event = Event;
 	type Call = Call;
 	type AuthorityId = pallet_template::KEY_TYPE;

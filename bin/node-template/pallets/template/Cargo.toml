@@ -17,17 +17,20 @@ targets = ["x86_64-unknown-linux-gnu"]
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = [
 	"derive",
 ] }
-pallet-assets = { version = "4.0.0-dev", default-features = false, path = "../../../../frame/assets" }
 scale-info = { version = "1.0", default-features = false, features = ["derive"] }
-frame-support = { default-features = false, version = "4.0.0-dev", path = "../../../../frame/support" }
-frame-system = { default-features = false, version = "4.0.0-dev", path = "../../../../frame/system" }
-frame-benchmarking = { default-features = false, version = "4.0.0-dev", path = "../../../../frame/benchmarking", optional = true }
+
 sp-io = { default-features = false, version = "4.0.0-dev", path = "../../../../primitives/io" }
 sp-std = { default-features = false, version = "4.0.0-dev", path = "../../../../primitives/std" }
 sp-core = { default-features = false, version = "4.0.0-dev", path = "../../../../primitives/core" }
 sp-runtime = { default-features = false, version = "4.0.0-dev", path = "../../../../primitives/runtime" }
 sp-keystore = { version = "0.10.0-dev", path = "../../../../primitives/keystore", optional = true }
+
+frame-support = { default-features = false, version = "4.0.0-dev", path = "../../../../frame/support" }
+frame-system = { default-features = false, version = "4.0.0-dev", path = "../../../../frame/system" }
+frame-benchmarking = { default-features = false, version = "4.0.0-dev", path = "../../../../frame/benchmarking", optional = true }
 log = { version = "0.4.14", default-features = false }
+
+pallet-assets = { version = "4.0.0-dev", default-features = false, path = "../../../../frame/assets" }
 
 [features]
 default = ['std']
@@ -40,6 +43,7 @@ std = [
 	'sp-io/std',
 	'sp-std/std',
 	'sp-keystore/std',
+	'sp-runtime/std',
 	'log/std',
 	'pallet-assets/std',
 ]

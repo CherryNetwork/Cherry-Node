@@ -1,7 +1,8 @@
+use super::*;
 use crate::{mock::*, Error};
 use frame_support::{assert_noop, assert_ok};
 /// Import the template pallet.
-pub use pallet_template;
+pub use pallet_iris;
 
 fn register_offchain_ext(ext: &mut sp_io::TestExternalities) {
 	let (offchain, _offchain_state) = TestOffchainExt::with_offchain_db(ext.offchain_db());
@@ -20,7 +21,7 @@ fn new_block() -> u64 {
 		&Default::default(),
 		frame_system::InitKind::Full,
 	);
-	TemplateModule::on_initialize(number)
+	Iris::on_initialize(number)
 }
 
 #[test]
@@ -52,8 +53,11 @@ fn ipfs_add_bytes_works_for_valid_value() {
 	let cost = 1;
 	new_test_ext().execute_with(|| {
 		// invoke ipfs_add_bytes extrinsic
-		assert_ok!(TemplateModule::ipfs_add_bytes(Origin::signed(1), multiaddr_vec, cid_vec));
-		assert_eq!(TemplateModule::data_queue(), Some(AddBytes(OpaqueMultiaddr(multiaddr_vec), cid_vec)));
+		assert_ok!(Iris::create_storage_asset(
+			Origin::signed(1),
+			multiaddr_vec,
+			cid_vec));
+		// assert_eq!(Iris::data_queue(), Some(AddBytes(OpaqueMultiaddr(multiaddr_vec), cid_vec)));
 	});
 }
 

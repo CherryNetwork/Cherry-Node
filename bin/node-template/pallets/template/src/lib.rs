@@ -15,13 +15,13 @@
 //! ### Dispatchable Functions 
 //!
 //! #### Permissionless functions
-//! * ipfs_add_bytes
-//! * mint_ticket
+//! * create_storage_asset
+//! * 
 //!
 //! #### Permissioned Functions
 //! * submit_ipfs_results (private?)
 //! * destroy_ticket
-//! * ipfs_cat_bytes
+//! * mint_tickets
 //!
 
 use scale_info::TypeInfo;
@@ -38,17 +38,23 @@ use frame_system::{
     },
 };
 
-use sp_core::offchain::{
-    Duration, IpfsRequest, IpfsResponse, OpaqueMultiaddr, Timestamp,
+use sp_core::{
+    offchain::{
+        Duration, IpfsRequest, IpfsResponse, OpaqueMultiaddr, Timestamp, StorageKind,
+    },
+    crypto::KeyTypeId,
+    Bytes,
 };
 
-use sp_core::crypto::KeyTypeId;
 use sp_io::{
     offchain::timestamp,
     offchain_index,
 };
 use sp_runtime::{
-    offchain::ipfs,
+    offchain::{ 
+        ipfs,
+        http,
+    },
     RuntimeDebug,
     transaction_validity::{
 		InvalidTransaction, TransactionSource, TransactionValidity, ValidTransaction,
@@ -96,8 +102,8 @@ pub mod crypto {
 
 #[derive(Encode, Decode, RuntimeDebug, PartialEq, TypeInfo)]
 pub enum DataCommand<LookupSource, AssetId, Balance, AccountId> {
-    /// (ipfs_address, cid, requesting node address, ticket_config)
-    AddBytes(OpaqueMultiaddr, Vec<u8>, LookupSource, AssetId, Balance),
+    /// (ipfs_address, cid, requesting node address, filename, asset id, balance)
+    AddBytes(OpaqueMultiaddr, Vec<u8>, LookupSource, Vec<u8>, AssetId, Balance),
     // /// owner, cid
     CatBytes(AccountId, Vec<u8>, AccountId),
 }
@@ -146,24 +152,36 @@ pub mod pallet {
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
+    /// map the public key to a list of multiaddresses
     #[pallet::storage]
-    #[pallet::getter(fn next_asset_id)]
-    pub(super) type NextAssetId<T: Config> = StorageValue<_, T::AssetId, ValueQuery>;
+    #[pallet::getter(fn bootstrap_nodes)]
+    pub(super) type BootstrapNodes<T: Config> = StorageMap<
+        _,
+        Blake2_128Concat,
+        Vec<u8>,
+        Vec<OpaqueMultiaddr>,
+        ValueQuery,
+    >;
 
+    /// A queue of data to publish or obtain on IPFS.
 	#[pallet::storage]
     #[pallet::getter(fn data_queue)]
-	/// A queue of data to publish or obtain on IPFS.
 	pub(super) type DataQueue<T: Config> = StorageValue<
         _,
-        Vec<DataCommand<<T::Lookup as StaticLookup>::Source, T::AssetId, T::Balance, T::AccountId>>,
+        Vec<DataCommand<
+            <T::Lookup as StaticLookup>::Source, 
+            T::AssetId,
+            T::Balance,
+            T::AccountId>
+        >,
         ValueQuery
     >;
 
-    #[pallet::storage]
-    #[pallet::getter(fn created_asset_classes)]
     /// Store the map associating owned CID to a specific asset ID
     /// currently: cid -> accountid -> assetid
     /// might change: accountid -> cid -> assetid
+    #[pallet::storage]
+    #[pallet::getter(fn created_asset_classes)]
     pub(super) type AssetClassOwnership<T: Config> = StorageDoubleMap<
         _,
         Blake2_128Concat,
@@ -197,41 +215,60 @@ pub mod pallet {
         AssetClassCreated(T::AssetId),
         /// A new asset was created (tickets minted)
         AssetCreated(T::AssetId),
+        /// A node's request to access data via the RPC endpoint has been processed
+        DataReady(T::AccountId),
+        /// A node has published ipfs identity results on chain
+        PublishedIdentity(T::AccountId),
 	}
 
 	#[pallet::error]
 	pub enum Error<T> {
+        /// could not build the ipfs request
 		CantCreateRequest,
+        /// the request to IPFS timed out
         RequestTimeout,
+        /// the request to IPFS failed
         RequestFailed,
+        /// The tx could not be signed
         OffchainSignedTxError,
+        /// you cannot sign a tx
         NoLocalAcctForSigning,
+        /// could not create a new asset
         CantCreateAssetClass,
+        /// could not mint a new asset
         CantMintAssets,
+        /// there is no asset associated with the specified cid
         NoSuchOwnedContent,
+        /// the specified asset class does not exist
         NoSuchAssetClass,
+        /// the account does not have a sufficient balance
         InsufficientBalance,
 	}
 
     #[pallet::hooks]
     impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
-         // needs to be synchronized with offchain_worker actitivies
          fn on_initialize(block_number: T::BlockNumber) -> Weight {
+            // needs to be synchronized with offchain_worker actitivies
             if block_number % 2u32.into() == 1u32.into() {
                 <DataQueue<T>>::kill();
             }
 
             0
         }
-        /// The offchain worker processes requests queued by other nodes
         fn offchain_worker(block_number: T::BlockNumber) {
-            // process a request every three blocks
-            if block_number % 3u32.into() == 1u32.into() {
-                if let Err(e) = Self::handle_data_requests() {
+            // every 5 blocks
+            if block_number % 5u32.into() == 0u32.into() {
+                if let Err(e) = Self::connection_housekeeping() {
                     log::error!("IPFS: Encountered an error while processing data requests: {:?}", e);
                 }
             }
-            // print metadata every five blocks
+
+            // handle data requests each block
+            if let Err(e) = Self::handle_data_requests() {
+                log::error!("IPFS: Encountered an error while processing data requests: {:?}", e);
+            }
+
+            // every 5 blocks
             if block_number % 5u32.into() == 0u32.into() {
                 if let Err(e) = Self::print_metadata() {
                     log::error!("IPFS: Encountered an error while obtaining metadata: {:?}", e);
@@ -253,7 +290,7 @@ pub mod pallet {
         /// * `call`: The call creating the utxo
         ///
 		fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
-			if let Call::submit_ipfs_results{admin, cid, id, balance} = call {
+			if let Call::submit_ipfs_add_results{admin, cid, id, balance} = call {
 				Self::validate_transaction_parameters(cid.to_vec())
 			} else {
 				InvalidTransaction::Call.into()
@@ -263,6 +300,7 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+
         /// submits an on-chain request to fetch data and add it to iris 
         /// 
         /// * `addr`: the multiaddress where the data exists
@@ -278,6 +316,7 @@ pub mod pallet {
             admin: <T::Lookup as StaticLookup>::Source,
             addr: Vec<u8>,
             cid: Vec<u8>,
+            name: Vec<u8>,
             id: T::AssetId,
             balance: T::Balance,
         ) -> DispatchResult {
@@ -288,6 +327,7 @@ pub mod pallet {
                     multiaddr,
                     cid,
                     admin.clone(),
+                    name.clone(),
                     id.clone(),
                     balance.clone(),
                 )));
@@ -332,7 +372,7 @@ pub mod pallet {
         ///
         /// TODO: should change to have an unsigned transaction with a signed payload
         #[pallet::weight(0)]
-        pub fn submit_ipfs_results(
+        pub fn submit_ipfs_add_results(
             origin: OriginFor<T>,
             admin: <T::Lookup as StaticLookup>::Source,
             cid: Vec<u8>,
@@ -354,6 +394,41 @@ pub mod pallet {
             
             Self::deposit_event(Event::AssetClassCreated(id.clone()));
             
+            Ok(())
+        }
+
+        /// Should only be callable by OCWs (TODO)
+        /// Submit the results of an `ipfs identity` call to be stored on chain
+        ///
+        /// * origin: a validator node
+        /// * public_key: The IPFS node's public key
+        /// * multiaddresses: A vector of multiaddresses associate with the public key
+        ///
+        #[pallet::weight(0)]
+        pub fn submit_ipfs_identity(
+            origin: OriginFor<T>,
+            public_key: Vec<u8>,
+            multiaddresses: Vec<OpaqueMultiaddr>,
+        ) -> DispatchResult {
+            let who = ensure_signed(origin)?;
+            <BootstrapNodes::<T>>::insert(public_key.clone(), multiaddresses.clone());
+            Self::deposit_event(Event::PublishedIdentity(who.clone()));
+            Ok(())
+        }
+
+        /// Should only be callable by OCWs (TODO)
+        /// Submit the results onchain to notify a beneficiary that their data is available: TODO: how to safely share host? spam protection on rpc endpoints?
+        ///
+        /// * `beneficiary`: The account that requested the data
+        /// * `host`: The node's host where the data has been made available (RPC endpoint)
+        ///
+        #[pallet::weight(0)]
+        pub fn submit_rpc_ready(
+            origin: OriginFor<T>,
+            beneficiary: T::AccountId,
+            // host: Vec<u8>,
+        ) -> DispatchResult {
+            Self::deposit_event(Event::DataReady(beneficiary));
             Ok(())
         }
 
@@ -395,29 +470,50 @@ pub mod pallet {
         /// * owner: The owner to identify the asset class for which a ticket is to be purchased
         /// * cid: The CID to identify the asset class for which a ticket is to be purchased
         /// * amount: The number of tickets to purchase
+        ///
         #[pallet::weight(0)]
         pub fn purchase_ticket(
             origin: OriginFor<T>,
             owner: <T::Lookup as StaticLookup>::Source,
             cid: Vec<u8>,
             #[pallet::compact] amount: T::Balance,
+            _test: T::Signature,
         ) -> DispatchResult {
             let who = ensure_signed(origin);
             // determine price for amount of asset and verify origin has a min balance
             // transfer native currency to asset class admin
             // admin transfers the requested amount of tokens to the buyer
-            // for now, going with a simplified approach: tickets are all free
-            // let asset_id = CidMap::<T>::get(cid.clone(), who.clone());
-            // log.info!("found an asset id");
-            // <pallet_assets::Pallet<T>>::transfer();
             Ok(())
         }
 	}
 }
 
 impl<T: Config> Pallet<T> {
-    // send a request to the local IPFS node; can only be called be an off-chain worker
-    fn ipfs_request(req: IpfsRequest, deadline: impl Into<Option<Timestamp>>) -> Result<IpfsResponse, Error<T>> {
+    /// implementation for RPC runtime aPI to retrieve bytes from the node's local storage
+    /// 
+    /// * public_key: The account's public key as bytes
+    /// * signature: The signer's signature as bytes
+    /// * message: The signed message as bytes
+    ///
+    pub fn retrieve_bytes(
+        public_key: Bytes,
+		signature: Bytes,
+		message: Bytes,
+    ) -> Bytes {
+        // TODO: Verify signature, update offchain storage keys...
+        let message_vec: Vec<u8> = message.to_vec();
+        if let Some(data) = sp_io::offchain::local_storage_get(StorageKind::PERSISTENT, &message_vec) {
+            Bytes(data.clone())
+        } else {
+            Bytes(Vec::new())
+        }
+    }
+
+    /// send a request to the local IPFS node; can only be called be an off-chain worker
+    fn ipfs_request(
+        req: IpfsRequest,
+        deadline: impl Into<Option<Timestamp>>,
+    ) -> Result<IpfsResponse, Error<T>> {
         let ipfs_request = ipfs::PendingRequest::new(req).map_err(|_| Error::<T>::CantCreateRequest)?;
         ipfs_request.try_wait(deadline)
             .map_err(|_| Error::<T>::RequestTimeout)?
@@ -432,18 +528,78 @@ impl<T: Config> Pallet<T> {
             })
     }
 
+    /// manage connection to the iris ipfs swarm
+    ///
+    /// If the node is already a bootstrap node, do nothing. Otherwise submits a signed tx 
+    /// containing the public key and multiaddresses of the embedded ipfs node.
+    /// 
+    /// Returns an error if communication with the embedded IPFS fails
+    fn connection_housekeeping() -> Result<(), Error<T>> {
+        let deadline = Some(timestamp().add(Duration::from_millis(5_000)));
+        
+        let (public_key, addrs) = if let IpfsResponse::Identity(public_key, addrs) = Self::ipfs_request(IpfsRequest::Identity, deadline)? {
+            (public_key, addrs)
+        } else {
+            unreachable!("only `Identity` is a valid response type.");
+        };
+
+        if !<BootstrapNodes::<T>>::contains_key(public_key.clone()) {
+            if let Some(bootstrap_node) = &<BootstrapNodes::<T>>::iter().nth(0) {
+                if let Some(bootnode_maddr) = bootstrap_node.1.clone().pop() {
+                    if let IpfsResponse::Success = Self::ipfs_request(IpfsRequest::Connect(bootnode_maddr.clone()), deadline)? {
+                        log::info!("Succesfully connected to a bootstrap node: {:?}", &bootnode_maddr.0);
+                    } else {
+                        log::info!("Failed to connect to the bootstrap node with multiaddress: {:?}", &bootnode_maddr.0);
+                        // TODO: this should probably be some recursive function? but we should never exceed a depth of 2 so maybe not
+                        if let Some(next_bootnode_maddr) = bootstrap_node.1.clone().pop() {
+                            if let IpfsResponse::Success = Self::ipfs_request(IpfsRequest::Connect(next_bootnode_maddr.clone()), deadline)? {
+                                log::info!("Succesfully connected to a bootstrap node: {:?}", &next_bootnode_maddr.0);
+                            } else {
+                                log::info!("Failed to connect to the bootstrap node with multiaddress: {:?}", &next_bootnode_maddr.0);
+                            }       
+                        }
+                    }
+                }
+            }
+            // TODO: should create func to encompass the below logic 
+            let signer = Signer::<T, T::AuthorityId>::all_accounts();
+            if !signer.can_sign() {
+                log::error!(
+                    "No local accounts available. Consider adding one via `author_insertKey` RPC.",
+                );
+            }
+             
+            let results = signer.send_signed_transaction(|_account| { 
+                Call::submit_ipfs_identity{
+                    public_key: public_key.clone(),
+                    multiaddresses: addrs.clone(),
+                }
+            });
+    
+            for (acc, res) in &results {
+                match res {
+                    Ok(()) => log::info!("Submitted ipfs identity results"),
+                    Err(e) => log::error!("Failed to submit transaction: {:?}",  e),
+                }
+            }
+
+        }
+        Ok(())
+    }
+
+    /// process any requests in the DataQueue
     fn handle_data_requests() -> Result<(), Error<T>> {
         let data_queue = DataQueue::<T>::get();
         let len = data_queue.len();
         if len != 0 {
             log::info!("IPFS: {} entr{} in the data queue", len, if len == 1 { "y" } else { "ies" });
         }
-
+        // TODO: Needs refactoring
         let deadline = Some(timestamp().add(Duration::from_millis(5_000)));
         for cmd in data_queue.into_iter() {
             match cmd {
                 // ticket_config
-                DataCommand::AddBytes(addr, cid, admin, id, balance) => {
+                DataCommand::AddBytes(addr, cid, admin, name, id, balance) => {
                     Self::ipfs_request(IpfsRequest::Connect(addr.clone()), deadline)?;
                     log::info!(
                         "IPFS: connected to {}",
@@ -463,15 +619,6 @@ impl<T: Config> Pallet<T> {
                                         "IPFS: added data with Cid {}",
                                         str::from_utf8(&new_cid).expect("our own IPFS node can be trusted here; qed")
                                     );
-                                    // let call = Call::submit_ipfs_results{
-                                    //     admin: admin,
-                                    //     cid: new_cid,
-                                    //     id: id,
-                                    //     balance: balance,
-                                    // };
-                                    // SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into())
-                                    //     .map_err(|()| "Unable to submit unsigned transaction.")
-                                    //     .map(|()| "done");
                                     let signer = Signer::<T, T::AuthorityId>::all_accounts();
                                     if !signer.can_sign() {
                                         log::error!(
@@ -479,7 +626,7 @@ impl<T: Config> Pallet<T> {
                                         );
                                     }
                                     let results = signer.send_signed_transaction(|_account| { 
-                                        Call::submit_ipfs_results{
+                                        Call::submit_ipfs_add_results{
                                             admin: admin.clone(),
                                             cid: new_cid.clone(),
                                             id: id.clone(),
@@ -508,13 +655,22 @@ impl<T: Config> Pallet<T> {
                     let asset_id = AssetClassOwnership::<T>::get(owner.clone(), cid.clone());
                     let balance = <pallet_assets::Pallet<T>>::balance(asset_id.clone(), recipient.clone());
                     let balance_primitive = TryInto::<u64>::try_into(balance).ok();
-                    ensure!(balance_primitive == Some(0), Error::<T>::InsufficientBalance);
-                    // TODO: what's the best way to verify a balance is positive?
-                    // ensure!(balance > 0, Error::<T>::InsufficientBalance);
-                    log::info!("found balance {:?}", balance);
+                    ensure!(balance_primitive != Some(0), Error::<T>::InsufficientBalance);
                     match Self::ipfs_request(IpfsRequest::CatBytes(cid.clone()), deadline) {
                         Ok(IpfsResponse::CatBytes(data)) => {
-                            log::info!("IPFS: Fetched data from IPFS succesfully. What should I do with it now?");
+                            log::info!("IPFS: Fetched data from IPFS.");
+                            // add to offchain index
+                            sp_io::offchain::local_storage_set(
+                                StorageKind::PERSISTENT,
+                                &cid,
+                                &data,
+                            );
+                            let call = Call::submit_rpc_ready {
+                                beneficiary: recipient.clone(),
+                            };
+                            SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into())
+                                .map_err(|()| "Unable to submit unsigned transaction.")
+                                .map(|()| "done");
                         },
                         Ok(_) => unreachable!("only CatBytes can be a response for that request type."),
                         Err(e) => log::error!("IPFS: cat error: {:?}", e),
@@ -527,7 +683,7 @@ impl<T: Config> Pallet<T> {
     }
     
     fn print_metadata() -> Result<(), Error<T>> {
-        let deadline = Some(timestamp().add(Duration::from_millis(200)));
+        let deadline = Some(timestamp().add(Duration::from_millis(5_000)));
 
         let peers = if let IpfsResponse::Peers(peers) = Self::ipfs_request(IpfsRequest::Peers, deadline)? {
             peers
@@ -541,7 +697,6 @@ impl<T: Config> Pallet<T> {
             peer_count,
             if peer_count == 1 { "" } else { "s" },
         );
-
         Ok(())
     }
 

@@ -11,7 +11,7 @@ use pallet_grandpa::{
 };
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-use sp_core::{crypto::KeyTypeId, OpaqueMetadata, Encode};
+use sp_core::{crypto::KeyTypeId, OpaqueMetadata, Encode, Bytes};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{AccountIdLookup, BlakeTwo256, Block as BlockT, IdentifyAccount, NumberFor, Verify, Saturating, SaturatedConversion },
@@ -400,12 +400,12 @@ construct_runtime!(
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage},
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>},
 		// Include the custom logic from the pallet-template in the runtime.
-		TemplateModule: pallet_template::{Pallet, Call, Storage, Event<T>, ValidateUnsigned},
+		Iris: pallet_template::{Pallet, Call, Storage, Event<T>, ValidateUnsigned},
 		// removed call to make extrinsics uncallable
 		Assets: pallet_assets::{Pallet, Storage, Event<T>},
 	}
 );
-// TemplateModule: pallet_template::{Pallet, Call, Storage, Event<T>, ValidateUnsigned},
+// Iris: pallet_template::{Pallet, Call, Storage, Event<T>, ValidateUnsigned},
 
 /// The address format for describing accounts.
 pub type Address = sp_runtime::MultiAddress<AccountId, ()>;
@@ -565,6 +565,19 @@ impl_runtime_apis! {
 		}
 	}
 
+	/*
+		the iris RPC runtime api
+	*/
+	impl pallet_iris_rpc_runtime_api::IrisApi<Block> for Runtime {
+		fn retrieve_bytes(
+			public_key: Bytes,
+			signature: Bytes,
+			message: Bytes
+		) -> Bytes {
+			Iris::retrieve_bytes(public_key, signature, message)
+		}
+	}
+
 	#[cfg(feature = "runtime-benchmarks")]
 	impl frame_benchmarking::Benchmark<Block> for Runtime {
 		fn benchmark_metadata(extra: bool) -> (
@@ -581,7 +594,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_balances, Balances);
 			list_benchmark!(list, extra, pallet_timestamp, Timestamp);
-			list_benchmark!(list, extra, pallet_template, TemplateModule);
+			list_benchmark!(list, extra, pallet_template, Iris);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -616,7 +629,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, frame_system, SystemBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_balances, Balances);
 			add_benchmark!(params, batches, pallet_timestamp, Timestamp);
-			add_benchmark!(params, batches, pallet_template, TemplateModule);
+			add_benchmark!(params, batches, pallet_template, Iris);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)

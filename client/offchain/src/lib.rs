@@ -97,7 +97,14 @@ impl<Client, Block: traits::Block> OffchainWorkers<Client, Block> {
 
 		let (ipfs_node, node_info) = std::thread::spawn(move || {
 		    let mut ipfs_rt = ipfs_rt.lock();
-			let options = ipfs::IpfsOptions::inmemory_with_generated_keys();
+			// https://docs.rs/ipfs/0.2.1/ipfs/struct.IpfsOptions.html
+			let mut options = ipfs::IpfsOptions::inmemory_with_generated_keys();
+			// options.bootstrap = vec![(
+			// 	"/ip4/206.176.221.129/tcp/4001/p2p".parse().unwrap(),
+			// 	"12D3KooWMvyvKxYcy9mjbFbXcogFSCvENzQ62ogRxHKZaksFCkAp".parse().unwrap(),
+			// )];
+			options.listening_addrs = vec!["/ip4/0.0.0.0/tcp/35555".parse().unwrap()];
+			options.mdns = true;
 			ipfs_rt.block_on(async move {
 				// Start daemon and initialize repo
 				let (ipfs, fut) = ipfs::UninitializedIpfs::new(options).start().await.unwrap();
