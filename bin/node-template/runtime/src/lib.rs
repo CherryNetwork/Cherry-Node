@@ -47,6 +47,7 @@ pub use sp_runtime::{Perbill, Permill};
 
 /// Import the template pallet.
 pub use pallet_template;
+pub use pallet_custom;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -305,6 +306,11 @@ impl pallet_assets::Config for Runtime {
 	type WeightInfo = pallet_assets::weights::SubstrateWeight<Runtime>;
 }
 
+/// Configure the pallet-template in pallets/template.
+impl pallet_custom::Config for Runtime {
+	type Event = Event;
+}
+
 /// Payload data to be signed when making signed transaction from off-chain workers,
 ///   inside `create_transaction` function.
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
@@ -401,6 +407,7 @@ construct_runtime!(
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>},
 		// Include the custom logic from the pallet-template in the runtime.
 		TemplateModule: pallet_template::{Pallet, Call, Storage, Event<T>, ValidateUnsigned},
+		CustomAssets: pallet_custom::{Pallet, Call, Storage, Event<T>},
 		// removed call to make extrinsics uncallable
 		Assets: pallet_assets::{Pallet, Storage, Event<T>},
 	}

@@ -22,6 +22,7 @@ pallet-grandpa = { version = "4.0.0-dev", default-features = false, path = "../.
 pallet-randomness-collective-flip = { version = "4.0.0-dev", default-features = false, path = "../../../frame/randomness-collective-flip" }
 pallet-sudo = { version = "4.0.0-dev", default-features = false, path = "../../../frame/sudo" }
 pallet-assets = { version = "4.0.0-dev", default-features = false, path = "../../../frame/assets" }
+pallet-custom = { version = "4.0.0-dev", default-features = false, path = "../../../frame/custom" }
 frame-system = { version = "4.0.0-dev", default-features = false, path = "../../../frame/system" }
 pallet-timestamp = { version = "4.0.0-dev", default-features = false, path = "../../../frame/timestamp" }
 pallet-transaction-payment = { version = "4.0.0-dev", default-features = false, path = "../../../frame/transaction-payment" }
