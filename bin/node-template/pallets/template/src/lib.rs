@@ -2,7 +2,6 @@
 
 //! # Iris Storage Pallet
 //!
-//! A module to interact with Iris Storage
 //!
 //! ## Overview
 //! Disclaimer: This pallet is in the tadpole state
@@ -370,7 +369,6 @@ pub mod pallet {
         /// * `id`: The AssetId (passed through from the create_storage_asset call)
         /// * `balance`: The balance (passed through from the create_storage_asset call)
         ///
-        /// TODO: should change to have an unsigned transaction with a signed payload
         #[pallet::weight(0)]
         pub fn submit_ipfs_add_results(
             origin: OriginFor<T>,
@@ -598,7 +596,6 @@ impl<T: Config> Pallet<T> {
         let deadline = Some(timestamp().add(Duration::from_millis(5_000)));
         for cmd in data_queue.into_iter() {
             match cmd {
-                // ticket_config
                 DataCommand::AddBytes(addr, cid, admin, name, id, balance) => {
                     Self::ipfs_request(IpfsRequest::Connect(addr.clone()), deadline)?;
                     log::info!(
