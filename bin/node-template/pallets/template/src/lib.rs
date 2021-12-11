@@ -177,8 +177,8 @@ pub mod pallet {
     >;
 
     /// Store the map associating owned CID to a specific asset ID
-    /// currently: cid -> accountid -> assetid
-    /// might change: accountid -> cid -> assetid
+    ///
+    /// asset_admin_accountid -> CID -> asset id
     #[pallet::storage]
     #[pallet::getter(fn created_asset_classes)]
     pub(super) type AssetClassOwnership<T: Config> = StorageDoubleMap<
@@ -191,6 +191,9 @@ pub mod pallet {
         ValueQuery,
     >;
 
+    /// Store the map associated a node with the assets to which they have access
+    ///
+    /// asset_owner_accountid -> CID -> asset_class_owner_accountid
     #[pallet::storage]
     #[pallet::getter(fn asset_access)]
     pub(super) type AssetAccess<T: Config> = StorageDoubleMap<

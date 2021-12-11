@@ -5040,10 +5040,10 @@ dependencies = [
  "pallet-aura",
  "pallet-balances",
  "pallet-grandpa",
+ "pallet-iris",
  "pallet-iris-rpc-runtime-api",
  "pallet-randomness-collective-flip",
  "pallet-sudo",
- "pallet-template",
  "pallet-timestamp",
  "pallet-transaction-payment",
  "pallet-transaction-payment-rpc-runtime-api",
@@ -5849,6 +5849,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-iris"
+version = "3.0.0"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log 0.4.14",
+ "pallet-assets",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-keystore",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
 name = "pallet-iris-rpc"
 version = "4.0.0-dev"
 dependencies = [
@@ -5868,7 +5887,7 @@ dependencies = [
 name = "pallet-iris-rpc-runtime-api"
 version = "4.0.0-dev"
 dependencies = [
- "pallet-template",
+ "pallet-iris",
  "parity-scale-codec",
  "sp-api",
  "sp-core",
@@ -6248,24 +6267,6 @@ dependencies = [
  "scale-info",
  "sp-core",
  "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-template"
-version = "3.0.0"
-dependencies = [
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "log 0.4.14",
- "pallet-assets",
- "parity-scale-codec",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-keystore",
  "sp-runtime",
  "sp-std",
 ]
