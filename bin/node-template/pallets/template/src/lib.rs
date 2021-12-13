@@ -2,7 +2,6 @@
 
 //! # Iris Storage Pallet
 //!
-//! A module to interact with Iris Storage
 //!
 //! ## Overview
 //! Disclaimer: This pallet is in the tadpole state
@@ -71,7 +70,7 @@ use sp_std::{
 };
 use codec::HasCompact;
 
-pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"ipfs");
+pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"iris");
 
 
 pub mod crypto {
@@ -178,8 +177,8 @@ pub mod pallet {
     >;
 
     /// Store the map associating owned CID to a specific asset ID
-    /// currently: cid -> accountid -> assetid
-    /// might change: accountid -> cid -> assetid
+    ///
+    /// asset_admin_accountid -> CID -> asset id
     #[pallet::storage]
     #[pallet::getter(fn created_asset_classes)]
     pub(super) type AssetClassOwnership<T: Config> = StorageDoubleMap<
@@ -192,6 +191,9 @@ pub mod pallet {
         ValueQuery,
     >;
 
+    /// Store the map associated a node with the assets to which they have access
+    ///
+    /// asset_owner_accountid -> CID -> asset_class_owner_accountid
     #[pallet::storage]
     #[pallet::getter(fn asset_access)]
     pub(super) type AssetAccess<T: Config> = StorageDoubleMap<
@@ -370,7 +372,6 @@ pub mod pallet {
         /// * `id`: The AssetId (passed through from the create_storage_asset call)
         /// * `balance`: The balance (passed through from the create_storage_asset call)
         ///
-        /// TODO: should change to have an unsigned transaction with a signed payload
         #[pallet::weight(0)]
         pub fn submit_ipfs_add_results(
             origin: OriginFor<T>,
@@ -598,7 +599,6 @@ impl<T: Config> Pallet<T> {
         let deadline = Some(timestamp().add(Duration::from_millis(5_000)));
         for cmd in data_queue.into_iter() {
             match cmd {
-                // ticket_config
                 DataCommand::AddBytes(addr, cid, admin, name, id, balance) => {
                     Self::ipfs_request(IpfsRequest::Connect(addr.clone()), deadline)?;
                     log::info!(
@@ -650,7 +650,6 @@ impl<T: Config> Pallet<T> {
                     }
                 },
                 DataCommand::CatBytes(owner, cid, recipient) => {
-                    // verify that the recipient owns at least one ticket
                     ensure!(AssetClassOwnership::<T>::contains_key(owner.clone(), cid.clone()), Error::<T>::NoSuchOwnedContent);
                     let asset_id = AssetClassOwnership::<T>::get(owner.clone(), cid.clone());
                     let balance = <pallet_assets::Pallet<T>>::balance(asset_id.clone(), recipient.clone());
@@ -665,12 +664,24 @@ impl<T: Config> Pallet<T> {
                                 &cid,
                                 &data,
                             );
-                            let call = Call::submit_rpc_ready {
-                                beneficiary: recipient.clone(),
-                            };
-                            SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into())
-                                .map_err(|()| "Unable to submit unsigned transaction.")
-                                .map(|()| "done");
+                            let signer = Signer::<T, T::AuthorityId>::all_accounts();
+                            if !signer.can_sign() {
+                                log::error!(
+                                    "No local accounts available. Consider adding one via `author_insertKey` RPC.",
+                                );
+                            }
+                            let results = signer.send_signed_transaction(|_account| { 
+                                Call::submit_rpc_ready {
+                                    beneficiary: recipient.clone(),
+                                }
+                            });
+                    
+                            for (acc, res) in &results {
+                                match res {
+                                    Ok(()) => log::info!("Submitted ipfs results"),
+                                    Err(e) => log::error!("Failed to submit transaction: {:?}",  e),
+                                }
+                            }
                         },
                         Ok(_) => unreachable!("only CatBytes can be a response for that request type."),
                         Err(e) => log::error!("IPFS: cat error: {:?}", e),

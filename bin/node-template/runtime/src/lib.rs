@@ -46,7 +46,7 @@ pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Permill};
 
 /// Import the template pallet.
-pub use pallet_template;
+pub use pallet_iris;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -310,23 +310,11 @@ impl pallet_assets::Config for Runtime {
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 
 /// Configure the pallet-template in pallets/template.
-impl pallet_template::Config for Runtime {
+impl pallet_iris::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
-	type AuthorityId = pallet_template::crypto::TestAuthId;
+	type AuthorityId = pallet_iris::crypto::TestAuthId;
 	type Currency = Balances;
-	// type Assets = Assets;
-	// type AssetId = u32;
-	// type Currency = Balances;
-	// type ForceOrigin = EnsureRoot<AccountId>;
-	// type AssetDeposit = AssetDeposit;
-	// type MetadataDepositBase = MetadataDepositBase;
-	// type MetadataDepositPerByte = MetadataDepositPerByte;
-	// type ApprovalDeposit = ApprovalDeposit;
-	// type StringLimit = StringLimit;
-	// type Freezer = ();
-	// type Extra = ();
-	// type WeightInfo = pallet_assets::weights::SubstrateWeight<Runtime>;
 }
 
 impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
@@ -400,12 +388,12 @@ construct_runtime!(
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage},
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>},
 		// Include the custom logic from the pallet-template in the runtime.
-		Iris: pallet_template::{Pallet, Call, Storage, Event<T>, ValidateUnsigned},
+		Iris: pallet_iris::{Pallet, Call, Storage, Event<T>, ValidateUnsigned},
 		// removed call to make extrinsics uncallable
 		Assets: pallet_assets::{Pallet, Storage, Event<T>},
 	}
 );
-// Iris: pallet_template::{Pallet, Call, Storage, Event<T>, ValidateUnsigned},
+// Iris: pallet_iris::{Pallet, Call, Storage, Event<T>, ValidateUnsigned},
 
 /// The address format for describing accounts.
 pub type Address = sp_runtime::MultiAddress<AccountId, ()>;
@@ -594,7 +582,7 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_balances, Balances);
 			list_benchmark!(list, extra, pallet_timestamp, Timestamp);
-			list_benchmark!(list, extra, pallet_template, Iris);
+			list_benchmark!(list, extra, pallet_iris, Iris);
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 
@@ -629,7 +617,7 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, frame_system, SystemBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_balances, Balances);
 			add_benchmark!(params, batches, pallet_timestamp, Timestamp);
-			add_benchmark!(params, batches, pallet_template, Iris);
+			add_benchmark!(params, batches, pallet_iris, Iris);
 
 			if batches.is_empty() { return Err("Benchmark not found for this pallet.".into()) }
 			Ok(batches)
