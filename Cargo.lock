@@ -5052,6 +5052,7 @@ dependencies = [
  "pallet-balances",
  "pallet-custom",
  "pallet-grandpa",
+ "pallet-ipfs",
  "pallet-randomness-collective-flip",
  "pallet-sudo",
  "pallet-template",
@@ -5880,6 +5881,24 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-keyring",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-ipfs"
+version = "4.0.0-dev"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log 0.4.14",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "serde",
+ "sp-core",
+ "sp-io",
  "sp-runtime",
  "sp-std",
 ]

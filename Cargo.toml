@@ -87,6 +87,7 @@ members = [
 	"frame/election-provider-support",
 	"frame/example",
 	"frame/custom",
+	"frame/pallet-ipfs",
 	"frame/example-offchain-worker",
 	"frame/example-parallel",
 	"frame/executive",
