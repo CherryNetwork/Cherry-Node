@@ -70,7 +70,7 @@ use sp_std::{
 };
 use codec::HasCompact;
 
-pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"ipfs");
+pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"iris");
 
 
 pub mod crypto {
@@ -650,7 +650,6 @@ impl<T: Config> Pallet<T> {
                     }
                 },
                 DataCommand::CatBytes(owner, cid, recipient) => {
-                    // verify that the recipient owns at least one ticket
                     ensure!(AssetClassOwnership::<T>::contains_key(owner.clone(), cid.clone()), Error::<T>::NoSuchOwnedContent);
                     let asset_id = AssetClassOwnership::<T>::get(owner.clone(), cid.clone());
                     let balance = <pallet_assets::Pallet<T>>::balance(asset_id.clone(), recipient.clone());
@@ -665,12 +664,24 @@ impl<T: Config> Pallet<T> {
                                 &cid,
                                 &data,
                             );
-                            let call = Call::submit_rpc_ready {
-                                beneficiary: recipient.clone(),
-                            };
-                            SubmitTransaction::<T, Call<T>>::submit_unsigned_transaction(call.into())
-                                .map_err(|()| "Unable to submit unsigned transaction.")
-                                .map(|()| "done");
+                            let signer = Signer::<T, T::AuthorityId>::all_accounts();
+                            if !signer.can_sign() {
+                                log::error!(
+                                    "No local accounts available. Consider adding one via `author_insertKey` RPC.",
+                                );
+                            }
+                            let results = signer.send_signed_transaction(|_account| { 
+                                Call::submit_rpc_ready {
+                                    beneficiary: recipient.clone(),
+                                }
+                            });
+                    
+                            for (acc, res) in &results {
+                                match res {
+                                    Ok(()) => log::info!("Submitted ipfs results"),
+                                    Err(e) => log::error!("Failed to submit transaction: {:?}",  e),
+                                }
+                            }
                         },
                         Ok(_) => unreachable!("only CatBytes can be a response for that request type."),
                         Err(e) => log::error!("IPFS: cat error: {:?}", e),
