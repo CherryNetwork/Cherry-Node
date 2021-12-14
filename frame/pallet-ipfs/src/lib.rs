@@ -132,8 +132,13 @@ pub mod pallet {
 
 			<IpfsAsset<T>>::insert(&ipfs_id, ipfs);
 			<IpfsAssetOwned<T>>::try_mutate(&remove_acct, |ipfs_vec| {
-				let index = ipfs_vec.iter().position(|i| *i == ipfs_id).unwrap();
-				Ok(ipfs_vec.swap_remove(index))
+				if let Some(index) = ipfs_vec.iter().position(|i| *i == ipfs_id) {
+					ipfs_vec.swap_remove(index);
+					log::info!("peos\n\n");
+					Ok(true)
+				} else {
+					Ok(false)
+				}
 			})
 				.map_err(|_: bool| <Error<T>>::ExceedMaxIpfsOwned)?;
 
