@@ -128,11 +128,14 @@ pub mod pallet {
 
 			// Find user and index it from the owners list
 			let index = ipfs.owners.iter().position(|user| *user == remove_acct.clone()).unwrap();
-			ipfs.owners.remove(index);
+			ipfs.owners.swap_remove(index);
 
 			<IpfsAsset<T>>::insert(&ipfs_id, ipfs);
-			<IpfsAssetOwned<T>>::try_mutate(&remove_acct, |ipfs_vec| ipfs_vec.try_push(ipfs_id))
-				.map_err(|_| <Error<T>>::ExceedMaxIpfsOwned)?;
+			<IpfsAssetOwned<T>>::try_mutate(&remove_acct, |ipfs_vec| {
+				let index = ipfs_vec.iter().position(|i| *i == ipfs_id).unwrap();
+				Ok(ipfs_vec.swap_remove(index))
+			})
+				.map_err(|_: bool| <Error<T>>::ExceedMaxIpfsOwned)?;
 
 			Self::deposit_event(Event::RemoveOwner(remove_acct, ipfs_id));
 
