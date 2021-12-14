@@ -12,7 +12,7 @@ pub mod pallet {
 	};
 	use frame_system::pallet_prelude::*;
 	use scale_info::TypeInfo;
-	use sp_std::vec::Vec;
+	use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
 	type AccountOf<T> = <T as frame_system::Config>::AccountId;
 	type BalanceOf<T> =
@@ -23,7 +23,15 @@ pub mod pallet {
 	#[scale_info(skip_type_params(T))]
 	pub struct Ipfs<T: Config> {
 		pub cid_addr: Vec<u8>,
-		pub owners: Vec<AccountOf<T>>,
+		pub owners: BTreeMap<AccountOf<T>, OwnershipLayer>,
+	}
+
+	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
+	#[scale_info(skip_type_params(T))]
+	pub enum OwnershipLayer {
+		Owner,
+		Editor,
+		Reader,
 	}
 
 	#[pallet::pallet]
@@ -60,8 +68,12 @@ pub mod pallet {
 		TransferToSelf,
 		/// Handles checking whether the IPFS exists.
 		IpfsNotExist,
-		/// Handles checking that the IPFS is owned by the account transferring, buying or setting a price for it.
+		/// Handles checking that the IPFS is owned by the account.
 		NotIpfsOwner,
+		/// Handles checking that the IPFS is editable by the account.
+		NotIpfsEditor,
+		/// Handles checking that the IPFS is readable by the account.
+		NotIpfsReader,
 		/// Ensures that an account is different from the other.
 		SameAccount,
 	}
@@ -76,6 +88,7 @@ pub mod pallet {
 		Bought(T::AccountId, T::AccountId, T::Hash, BalanceOf<T>),
 		AddOwner(T::AccountId, T::Hash, T::AccountId),
 		RemoveOwner(T::AccountId, T::Hash),
+		ChangeOwnershipLayer(T::AccountId, T::Hash, T::AccountId),
 	}
 
 	// Storage items.
@@ -106,14 +119,18 @@ pub mod pallet {
 			let sender = ensure_signed(origin)?;
 			let ipfs_id = Self::mint(&sender, Vec::<u8>::new())?;
 
-			log::info!("A IPFS is born with ID: {:?} {:?}.", sp_std::str::from_utf8(&ci_address), ipfs_id);
+			log::info!(
+				"A IPFS is born with ID: {:?} {:?}.",
+				sp_std::str::from_utf8(&ci_address),
+				ipfs_id
+			);
 
 			Self::deposit_event(Event::Created(sender, ipfs_id));
 
 			Ok(())
 		}
 
-		#[pallet::weight(10)]
+		#[pallet::weight(100)]
 		pub fn remove_owner(
 			origin: OriginFor<T>,
 			ipfs_id: T::Hash,
@@ -125,10 +142,7 @@ pub mod pallet {
 			ensure!(Self::is_ipfs_owner(&ipfs_id, &signer)?, <Error<T>>::NotIpfsOwner);
 
 			let mut ipfs = Self::ipfs_asset(&ipfs_id).ok_or(<Error<T>>::IpfsNotExist)?;
-
-			// Find user and index it from the owners list
-			let index = ipfs.owners.iter().position(|user| *user == remove_acct.clone()).unwrap();
-			ipfs.owners.swap_remove(index);
+			ipfs.owners.remove(&remove_acct);
 
 			<IpfsAsset<T>>::insert(&ipfs_id, ipfs);
 			<IpfsAssetOwned<T>>::try_mutate(&remove_acct, |ipfs_vec| {
@@ -140,25 +154,26 @@ pub mod pallet {
 					Ok(false)
 				}
 			})
-				.map_err(|_: bool| <Error<T>>::ExceedMaxIpfsOwned)?;
+			.map_err(|_: bool| <Error<T>>::ExceedMaxIpfsOwned)?;
 
 			Self::deposit_event(Event::RemoveOwner(remove_acct, ipfs_id));
 
 			Ok(())
 		}
 
-		#[pallet::weight(10)]
+		#[pallet::weight(100)]
 		pub fn add_owner(
 			origin: OriginFor<T>,
 			ipfs_id: T::Hash,
 			add_acct: T::AccountId,
+			ownership_layer: OwnershipLayer,
 		) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
 			ensure!(Self::is_ipfs_owner(&ipfs_id, &signer)?, <Error<T>>::NotIpfsOwner);
 
 			let mut ipfs = Self::ipfs_asset(&ipfs_id).ok_or(<Error<T>>::IpfsNotExist)?;
 
-			ipfs.owners.push(add_acct.clone());
+			ipfs.owners.insert(add_acct.clone(), ownership_layer.clone());
 
 			<IpfsAsset<T>>::insert(&ipfs_id, ipfs);
 			<IpfsAssetOwned<T>>::try_mutate(&add_acct, |ipfs_vec| ipfs_vec.try_push(ipfs_id))
@@ -168,13 +183,41 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		#[pallet::weight(100)]
+		pub fn change_ownership(
+			origin: OriginFor<T>,
+			ipfs_id: T::Hash,
+			acct_to_change: T::AccountId,
+			ownership_layer: OwnershipLayer,
+		) -> DispatchResult {
+			let signer = ensure_signed(origin)?;
+			ensure!(Self::is_ipfs_owner(&ipfs_id, &signer)?, <Error<T>>::NotIpfsOwner);
+
+			let mut ipfs = Self::ipfs_asset(&ipfs_id).ok_or(<Error<T>>::IpfsNotExist)?;
+			ensure!(ipfs.owners.contains_key(&acct_to_change), <Error<T>>::NotIpfsOwner);
+
+			ipfs.owners.insert(acct_to_change.clone(), ownership_layer);
+
+			<IpfsAsset<T>>::insert(&ipfs_id, ipfs);
+			<IpfsAssetOwned<T>>::try_mutate(&acct_to_change, |ipfs_vec| ipfs_vec.try_push(ipfs_id))
+				.map_err(|_| <Error<T>>::ExceedMaxIpfsOwned)?;
+
+			Self::deposit_event(Event::ChangeOwnershipLayer(signer, ipfs_id, acct_to_change));
+
+			Ok(())
+		}
 	}
 
 	impl<T: Config> Pallet<T> {
 		pub fn mint(owner: &T::AccountId, cid: Vec<u8>) -> Result<T::Hash, Error<T>> {
-			let mut ipfs = Ipfs::<T> { cid_addr: cid, owners: Vec::<AccountOf<T>>::new() };
+			let mut ipfs = Ipfs::<T> {
+				cid_addr: cid.clone(),
+				owners: BTreeMap::<AccountOf<T>, OwnershipLayer>::new(),
+			};
 
-			ipfs.owners.push(owner.clone());
+			// Example of inserting an owner
+			ipfs.owners.insert(owner.clone(), OwnershipLayer::Owner);
 
 			log::info!("{:?}", sp_std::str::from_utf8(&ipfs.cid_addr));
 
@@ -191,21 +234,39 @@ pub mod pallet {
 			Ok(ipfs_id)
 		}
 
-		pub fn push_owner(ipfs_id: &T::Hash, acct: &T::AccountId) -> Result<T::Hash, Error<T>> {
+		// Helper to check correct IPFS owner
+		pub fn is_ipfs_owner(ipfs_id: &T::Hash, acct: &T::AccountId) -> Result<bool, Error<T>> {
 			match Self::ipfs_asset(ipfs_id) {
-				Some(mut ipfs) => {
-					ipfs.owners.push(acct.clone());
-					Ok(*ipfs_id)
+				Some(ipfs) => {
+					if ipfs.owners.iter().any(|i| *i.0 == *acct && *i.1 == OwnershipLayer::Owner) {
+						Ok(true)
+					} else {
+						Ok(false)
+					}
 				}
 				None => Err(<Error<T>>::IpfsNotExist),
 			}
 		}
 
-		// Helper to check correct IPFS owner
-		pub fn is_ipfs_owner(ipfs_id: &T::Hash, acct: &T::AccountId) -> Result<bool, Error<T>> {
+		// Helper to check correct IPFS Editor
+		pub fn is_ipfs_editor(ipfs_id: &T::Hash, acct: &T::AccountId) -> Result<bool, Error<T>> {
 			match Self::ipfs_asset(ipfs_id) {
 				Some(ipfs) => {
-					if ipfs.owners.iter().any(|i| *i == *acct) {
+					if ipfs.owners.iter().any(|i| *i.0 == *acct && *i.1 == OwnershipLayer::Editor) {
+						Ok(true)
+					} else {
+						Ok(false)
+					}
+				}
+				None => Err(<Error<T>>::IpfsNotExist),
+			}
+		}
+
+		// Helper to check correct IPFS Reader
+		pub fn is_ipfs_reader(ipfs_id: &T::Hash, acct: &T::AccountId) -> Result<bool, Error<T>> {
+			match Self::ipfs_asset(ipfs_id) {
+				Some(ipfs) => {
+					if ipfs.owners.iter().any(|i| *i.0 == *acct && *i.1 == OwnershipLayer::Reader) {
 						Ok(true)
 					} else {
 						Ok(false)
