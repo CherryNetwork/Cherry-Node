@@ -43,13 +43,14 @@ sp-version = { version = "4.0.0-dev", default-features = false, path = "../../..
 # Used for the node template's RPCs
 frame-system-rpc-runtime-api = { version = "4.0.0-dev", default-features = false, path = "../../../frame/system/rpc/runtime-api/" }
 pallet-transaction-payment-rpc-runtime-api = { version = "4.0.0-dev", default-features = false, path = "../../../frame/transaction-payment/rpc/runtime-api/" }
+pallet-iris-rpc-runtime-api = { version = "4.0.0-dev", default-features = false, path = "../pallets/template/rpc/runtime-api/" }
 
 # Used for runtime benchmarking
 frame-benchmarking = { version = "4.0.0-dev", default-features = false, path = "../../../frame/benchmarking", optional = true }
 frame-system-benchmarking = { version = "4.0.0-dev", default-features = false, path = "../../../frame/system/benchmarking", optional = true }
 hex-literal = { version = "0.3.1", optional = true }
 
-pallet-template = { version = "3.0.0", default-features = false, path = "../pallets/template" }
+pallet-iris = { version = "3.0.0", default-features = false, path = "../pallets/template" }
 log = { version = "0.4.14", default-features = false }
 
 [build-dependencies]
@@ -69,9 +70,10 @@ std = [
 	"pallet-grandpa/std",
 	"pallet-randomness-collective-flip/std",
 	"pallet-sudo/std",
-	"pallet-template/std",
+	"pallet-iris/std",
 	"pallet-timestamp/std",
 	"pallet-transaction-payment-rpc-runtime-api/std",
+	"pallet-iris-rpc-runtime-api/std",
 	"pallet-transaction-payment/std",
 	"pallet-assets/std",
 	"sp-api/std",
@@ -93,7 +95,7 @@ runtime-benchmarks = [
 	"frame-system/runtime-benchmarks",
 	"hex-literal",
 	"pallet-balances/runtime-benchmarks",
-	"pallet-template/runtime-benchmarks",
+	"pallet-iris/runtime-benchmarks",
 	"pallet-timestamp/runtime-benchmarks",
 	"pallet-assets/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",

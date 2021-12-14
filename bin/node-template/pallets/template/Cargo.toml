@@ -1,12 +1,12 @@
 [package]
 authors = ['Substrate DevHub <https://github.com/substrate-developer-hub>']
 edition = '2018'
-name = 'pallet-template'
+name = 'pallet-iris'
 version = "3.0.0"
 license = "Unlicense"
 homepage = "https://substrate.dev"
 repository = "https://github.com/substrate-developer-hub/substrate-node-template/"
-description = "FRAME pallet template for defining custom runtime logic."
+description = "FRAME pallet template for Iris."
 readme = "README.md"
 publish = false
 
@@ -17,17 +17,21 @@ targets = ["x86_64-unknown-linux-gnu"]
 codec = { package = "parity-scale-codec", version = "2.0.0", default-features = false, features = [
 	"derive",
 ] }
-pallet-assets = { version = "4.0.0-dev", default-features = false, path = "../../../../frame/assets" }
 scale-info = { version = "1.0", default-features = false, features = ["derive"] }
-frame-support = { default-features = false, version = "4.0.0-dev", path = "../../../../frame/support" }
-frame-system = { default-features = false, version = "4.0.0-dev", path = "../../../../frame/system" }
-frame-benchmarking = { default-features = false, version = "4.0.0-dev", path = "../../../../frame/benchmarking", optional = true }
+
 sp-io = { default-features = false, version = "4.0.0-dev", path = "../../../../primitives/io" }
 sp-std = { default-features = false, version = "4.0.0-dev", path = "../../../../primitives/std" }
 sp-core = { default-features = false, version = "4.0.0-dev", path = "../../../../primitives/core" }
 sp-runtime = { default-features = false, version = "4.0.0-dev", path = "../../../../primitives/runtime" }
 sp-keystore = { version = "0.10.0-dev", path = "../../../../primitives/keystore", optional = true }
+
+frame-support = { default-features = false, version = "4.0.0-dev", path = "../../../../frame/support" }
+frame-system = { default-features = false, version = "4.0.0-dev", path = "../../../../frame/system" }
+frame-benchmarking = { default-features = false, version = "4.0.0-dev", path = "../../../../frame/benchmarking", optional = true }
 log = { version = "0.4.14", default-features = false }
+
+pallet-balances = { version = "4.0.0-dev", default-features = false, path = "../../../../frame/balances" }
+pallet-assets = { version = "4.0.0-dev", default-features = false, path = "../../../../frame/assets" }
 
 [features]
 default = ['std']
@@ -40,8 +44,10 @@ std = [
 	'sp-io/std',
 	'sp-std/std',
 	'sp-keystore/std',
+	'sp-runtime/std',
 	'log/std',
 	'pallet-assets/std',
+	'pallet-balances/std',
 ]
 
 runtime-benchmarks = ["frame-benchmarking"]
