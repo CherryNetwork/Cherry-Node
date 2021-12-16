@@ -2,8 +2,6 @@
 
 #![cfg_attr(not(feature = "std"), no_std)]
 
-use codec::Codec;
-use sp_runtime::traits::MaybeDisplay;
 use sp_core::Bytes;
 
 // declare the runtime API

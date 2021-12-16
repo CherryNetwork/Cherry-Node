@@ -20,7 +20,6 @@ use std::{collections::HashSet, convert::TryFrom, str::FromStr, sync::Arc, threa
 
 use crate::NetworkProvider;
 use codec::{Decode, Encode};
-use futures::Future;
 pub use http::SharedClient;
 use sc_network::{Multiaddr, PeerId};
 use sp_core::{
