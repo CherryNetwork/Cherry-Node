@@ -96,6 +96,9 @@ pub mod pallet {
 		AddOwner(T::AccountId, T::Hash, T::AccountId),
 		RemoveOwner(T::AccountId, T::Hash),
 		ChangeOwnershipLayer(T::AccountId, T::Hash, T::AccountId),
+		WriteIpfsAsset(T::AccountId, T::Hash),
+		ReadIpfsAsset(T::AccountId, T::Hash),
+		DeleteIpfsAsset(T::AccountId, T::Hash),
 	}
 
 	// Storage items.
@@ -136,7 +139,7 @@ pub mod pallet {
 
 			Ok(())
 		}
-
+		/// Remove the ownership layer of a user.
 		#[pallet::weight(0)]
 		pub fn remove_owner(
 			origin: OriginFor<T>,
@@ -172,6 +175,7 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Give ownership layer to a user.
 		#[pallet::weight(0)]
 		pub fn add_owner(
 			origin: OriginFor<T>,
@@ -200,6 +204,7 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Change the ownership layer of a user
 		#[pallet::weight(0)]
 		pub fn change_ownership(
 			origin: OriginFor<T>,
@@ -226,6 +231,76 @@ pub mod pallet {
 				.map_err(|_| <Error<T>>::ExceedMaxIpfsOwned)?;
 
 			Self::deposit_event(Event::ChangeOwnershipLayer(signer, ipfs_id, acct_to_change));
+
+			Ok(())
+		}
+
+		/// wip: Edit an IPFS asset.
+		#[pallet::weight(0)]
+		pub fn write_file(
+			origin: OriginFor<T>,
+			ipfs_id: T::Hash,
+		) -> DispatchResult {
+			let writer = ensure_signed(origin)?;
+			ensure!(
+				Self::determine_account_ownership_layer(&ipfs_id, &writer)?
+					== OwnershipLayer::Owner ||
+				Self::determine_account_ownership_layer(&ipfs_id, &writer)?
+					== OwnershipLayer::Editor,
+				<Error<T>>::NotIpfsEditor
+			);
+			
+			let mut ipfs = Self::ipfs_asset(&ipfs_id).ok_or(<Error<T>>::IpfsNotExist)?;
+
+			Self::deposit_event(Event::WriteIpfsAsset(writer, ipfs_id));
+
+			Ok(())
+		}
+
+		/// wip: Read an IPFS asset.
+		#[pallet::weight(0)]
+		pub fn read_file(
+			origin: OriginFor<T>,
+			ipfs_id: T::Hash,
+		) -> DispatchResult {
+			let reader = ensure_signed(origin)?;
+			ensure!(
+				Self::determine_account_ownership_layer(&ipfs_id, &reader)?
+					== OwnershipLayer::Owner ||
+				Self::determine_account_ownership_layer(&ipfs_id, &reader)?
+					== OwnershipLayer::Editor ||
+				Self::determine_account_ownership_layer(&ipfs_id, &reader)?
+					== OwnershipLayer::Reader,
+				<Error<T>>::NotIpfsReader
+			);
+
+			let mut ipfs = Self::ipfs_asset(&ipfs_id).ok_or(<Error<T>>::IpfsNotExist)?;
+
+			// let mut context = sp_std::fs::read_file(&ipfs_id);
+
+			Self::deposit_event(Event::ReadIpfsAsset(reader, ipfs_id));
+			
+			Ok(())
+		}
+
+		/// wip: Delete an IPFS asset.
+		#[pallet::weight(0)]
+		pub fn delete_file(
+			origin: OriginFor<T>,
+			ipfs_id: T::Hash,
+		) -> DispatchResult {
+			let signer = ensure_signed(origin)?;
+			ensure!(
+				Self::determine_account_ownership_layer(&ipfs_id, &signer)?
+					== OwnershipLayer::Owner,
+				<Error<T>>::NotIpfsOwner
+			);
+			
+			let mut ipfs = Self::ipfs_asset(&ipfs_id).ok_or(<Error<T>>::IpfsNotExist)?;
+
+			// remove the ipfs from IpfsAsset<T> and Ipfs<T>
+
+			Self::deposit_event(Event::DeleteIpfsAsset(signer, ipfs_id));
 
 			Ok(())
 		}
