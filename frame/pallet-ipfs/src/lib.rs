@@ -249,7 +249,7 @@ pub mod pallet {
 					== OwnershipLayer::Editor,
 				<Error<T>>::NotIpfsEditor
 			);
-			
+
 			let mut ipfs = Self::ipfs_asset(&ipfs_id).ok_or(<Error<T>>::IpfsNotExist)?;
 
 			Self::deposit_event(Event::WriteIpfsAsset(writer, ipfs_id));
@@ -276,10 +276,8 @@ pub mod pallet {
 
 			let mut ipfs = Self::ipfs_asset(&ipfs_id).ok_or(<Error<T>>::IpfsNotExist)?;
 
-			// let mut context = sp_std::fs::read_file(&ipfs_id);
-
 			Self::deposit_event(Event::ReadIpfsAsset(reader, ipfs_id));
-			
+
 			Ok(())
 		}
 
@@ -295,7 +293,7 @@ pub mod pallet {
 					== OwnershipLayer::Owner,
 				<Error<T>>::NotIpfsOwner
 			);
-			
+
 			let mut ipfs = Self::ipfs_asset(&ipfs_id).ok_or(<Error<T>>::IpfsNotExist)?;
 
 			// remove the ipfs from IpfsAsset<T> and Ipfs<T>
