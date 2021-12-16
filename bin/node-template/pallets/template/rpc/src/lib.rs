@@ -1,17 +1,15 @@
 pub use self::gen_client::Client as IrisClient;
-use codec::{Codec, Decode};
 use jsonrpc_core::{Error as RpcError, ErrorCode, Result};
 use jsonrpc_derive::rpc;
 pub use pallet_iris_rpc_runtime_api::IrisApi as IrisRuntimeApi;
 use sp_api::ProvideRuntimeApi;
 use sp_blockchain::HeaderBackend;
 use sp_core::Bytes;
-use sp_rpc::number::NumberOrHex;
 use sp_runtime::{
 	generic::BlockId,
-	traits::{Block as BlockT, MaybeDisplay},
+	traits::{Block as BlockT},
 };
-use std::{convert::TryInto, sync::Arc};
+use std::sync::Arc;
 
 #[rpc]
 pub trait IrisApi<BlockHash> {

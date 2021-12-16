@@ -7,18 +7,18 @@
 //! Disclaimer: This pallet is in the tadpole state
 //!
 //! ### Goals
+//! The Iris module provides functionality for creation and management of storage assets and access management
 //! 
-//! ## Interface
-//!
-//! The Iris module provides functionality for creation and management of storage assets 
 //! ### Dispatchable Functions 
 //!
 //! #### Permissionless functions
 //! * create_storage_asset
-//! * 
+//! * request_data
 //!
 //! #### Permissioned Functions
-//! * submit_ipfs_results (private?)
+//! * submit_ipfs_add_results
+//! * submit_ipfs_identity
+//! * submit_rpc_ready
 //! * destroy_ticket
 //! * mint_tickets
 //!
@@ -26,14 +26,14 @@
 use scale_info::TypeInfo;
 use codec::{Encode, Decode};
 use frame_support::{
-    debug,
     ensure,
     traits::ReservableCurrency,
 };
 use frame_system::{
     self as system, ensure_signed,
     offchain::{
-        AppCrypto, CreateSignedTransaction, SendSignedTransaction, Signer, SubmitTransaction,
+        SendSignedTransaction, 
+        Signer,
     },
 };
 
@@ -45,22 +45,13 @@ use sp_core::{
     Bytes,
 };
 
-use sp_io::{
-    offchain::timestamp,
-    offchain_index,
-};
+use sp_io::offchain::timestamp;
 use sp_runtime::{
     offchain::{ 
         ipfs,
-        http,
     },
     RuntimeDebug,
-    transaction_validity::{
-		InvalidTransaction, TransactionSource, TransactionValidity, ValidTransaction,
-	},
-    traits::{
-        AtLeast32BitUnsigned, StaticLookup,
-    }
+    traits::StaticLookup,
 };
 use sp_std::{
     str,
@@ -68,7 +59,6 @@ use sp_std::{
     prelude::*,
     convert::TryInto,
 };
-use codec::HasCompact;
 
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"iris");
 
@@ -121,7 +111,7 @@ mod benchmarking;
 #[frame_support::pallet]
 pub mod pallet {
     use super::*;
-	use frame_support::{debug, dispatch::DispatchResult, pallet_prelude::*};
+	use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
 	use frame_system::{
         pallet_prelude::*,
         offchain::{
@@ -129,10 +119,8 @@ pub mod pallet {
             CreateSignedTransaction,
         },
     };
-	use sp_core::offchain::{
-		Duration, IpfsRequest, IpfsResponse, OpaqueMultiaddr, Timestamp,
-	};
-	use sp_std::{str, vec::Vec, prelude::*};
+	use sp_core::offchain::OpaqueMultiaddr;
+	use sp_std::{str, vec::Vec};
 
 	#[pallet::config]
     /// the module configuration trait
@@ -279,27 +267,6 @@ pub mod pallet {
         }
     }
 
-    #[pallet::validate_unsigned]
-	impl<T: Config> ValidateUnsigned for Pallet<T> {
-		type Call = Call<T>;
-		/// Validate unsigned call to this module.
-		///
-		/// By default unsigned transactions are disallowed, but implementing the validator
-		/// here we make sure that some particular calls (the ones produced by offchain worker)
-		/// are marked as valid.
-        ///
-        /// * `_source`: The source of the transaction
-        /// * `call`: The call creating the utxo
-        ///
-		fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
-			if let Call::submit_ipfs_add_results{admin, cid, id, balance} = call {
-				Self::validate_transaction_parameters(cid.to_vec())
-			} else {
-				InvalidTransaction::Call.into()
-			}
-		}
-	}
-
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 
@@ -388,7 +355,7 @@ pub mod pallet {
             let new_origin = system::RawOrigin::Signed(who).into();
 
             <pallet_assets::Pallet<T>>::create(new_origin, id.clone(), admin.clone(), balance)
-                .map_err(|_| Error::<T>::CantCreateAssetClass);
+                .map_err(|_| Error::<T>::CantCreateAssetClass)?;
             
             let which_admin = T::Lookup::lookup(admin.clone())?;
             <AssetClassOwnership<T>>::insert(which_admin, cid.clone(), id.clone());
@@ -429,6 +396,7 @@ pub mod pallet {
             beneficiary: T::AccountId,
             // host: Vec<u8>,
         ) -> DispatchResult {
+            ensure_signed(origin)?;
             Self::deposit_event(Event::DataReady(beneficiary));
             Ok(())
         }
@@ -456,7 +424,7 @@ pub mod pallet {
             
             let asset_id = AssetClassOwnership::<T>::get(who.clone(), cid.clone(),);
             <pallet_assets::Pallet<T>>::mint(new_origin, asset_id.clone(), beneficiary.clone(), amount)
-                .map_err(|_| Error::<T>::CantMintAssets);
+                .map_err(|_| Error::<T>::CantMintAssets)?;
             
             <AssetAccess<T>>::insert(beneficiary_accountid.clone(), cid.clone(), who.clone());
         
@@ -475,12 +443,12 @@ pub mod pallet {
         #[pallet::weight(0)]
         pub fn purchase_ticket(
             origin: OriginFor<T>,
-            owner: <T::Lookup as StaticLookup>::Source,
-            cid: Vec<u8>,
-            #[pallet::compact] amount: T::Balance,
+            _owner: <T::Lookup as StaticLookup>::Source,
+            _cid: Vec<u8>,
+            #[pallet::compact] _amount: T::Balance,
             _test: T::Signature,
         ) -> DispatchResult {
-            let who = ensure_signed(origin);
+            ensure_signed(origin)?;
             // determine price for amount of asset and verify origin has a min balance
             // transfer native currency to asset class admin
             // admin transfers the requested amount of tokens to the buyer
@@ -497,8 +465,8 @@ impl<T: Config> Pallet<T> {
     /// * message: The signed message as bytes
     ///
     pub fn retrieve_bytes(
-        public_key: Bytes,
-		signature: Bytes,
+        _public_key: Bytes,
+		_signature: Bytes,
 		message: Bytes,
     ) -> Bytes {
         // TODO: Verify signature, update offchain storage keys...
@@ -577,7 +545,7 @@ impl<T: Config> Pallet<T> {
                 }
             });
     
-            for (acc, res) in &results {
+            for (_, res) in &results {
                 match res {
                     Ok(()) => log::info!("Submitted ipfs identity results"),
                     Err(e) => log::error!("Failed to submit transaction: {:?}",  e),
@@ -599,7 +567,7 @@ impl<T: Config> Pallet<T> {
         let deadline = Some(timestamp().add(Duration::from_millis(5_000)));
         for cmd in data_queue.into_iter() {
             match cmd {
-                DataCommand::AddBytes(addr, cid, admin, name, id, balance) => {
+                DataCommand::AddBytes(addr, cid, admin, _name, id, balance) => {
                     Self::ipfs_request(IpfsRequest::Connect(addr.clone()), deadline)?;
                     log::info!(
                         "IPFS: connected to {}",
@@ -634,7 +602,7 @@ impl<T: Config> Pallet<T> {
                                         }
                                      });
                             
-                                    for (acc, res) in &results {
+                                    for (_, res) in &results {
                                         match res {
                                             Ok(()) => log::info!("Submitted ipfs results"),
                                             Err(e) => log::error!("Failed to submit transaction: {:?}",  e),
@@ -676,7 +644,7 @@ impl<T: Config> Pallet<T> {
                                 }
                             });
                     
-                            for (acc, res) in &results {
+                            for (_, res) in &results {
                                 match res {
                                     Ok(()) => log::info!("Submitted ipfs results"),
                                     Err(e) => log::error!("Failed to submit transaction: {:?}",  e),
@@ -709,13 +677,5 @@ impl<T: Config> Pallet<T> {
             if peer_count == 1 { "" } else { "s" },
         );
         Ok(())
-    }
-
-    fn validate_transaction_parameters(cid: Vec<u8>) -> TransactionValidity {
-        /// for now assume everything is valid
-        ValidTransaction::with_tag_prefix("ipfs")
-            .longevity(5)
-            .propagate(true)
-            .build()
     }
 }
