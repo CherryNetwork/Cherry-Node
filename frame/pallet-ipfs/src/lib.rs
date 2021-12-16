@@ -283,5 +283,23 @@ pub mod pallet {
 				None => Err(<Error<T>>::IpfsNotExist),
 			}
 		}
+
+		// Helper to determine the ownership layer of a user
+		pub fn determine_ownership_layer(ipfs_id: &T::Hash, acct: &T::AccountId) -> Result<OwnershipLayer, Error<T>> {
+			match Self::ipfs_asset(ipfs_id) {
+				Some(ipfs) => {
+					if ipfs.owners.iter().any(|i| *i.0 == *acct && *i.1 == OwnershipLayer::Owner) {					
+						Ok(OwnershipLayer::Owner)
+					} else if ipfs.owners.iter().any(|i| *i.0 == *acct && *i.1 == OwnershipLayer::Editor) {
+						Ok(OwnershipLayer::Editor)
+					} else if ipfs.owners.iter().any(|i| *i.0 == *acct && *i.1 == OwnershipLayer::Reader) {
+						Ok(OwnershipLayer::Reader)
+					} else {
+						Ok(())
+					}
+				}
+				None => Err(<Error<T>>::IpfsNotExist),
+			}
+		}
 	}
 }
