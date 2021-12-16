@@ -235,7 +235,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// wip: Edit an IPFS asset.
+		/// TODO: Edit an IPFS asset.
 		#[pallet::weight(0)]
 		pub fn write_file(
 			origin: OriginFor<T>,
@@ -257,7 +257,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// wip: Read an IPFS asset.
+		/// TODO: Read an IPFS asset.
 		#[pallet::weight(0)]
 		pub fn read_file(
 			origin: OriginFor<T>,
@@ -283,7 +283,7 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// wip: Delete an IPFS asset.
+		/// TODO: Delete an IPFS asset.
 		#[pallet::weight(0)]
 		pub fn delete_file(
 			origin: OriginFor<T>,
