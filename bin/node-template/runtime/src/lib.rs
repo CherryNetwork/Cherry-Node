@@ -336,7 +336,6 @@ parameter_types! {
 impl pallet_ipfs::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
-	type IpfsRandomness = RandomnessCollectiveFlip;
 	type MaxIpfsOwned = MaxIpfsOwned;
 }
 
