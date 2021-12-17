@@ -1,15 +1,16 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+#[cfg(test)]
+mod mock;
+
+#[cfg(test)]
+mod tests;
+
 pub use pallet::*;
 
 #[frame_support::pallet]
 pub mod pallet {
-	use frame_support::{
-		ensure,
-		pallet_prelude::*,
-		sp_runtime::traits::Hash,
-		traits::{Currency, Randomness},
-	};
+	use frame_support::{ensure, pallet_prelude::*, sp_runtime::traits::Hash, traits::Currency};
 	use frame_system::pallet_prelude::*;
 	use scale_info::TypeInfo;
 	use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
@@ -55,9 +56,6 @@ pub mod pallet {
 		/// The maximum amount of IPFS Assets a single account can own.
 		#[pallet::constant]
 		type MaxIpfsOwned: Get<u32>;
-
-		/// The type of Randomness we want to specify for this pallet.
-		type IpfsRandomness: Randomness<Self::Hash, Self::BlockNumber>;
 	}
 
 	#[pallet::error]
@@ -237,16 +235,13 @@ pub mod pallet {
 
 		/// TODO: Edit an IPFS asset.
 		#[pallet::weight(0)]
-		pub fn write_file(
-			origin: OriginFor<T>,
-			ipfs_id: T::Hash,
-		) -> DispatchResult {
+		pub fn write_file(origin: OriginFor<T>, ipfs_id: T::Hash) -> DispatchResult {
 			let writer = ensure_signed(origin)?;
 			ensure!(
 				Self::determine_account_ownership_layer(&ipfs_id, &writer)?
-					== OwnershipLayer::Owner ||
-				Self::determine_account_ownership_layer(&ipfs_id, &writer)?
-					== OwnershipLayer::Editor,
+					== OwnershipLayer::Owner
+					|| Self::determine_account_ownership_layer(&ipfs_id, &writer)?
+						== OwnershipLayer::Editor,
 				<Error<T>>::NotIpfsEditor
 			);
 
@@ -259,18 +254,15 @@ pub mod pallet {
 
 		/// TODO: Read an IPFS asset.
 		#[pallet::weight(0)]
-		pub fn read_file(
-			origin: OriginFor<T>,
-			ipfs_id: T::Hash,
-		) -> DispatchResult {
+		pub fn read_file(origin: OriginFor<T>, ipfs_id: T::Hash) -> DispatchResult {
 			let reader = ensure_signed(origin)?;
 			ensure!(
 				Self::determine_account_ownership_layer(&ipfs_id, &reader)?
-					== OwnershipLayer::Owner ||
-				Self::determine_account_ownership_layer(&ipfs_id, &reader)?
-					== OwnershipLayer::Editor ||
-				Self::determine_account_ownership_layer(&ipfs_id, &reader)?
-					== OwnershipLayer::Reader,
+					== OwnershipLayer::Owner
+					|| Self::determine_account_ownership_layer(&ipfs_id, &reader)?
+						== OwnershipLayer::Editor
+					|| Self::determine_account_ownership_layer(&ipfs_id, &reader)?
+						== OwnershipLayer::Reader,
 				<Error<T>>::NotIpfsReader
 			);
 
@@ -283,10 +275,7 @@ pub mod pallet {
 
 		/// TODO: Delete an IPFS asset.
 		#[pallet::weight(0)]
-		pub fn delete_file(
-			origin: OriginFor<T>,
-			ipfs_id: T::Hash,
-		) -> DispatchResult {
+		pub fn delete_file(origin: OriginFor<T>, ipfs_id: T::Hash) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
 			ensure!(
 				Self::determine_account_ownership_layer(&ipfs_id, &signer)?
