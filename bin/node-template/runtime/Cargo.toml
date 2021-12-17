@@ -23,7 +23,6 @@ pallet-randomness-collective-flip = { version = "4.0.0-dev", default-features = 
 pallet-sudo = { version = "4.0.0-dev", default-features = false, path = "../../../frame/sudo" }
 pallet-assets = { version = "4.0.0-dev", default-features = false, path = "../../../frame/assets" }
 pallet-custom = { version = "4.0.0-dev", default-features = false, path = "../../../frame/custom" }
-pallet-ipfs = { version = "4.0.0-dev", default-features = false, path = "../../../frame/pallet-ipfs" }
 frame-system = { version = "4.0.0-dev", default-features = false, path = "../../../frame/system" }
 pallet-timestamp = { version = "4.0.0-dev", default-features = false, path = "../../../frame/timestamp" }
 pallet-transaction-payment = { version = "4.0.0-dev", default-features = false, path = "../../../frame/transaction-payment" }
@@ -52,7 +51,7 @@ hex-literal = { version = "0.3.1", optional = true }
 
 pallet-iris = { version = "3.0.0", default-features = false, path = "../pallets/template" }
 log = { version = "0.4.14", default-features = false }
-
+pallet-ipfs = { version = "4.0.0-dev", default-features = false, path = "../pallets/pallet-ipfs" }
 [build-dependencies]
 substrate-wasm-builder = { version = "5.0.0-dev", path = "../../../utils/wasm-builder" }
 

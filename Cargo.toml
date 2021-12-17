@@ -3,6 +3,7 @@ resolver = "2"
 
 members = [
 	"bin/node-template/node",
+	"bin/node-template/pallets/pallet-ipfs",
 	"bin/node-template/pallets/template",
 	"bin/node-template/runtime",
 	"bin/node/bench",
@@ -87,7 +88,7 @@ members = [
 	"frame/election-provider-support",
 	"frame/example",
 	"frame/custom",
-	"frame/pallet-ipfs",
+
 	"frame/example-offchain-worker",
 	"frame/example-parallel",
 	"frame/executive",
