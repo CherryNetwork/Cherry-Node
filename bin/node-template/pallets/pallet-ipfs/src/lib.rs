@@ -154,6 +154,8 @@ pub mod pallet {
 			);
 
 			let mut ipfs = Self::ipfs_asset(&ipfs_id).ok_or(<Error<T>>::IpfsNotExist)?;
+			ensure!(ipfs.owners.contains_key(&remove_acct), <Error<T>>::AccNotExist);
+
 			ipfs.owners.remove(&remove_acct);
 
 			<IpfsAsset<T>>::insert(&ipfs_id, ipfs);
