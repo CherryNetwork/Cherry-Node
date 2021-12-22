@@ -407,7 +407,7 @@ construct_runtime!(
 		// Include the custom logic from the pallet-template in the runtime.
 		CustomAssets: pallet_custom::{Pallet, Call, Storage, Event<T>},
 		Ipfs: pallet_ipfs::{Pallet, Call, Storage, Event<T>},
-		Iris: pallet_iris::{Pallet, Call, Storage, Event<T>, ValidateUnsigned},
+		Iris: pallet_iris::{Pallet, Call, Storage, Event<T>},
 		// removed call to make extrinsics uncallable
 		Assets: pallet_assets::{Pallet, Storage, Event<T>},
 	}
