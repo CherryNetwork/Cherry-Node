@@ -1,18 +1,44 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
+pub use pallet::*;
+
 #[cfg(test)]
 mod mock;
 
 #[cfg(test)]
 mod tests;
 
-pub use pallet::*;
+use codec::{Decode, Encode};
+use frame_support::RuntimeDebug;
+use frame_system::offchain::{SendSignedTransaction, Signer};
+use scale_info::TypeInfo;
+use sp_core::{
+	crypto::KeyTypeId,
+	offchain::{Duration, IpfsRequest, IpfsResponse, OpaqueMultiaddr, StorageKind, Timestamp},
+	Bytes,
+};
+use sp_io::offchain::timestamp;
+use sp_std::vec::Vec;
+
+#[derive(Encode, Decode, RuntimeDebug, PartialEq, TypeInfo)]
+pub enum DataCommand<AccountId> {
+	AddBytes(OpaqueMultiaddr, Vec<u8>, AccountId),
+}
 
 #[frame_support::pallet]
 pub mod pallet {
+	use super::*;
 	use frame_support::{ensure, pallet_prelude::*, sp_runtime::traits::Hash, traits::Currency};
-	use frame_system::pallet_prelude::*;
+	use frame_system::{
+		offchain::{AppCrypto, CreateSignedTransaction},
+		pallet_prelude::*,
+	};
 	use scale_info::TypeInfo;
+	use sp_core::offchain::OpaqueMultiaddr;
+	use sp_runtime::{
+		offchain::{ipfs, IpfsRequest, IpfsResponse},
+		traits::StaticLookup,
+	};
 	use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
 	type AccountOf<T> = <T as frame_system::Config>::AccountId;
@@ -45,8 +71,18 @@ pub mod pallet {
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
+	#[pallet::storage]
+	#[pallet::getter(fn bootstrap_nodes)]
+	pub(super) type BootstrapNodes<T: Config> =
+		StorageMap<_, Blake2_128Concat, Vec<u8>, Vec<OpaqueMultiaddr>, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn data_queue)]
+	pub(super) type DataQueue<T: Config> =
+		StorageValue<_, Vec<DataCommand<T::AccountId>>, ValueQuery>;
+
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: CreateSignedTransaction<Call<Self>> + frame_system::Config {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -56,6 +92,7 @@ pub mod pallet {
 		/// The maximum amount of IPFS Assets a single account can own.
 		#[pallet::constant]
 		type MaxIpfsOwned: Get<u32>;
+		type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
 	}
 
 	#[pallet::error]
@@ -82,11 +119,17 @@ pub mod pallet {
 		SameAccount,
 		/// Ensures that an accounts onwership layer  is different.
 		SameOwnershipLayer,
+		CantCreateRequest,
+		RequestTimeout,
+		RequestFailed,
 	}
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
+		/// A request to add bytes was queued
+		QueuedDataToAdd(T::AccountId),
+		PublishedIdentity(T::AccountId),
 		Created(T::AccountId, T::Hash),
 		PriceSet(T::AccountId, T::Hash, Option<BalanceOf<T>>),
 		Transferred(T::AccountId, T::AccountId, T::Hash),
@@ -117,26 +160,71 @@ pub mod pallet {
 	pub(super) type IpfsAssetOwned<T: Config> =
 		StorageMap<_, Twox64Concat, T::AccountId, BoundedVec<T::Hash, T::MaxIpfsOwned>, ValueQuery>;
 
+	#[pallet::hooks]
+	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
+		fn on_initialize(block_no: BlockNumberFor<T>) -> Weight {
+			if block_no % 2u32.into() == 1u32.into() {
+				<DataQueue<T>>::kill();
+			}
+
+			0
+		}
+
+		fn offchain_worker(block_no: BlockNumberFor<T>) {
+			if block_no % 5u32.into() == 0u32.into() {
+				if let Err(e) = Self::connection_housekeeping() {
+					log::error!(
+						"IPFS: Encountered an error while processing data requests: {:?}",
+						e
+					);
+				}
+			}
+
+			// handle data requests each block
+			if let Err(e) = Self::handle_data_requests() {
+				log::error!("IPFS: Encountered an error while processing data requests: {:?}", e);
+			}
+
+			// TODO: print_metadata
+		}
+	}
+
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Create a new unique IPFS.
 		///
 		/// The actual IPFS creation is done in the `mint()` function.
 		#[pallet::weight(0)]
-		pub fn create_ipfs(origin: OriginFor<T>, ci_address: Vec<u8>) -> DispatchResult {
+		pub fn create_ipfs_asset(
+			origin: OriginFor<T>,
+			addr: Vec<u8>,
+			ci_address: Vec<u8>,
+		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			let ipfs_id = Self::mint(&sender, Vec::<u8>::new())?;
+			let multiaddr = OpaqueMultiaddr(addr);
+			<DataQueue<T>>::mutate(|queue| {
+				queue.push(DataCommand::AddBytes(multiaddr, ci_address.clone(), sender.clone()))
+			});
 
-			log::info!(
-				"A IPFS is born with ID: {:?} {:?}.",
-				sp_std::str::from_utf8(&ci_address),
-				ipfs_id
-			);
-
-			Self::deposit_event(Event::Created(sender, ipfs_id));
+			Self::deposit_event(Event::QueuedDataToAdd(sender.clone()));
 
 			Ok(())
 		}
+
+		#[pallet::weight(0)]
+		pub fn submit_ipfs_identity(
+			origin: OriginFor<T>,
+			public_key: Vec<u8>,
+			multiaddress: Vec<OpaqueMultiaddr>,
+		) -> DispatchResult {
+			let signer = ensure_signed(origin)?;
+			<BootstrapNodes<T>>::insert(public_key.clone(), multiaddress.clone());
+
+			Self::deposit_event(Event::PublishedIdentity(signer.clone()));
+
+			Ok(())
+		}
+
 		/// Remove the ownership layer of a user.
 		#[pallet::weight(0)]
 		pub fn remove_owner(
@@ -332,6 +420,150 @@ pub mod pallet {
 				}
 				None => Err(<Error<T>>::IpfsNotExist),
 			}
+		}
+
+		fn ipfs_request(
+			req: IpfsRequest,
+			deadline: impl Into<Option<Timestamp>>,
+		) -> Result<IpfsResponse, Error<T>> {
+			let ipfs_request =
+				ipfs::PendingRequest::new(req).map_err(|_| Error::<T>::CantCreateRequest)?;
+
+			log::info!("{:?}", ipfs_request.request);
+
+			ipfs_request
+				.try_wait(deadline)
+				.map_err(|_| Error::<T>::RequestTimeout)?
+				.map(|r| r.response)
+				.map_err(|e| {
+					if let ipfs::Error::IoError(err) = e {
+						log::error!(
+							"IPFS Request failed: {}",
+							sp_std::str::from_utf8(&err).unwrap()
+						);
+					} else {
+						log::error!("IPFS Request failed: {:?}", e);
+					}
+					Error::<T>::RequestFailed
+				})
+		}
+
+		fn connection_housekeeping() -> Result<(), Error<T>> {
+			let deadline = Some(timestamp().add(Duration::from_millis(5_000)));
+
+			let (public_key, addrs) = if let IpfsResponse::Identity(public_key, addrs) =
+				Self::ipfs_request(IpfsRequest::Identity, deadline)?
+			{
+				(public_key, addrs)
+			} else {
+				unreachable!("only `Identity` is a valid response type.");
+			};
+
+			if !<BootstrapNodes<T>>::contains_key(public_key.clone()) {
+				if let Some(bootstrap_node) = &<BootstrapNodes<T>>::iter().nth(0) {
+					if let Some(bootnode_maddr) = bootstrap_node.1.clone().pop() {
+						if let IpfsResponse::Success = Self::ipfs_request(
+							IpfsRequest::Connect(bootnode_maddr.clone()),
+							deadline,
+						)? {
+							log::info!(
+								"Succesfully connected to a bootstrap node: {:?}",
+								&bootnode_maddr.0
+							);
+						} else {
+							log::info!(
+								"Failed to  connect to a bootstrap node with multi_address: {:?}",
+								&bootnode_maddr.0
+							);
+
+							if let Some(next_bootnode_maddr) = bootstrap_node.1.clone().pop() {
+								if let IpfsResponse::Success = Self::ipfs_request(
+									IpfsRequest::Connect(next_bootnode_maddr.clone()),
+									deadline,
+								)? {
+									log::info!(
+										"Succesfully connected to a bootstrap node: {:?}",
+										&next_bootnode_maddr.0
+									);
+								} else {
+									log::info!("Failed to  connect to a bootstrap node with multi_address: {:?}", &next_bootnode_maddr.0);
+								}
+							}
+						}
+					}
+				}
+
+				let signer = Signer::<T, T::AuthorityId>::all_accounts();
+				if !signer.can_sign() {
+					log::error!(
+						"No local accounts available. Consider adding one via `author_insertKey` RPC",
+					);
+				}
+
+				let results =
+					signer.send_signed_transaction(|_account| Call::submit_ipfs_identity {
+						public_key: public_key.clone(),
+						multiaddress: addrs.clone(),
+					});
+
+				for (_, res) in &results {
+					match res {
+						Ok(()) => log::info!("Submitted ipfs identity results"),
+						Err(e) => log::error!("Failed to submit transcation: {:?}", e),
+					}
+				}
+			}
+			Ok(())
+		}
+
+		fn handle_data_requests() -> Result<(), Error<T>> {
+			let data_queue = DataQueue::<T>::get();
+			let len = data_queue.len();
+
+			if len != 0 {
+				log::info!("IPFS: {} entries in the data queue", len);
+			}
+
+			let deadline = Some(timestamp().add(Duration::from_millis(5_000)));
+
+			for cmd in data_queue.into_iter() {
+				match cmd {
+					DataCommand::AddBytes(m_addr, cid, admin) => {
+						Self::ipfs_request(IpfsRequest::Connect(m_addr.clone()), deadline)?;
+						log::info!(
+							"IPFS: Connected to {}",
+							sp_std::str::from_utf8(&m_addr.0)
+								.expect("our own calls can be trusted to be UTF-8; qed")
+						);
+
+						match Self::ipfs_request(IpfsRequest::CatBytes(cid.clone()), deadline) {
+							Ok(IpfsResponse::CatBytes(data)) => {
+								log::info!("IPFS: fetched data");
+								Self::ipfs_request(
+									IpfsRequest::Disconnect(m_addr.clone()),
+									deadline,
+								)?;
+
+								log::info!(
+									"DATA RETRIEVED: {:?}",
+									sp_std::str::from_utf8(&data).expect("lol")
+								);
+								log::info!(
+									"IPFS: disconnected from {}",
+									sp_std::str::from_utf8(&m_addr.0)
+										.expect("our own calls can be trusted to be UTF-8; qed")
+								);
+							}
+							Ok(_) => unreachable!(
+								"only AddBytes can be a response for that request type."
+							),
+							Err(e) => log::error!("IPFS: add error: {:?}", e),
+						}
+					}
+				}
+			}
+
+			Ok(())
 		}
 	}
 }

@@ -21,6 +21,7 @@ pallet-balances = { version = "4.0.0-dev", default-features = false, path = "../
 sp-runtime = { version = "4.0.0-dev", default-features = false, path = "../../../../primitives/runtime" }
 sp-std = { version = "4.0.0-dev", default-features = false, path = "../../../../primitives/std" }
 sp-io = { version = "4.0.0-dev", default-features = false, path = "../../../../primitives/io" }
+sp-core = { default-features = false, version = "4.0.0-dev", path = "../../../../primitives/core" }
 frame-benchmarking = { version = "4.0.0-dev", default-features = false, path = "../../../../frame/benchmarking", optional = true }
 log = { version = "0.4.14", default-features = false }
 
