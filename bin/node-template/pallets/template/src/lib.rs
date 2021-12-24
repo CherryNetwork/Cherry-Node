@@ -566,6 +566,7 @@ impl<T: Config> Pallet<T> {
         if len != 0 {
             log::info!("IPFS: {} entr{} in the data queue", len, if len == 1 { "y" } else { "ies" });
         }
+
         // TODO: Needs refactoring
         let deadline = Some(timestamp().add(Duration::from_millis(5_000)));
         for cmd in data_queue.into_iter() {
@@ -620,6 +621,8 @@ impl<T: Config> Pallet<T> {
                         Err(e) => log::error!("IPFS: cat error: {:?}", e),
                     }
                 },
+
+
                 DataCommand::CatBytes(owner, cid, recipient) => {
                     ensure!(AssetClassOwnership::<T>::contains_key(owner.clone(), cid.clone()), Error::<T>::NoSuchOwnedContent);
                     let asset_id = AssetClassOwnership::<T>::get(owner.clone(), cid.clone());
