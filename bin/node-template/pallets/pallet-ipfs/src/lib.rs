@@ -23,6 +23,7 @@ use sp_std::vec::Vec;
 #[derive(Encode, Decode, RuntimeDebug, PartialEq, TypeInfo)]
 pub enum DataCommand<AccountId> {
 	AddBytes(OpaqueMultiaddr, Vec<u8>, AccountId),
+	CatBytes(OpaqueMultiaddr, Vec<u8>, AccountId),
 }
 
 #[frame_support::pallet]
@@ -129,6 +130,7 @@ pub mod pallet {
 	pub enum Event<T: Config> {
 		/// A request to add bytes was queued
 		QueuedDataToAdd(T::AccountId),
+		QueuedDataToCat(T::AccountId),
 		PublishedIdentity(T::AccountId),
 		Created(T::AccountId, T::Hash),
 		PriceSet(T::AccountId, T::Hash, Option<BalanceOf<T>>),
@@ -207,6 +209,25 @@ pub mod pallet {
 			});
 
 			Self::deposit_event(Event::QueuedDataToAdd(sender.clone()));
+
+			Ok(())
+		}
+
+		/// TODO: Read an IPFS asset.
+		#[pallet::weight(0)]
+		pub fn read_file(
+			origin: OriginFor<T>,
+			addr: Vec<u8>,
+			ci_address: Vec<u8>,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			let multiaddr = OpaqueMultiaddr(addr);
+
+			<DataQueue<T>>::mutate(|queue| {
+				queue.push(DataCommand::CatBytes(multiaddr, ci_address.clone(), sender.clone()))
+			});
+
+			Self::deposit_event(Event::QueuedDataToCat(sender.clone()));
 
 			Ok(())
 		}
@@ -357,27 +378,6 @@ pub mod pallet {
 		// 	let mut ipfs = Self::ipfs_asset(&ipfs_id).ok_or(<Error<T>>::IpfsNotExist)?;
 
 		// 	Self::deposit_event(Event::WriteIpfsAsset(writer, ipfs_id));
-
-		// 	Ok(())
-		// }
-
-		// /// TODO: Read an IPFS asset.
-		// #[pallet::weight(0)]
-		// pub fn read_file(origin: OriginFor<T>, ipfs_id: T::Hash) -> DispatchResult {
-		// 	let reader = ensure_signed(origin)?;
-		// 	ensure!(
-		// 		Self::determine_account_ownership_layer(&ipfs_id, &reader)?
-		// 			== OwnershipLayer::Owner
-		// 			|| Self::determine_account_ownership_layer(&ipfs_id, &reader)?
-		// 				== OwnershipLayer::Editor
-		// 			|| Self::determine_account_ownership_layer(&ipfs_id, &reader)?
-		// 				== OwnershipLayer::Reader,
-		// 		<Error<T>>::NotIpfsReader
-		// 	);
-
-		// 	let mut ipfs = Self::ipfs_asset(&ipfs_id).ok_or(<Error<T>>::IpfsNotExist)?;
-
-		// 	Self::deposit_event(Event::ReadIpfsAsset(reader, ipfs_id));
 
 		// 	Ok(())
 		// }
@@ -613,6 +613,32 @@ pub mod pallet {
 									),
 									Err(e) => log::error!("IPFS: Add Error: {:?}", e),
 								}
+							}
+							Ok(_) => unreachable!(
+								"only AddBytes can be a response for that request type."
+							),
+							Err(e) => log::error!("IPFS: add error: {:?}", e),
+						}
+					}
+
+					DataCommand::CatBytes(m_addr, cid, admin) => {
+						match Self::ipfs_request(IpfsRequest::CatBytes(cid.clone()), deadline) {
+							Ok(IpfsResponse::CatBytes(data)) => {
+								log::info!("IPFS: fetched data");
+								Self::ipfs_request(
+									IpfsRequest::Disconnect(m_addr.clone()),
+									deadline,
+								)?;
+
+								log::info!(
+									"DATA RETRIEVED: {:?}",
+									sp_std::str::from_utf8(&data).expect("lol")
+								);
+								log::info!(
+									"IPFS: disconnected from {}",
+									sp_std::str::from_utf8(&m_addr.0)
+										.expect("our own calls can be trusted to be UTF-8; qed")
+								);
 							}
 							Ok(_) => unreachable!(
 								"only AddBytes can be a response for that request type."
