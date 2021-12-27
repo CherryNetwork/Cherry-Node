@@ -24,6 +24,7 @@ use sp_std::vec::Vec;
 pub enum DataCommand<AccountId> {
 	AddBytes(OpaqueMultiaddr, Vec<u8>, AccountId),
 	CatBytes(OpaqueMultiaddr, Vec<u8>, AccountId),
+	RemovePin(OpaqueMultiaddr,Vec<u8>, AccountId, bool),
 }
 
 #[frame_support::pallet]
@@ -141,7 +142,7 @@ pub mod pallet {
 		ChangeOwnershipLayer(T::AccountId, T::Hash, T::AccountId),
 		WriteIpfsAsset(T::AccountId, T::Hash),
 		ReadIpfsAsset(T::AccountId, T::Hash),
-		DeleteIpfsAsset(T::AccountId, T::Hash),
+		DeleteIpfsAsset(T::AccountId, Vec<u8>),
 	}
 
 	// Storage items.
@@ -213,6 +214,25 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Unpins and deletes an IPFS.
+		#[pallet::weight(0)]
+		pub fn delete_ipfs_asset(
+			origin: OriginFor<T>,
+			addr: Vec<u8>,
+			ci_address: Vec<u8>,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			let multiaddr = OpaqueMultiaddr(addr);
+
+			<DataQueue<T>>::mutate(|queue| {
+				queue.push(DataCommand::RemovePin(multiaddr, ci_address.clone(), sender.clone(), false))
+			});
+
+			Self::deposit_event(Event::DeleteIpfsAsset(sender.clone(), ci_address.clone()));
+
+			Ok(())
+		}
+		
 		/// TODO: Read an IPFS asset.
 		#[pallet::weight(0)]
 		pub fn read_file(
@@ -265,6 +285,28 @@ pub mod pallet {
 			Ok(())
 		}
 
+		#[pallet::weight(0)]
+		pub fn submit_ipfs_delete_results(origin: OriginFor<T>, cid: Vec<u8>) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+			let mut ipfs = Ipfs::<T> {
+				cid_addr: cid.clone(),
+				owners: BTreeMap::<AccountOf<T>, OwnershipLayer>::new(),
+			};
+
+			<IpfsAssetOwned<T>>::try_mutate(&who, |ipfs_vec| {
+				if let Some(index) = ipfs_vec.iter().position(|i| *i == cid) {
+					ipfs_vec.swap_remove(index);
+					log::info!("peos\n\n");
+					Ok(true)
+				} else {
+					Ok(false)
+				}
+			})
+			.map_err(|_: bool| <Error<T>>::ExceedMaxIpfsOwned)?;
+			<IpfsAsset<T>>::remove(cid.clone());
+
+			Ok(())
+		}
 		// /// Remove the ownership layer of a user.
 		// #[pallet::weight(0)]
 		// pub fn remove_owner(
@@ -646,9 +688,59 @@ pub mod pallet {
 							Err(e) => log::error!("IPFS: add error: {:?}", e),
 						}
 					}
+
+					DataCommand::RemovePin(m_addr, cid, admin, bool) => {
+						match Self::ipfs_request(IpfsRequest::RemovePin(cid.clone(), false), deadline) {
+							Ok(IpfsResponse::Success) => {
+								log::info!("IPFS: unpinned data with CID: {:?}",
+								sp_std::str::from_utf8(&cid).expect("qrff"));
+									
+							match Self::ipfs_request(IpfsRequest::RemoveBlock(cid.clone()), deadline) {
+								Ok(IpfsResponse::RemoveBlock(cid)) => {
+									log::info!(
+										"IPFS: block deleted with CID: {}",
+										sp_std::str::from_utf8(&cid).expect(
+											"qyzc"
+										)
+									);
+									let signer = Signer::<T, T::AuthorityId>::all_accounts();
+									if !signer.can_sign() {
+										log::error!(
+											"No local account available. Consider adding one via `author_insertKey` RPC",
+										);
+									}
+
+									let results = signer.send_signed_transaction(|_account| {
+										Call::submit_ipfs_delete_results { cid: cid.clone()}
+									});
+
+									for (_, res) in &results {
+										match res {
+											Ok(()) => {
+												DataQueue::<T>::take();
+												log::info!("Submited IPFS results")
+											}
+											Err(e) => log::error!(
+												"Failed to submit transaction: {:?}",
+												e
+											),
+										}
+									}
+								}
+							Ok(_) => unreachable!(
+								"only AddBytes can be a response for that request type"
+							),
+							Err(e) => log::error!("IPFS: Add Error: {:?}", e),
+							}
+						}
+						Ok(_) => unreachable!(
+							"only AddBytes can be a response for that request type"
+						),
+						Err(e) => log::error!("IPFS: Add Error: {:?}", e),
+						}
+					}
 				}
 			}
-
 			Ok(())
 		}
 	}
