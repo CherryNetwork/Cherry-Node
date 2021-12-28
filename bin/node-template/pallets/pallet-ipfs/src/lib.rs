@@ -22,8 +22,9 @@ use sp_std::vec::Vec;
 
 #[derive(Encode, Decode, RuntimeDebug, PartialEq, TypeInfo)]
 pub enum DataCommand<AccountId> {
-	AddBytes(OpaqueMultiaddr, Vec<u8>, AccountId),
+	AddBytes(OpaqueMultiaddr, Vec<u8>, AccountId, bool),
 	CatBytes(OpaqueMultiaddr, Vec<u8>, AccountId),
+	InsertPin(Vec<u8>, AccountId, bool),
 	RemovePin(OpaqueMultiaddr, Vec<u8>, AccountId, bool),
 }
 
@@ -143,6 +144,7 @@ pub mod pallet {
 		WriteIpfsAsset(T::AccountId, T::Hash),
 		ReadIpfsAsset(T::AccountId, T::Hash),
 		DeleteIpfsAsset(T::AccountId, Vec<u8>),
+		AddPin(T::AccountId, Vec<u8>),
 	}
 
 	// Storage items.
@@ -206,10 +208,33 @@ pub mod pallet {
 			let sender = ensure_signed(origin)?;
 			let multiaddr = OpaqueMultiaddr(addr);
 			<DataQueue<T>>::mutate(|queue| {
-				queue.push(DataCommand::AddBytes(multiaddr, ci_address.clone(), sender.clone()))
+				queue.push(DataCommand::AddBytes(
+					multiaddr,
+					ci_address.clone(),
+					sender.clone(),
+					true,
+				))
 			});
 
 			Self::deposit_event(Event::QueuedDataToAdd(sender.clone()));
+
+			Ok(())
+		}
+
+		/// Pins an IPFS.
+		#[pallet::weight(0)]
+		pub fn pin_ipfs_asset(
+			origin: OriginFor<T>,
+			addr: Vec<u8>,
+			ci_address: Vec<u8>,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			let multiaddr = OpaqueMultiaddr(addr);
+			<DataQueue<T>>::mutate(|queue| {
+				queue.push(DataCommand::InsertPin(ci_address.clone(), sender.clone(), true))
+			});
+
+			Self::deposit_event(Event::AddPin(sender.clone(), ci_address.clone()));
 
 			Ok(())
 		}
@@ -229,7 +254,7 @@ pub mod pallet {
 					multiaddr,
 					ci_address.clone(),
 					sender.clone(),
-					false,
+					true,
 				))
 			});
 
@@ -594,7 +619,7 @@ pub mod pallet {
 
 			for cmd in data_queue.into_iter() {
 				match cmd {
-					DataCommand::AddBytes(m_addr, cid, admin) => {
+					DataCommand::AddBytes(m_addr, cid, admin, is_recursive) => {
 						Self::ipfs_request(IpfsRequest::Connect(m_addr.clone()), deadline)?;
 						log::info!(
 							"IPFS: Connected to {}",
@@ -654,6 +679,22 @@ pub mod pallet {
 												),
 											}
 										}
+
+										match Self::ipfs_request(
+											IpfsRequest::InsertPin(cid.clone(), is_recursive),
+											deadline,
+										) {
+											Ok(IpfsResponse::Success) => {
+												log::info!(
+													"IPFS: pinned data with CID: {}",
+													sp_std::str::from_utf8(&cid).expect("trusted")
+												)
+											}
+											Ok(_) => {
+												unreachable!("only Success can be a response for that request type")
+											}
+											Err(e) => log::error!("IPFS: Pin Error: {:?}", e),
+										}
 									}
 									Ok(_) => unreachable!(
 										"only AddBytes can be a response for that request type"
@@ -691,6 +732,24 @@ pub mod pallet {
 								"only AddBytes can be a response for that request type."
 							),
 							Err(e) => log::error!("IPFS: add error: {:?}", e),
+						}
+					}
+
+					DataCommand::InsertPin(cid, admin, is_recursive) => {
+						match Self::ipfs_request(
+							IpfsRequest::InsertPin(cid.clone(), is_recursive),
+							deadline,
+						) {
+							Ok(IpfsResponse::Success) => {
+								log::info!(
+									"IPFS: pinned data with CID: {}",
+									sp_std::str::from_utf8(&cid).expect("trusted")
+								)
+							}
+							Ok(_) => {
+								unreachable!("only Success can be a response for that request type")
+							}
+							Err(e) => log::error!("IPFS: Pin Error: {:?}", e),
 						}
 					}
 
