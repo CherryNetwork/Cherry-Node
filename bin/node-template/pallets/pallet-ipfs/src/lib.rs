@@ -694,9 +694,9 @@ pub mod pallet {
 						}
 					}
 
-					DataCommand::RemovePin(m_addr, cid, admin, isRecursive) => {
+					DataCommand::RemovePin(m_addr, cid, admin, is_recursive) => {
 						match Self::ipfs_request(
-							IpfsRequest::RemovePin(cid.clone(), false),
+							IpfsRequest::RemovePin(cid.clone(), is_recursive),
 							deadline,
 						) {
 							Ok(IpfsResponse::Success) => {
