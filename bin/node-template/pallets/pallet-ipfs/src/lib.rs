@@ -24,7 +24,7 @@ use sp_std::vec::Vec;
 pub enum DataCommand<AccountId> {
 	AddBytes(OpaqueMultiaddr, Vec<u8>, AccountId),
 	CatBytes(OpaqueMultiaddr, Vec<u8>, AccountId),
-	RemovePin(OpaqueMultiaddr,Vec<u8>, AccountId, bool),
+	RemovePin(OpaqueMultiaddr, Vec<u8>, AccountId, bool),
 }
 
 #[frame_support::pallet]
@@ -225,14 +225,19 @@ pub mod pallet {
 			let multiaddr = OpaqueMultiaddr(addr);
 
 			<DataQueue<T>>::mutate(|queue| {
-				queue.push(DataCommand::RemovePin(multiaddr, ci_address.clone(), sender.clone(), false))
+				queue.push(DataCommand::RemovePin(
+					multiaddr,
+					ci_address.clone(),
+					sender.clone(),
+					false,
+				))
 			});
 
 			Self::deposit_event(Event::DeleteIpfsAsset(sender.clone(), ci_address.clone()));
 
 			Ok(())
 		}
-		
+
 		/// TODO: Read an IPFS asset.
 		#[pallet::weight(0)]
 		pub fn read_file(
@@ -296,7 +301,7 @@ pub mod pallet {
 			<IpfsAssetOwned<T>>::try_mutate(&who, |ipfs_vec| {
 				if let Some(index) = ipfs_vec.iter().position(|i| *i == cid) {
 					ipfs_vec.swap_remove(index);
-					log::info!("peos\n\n");
+					log::info!("qwerty\n\n");
 					Ok(true)
 				} else {
 					Ok(false)
@@ -332,7 +337,7 @@ pub mod pallet {
 		// 	<IpfsAssetOwned<T>>::try_mutate(&remove_acct, |ipfs_vec| {
 		// 		if let Some(index) = ipfs_vec.iter().position(|i| *i == ipfs_id) {
 		// 			ipfs_vec.swap_remove(index);
-		// 			log::info!("peos\n\n");
+		// 			log::info!("qwerty\n\n");
 		// 			Ok(true)
 		// 		} else {
 		// 			Ok(false)
@@ -689,54 +694,60 @@ pub mod pallet {
 						}
 					}
 
-					DataCommand::RemovePin(m_addr, cid, admin, bool) => {
-						match Self::ipfs_request(IpfsRequest::RemovePin(cid.clone(), false), deadline) {
+					DataCommand::RemovePin(m_addr, cid, admin, isRecursive) => {
+						match Self::ipfs_request(
+							IpfsRequest::RemovePin(cid.clone(), false),
+							deadline,
+						) {
 							Ok(IpfsResponse::Success) => {
-								log::info!("IPFS: unpinned data with CID: {:?}",
-								sp_std::str::from_utf8(&cid).expect("qrff"));
-									
-							match Self::ipfs_request(IpfsRequest::RemoveBlock(cid.clone()), deadline) {
-								Ok(IpfsResponse::RemoveBlock(cid)) => {
-									log::info!(
-										"IPFS: block deleted with CID: {}",
-										sp_std::str::from_utf8(&cid).expect(
-											"qyzc"
-										)
-									);
-									let signer = Signer::<T, T::AuthorityId>::all_accounts();
-									if !signer.can_sign() {
-										log::error!(
+								log::info!(
+									"IPFS: unpinned data with CID: {:?}",
+									sp_std::str::from_utf8(&cid).expect("qrff")
+								);
+
+								match Self::ipfs_request(
+									IpfsRequest::RemoveBlock(cid.clone()),
+									deadline,
+								) {
+									Ok(IpfsResponse::RemoveBlock(cid)) => {
+										log::info!(
+											"IPFS: block deleted with CID: {}",
+											sp_std::str::from_utf8(&cid).expect("qyzc")
+										);
+										let signer = Signer::<T, T::AuthorityId>::all_accounts();
+										if !signer.can_sign() {
+											log::error!(
 											"No local account available. Consider adding one via `author_insertKey` RPC",
 										);
-									}
+										}
 
-									let results = signer.send_signed_transaction(|_account| {
-										Call::submit_ipfs_delete_results { cid: cid.clone()}
-									});
+										let results = signer.send_signed_transaction(|_account| {
+											Call::submit_ipfs_delete_results { cid: cid.clone() }
+										});
 
-									for (_, res) in &results {
-										match res {
-											Ok(()) => {
-												DataQueue::<T>::take();
-												log::info!("Submited IPFS results")
+										for (_, res) in &results {
+											match res {
+												Ok(()) => {
+													DataQueue::<T>::take();
+													log::info!("Submited IPFS results")
+												}
+												Err(e) => log::error!(
+													"Failed to submit transaction: {:?}",
+													e
+												),
 											}
-											Err(e) => log::error!(
-												"Failed to submit transaction: {:?}",
-												e
-											),
 										}
 									}
+									Ok(_) => unreachable!(
+										"only RemoveBlock can be a response for that request type"
+									),
+									Err(e) => log::error!("IPFS: Remove Block Error: {:?}", e),
 								}
-							Ok(_) => unreachable!(
-								"only AddBytes can be a response for that request type"
-							),
-							Err(e) => log::error!("IPFS: Add Error: {:?}", e),
 							}
-						}
-						Ok(_) => unreachable!(
-							"only AddBytes can be a response for that request type"
-						),
-						Err(e) => log::error!("IPFS: Add Error: {:?}", e),
+							Ok(_) => {
+								unreachable!("only Success can be a response for that request type")
+							}
+							Err(e) => log::error!("IPFS: Remove Pin Error: {:?}", e),
 						}
 					}
 				}
