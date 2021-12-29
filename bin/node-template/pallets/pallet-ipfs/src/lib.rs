@@ -18,8 +18,10 @@ use sp_std::vec::Vec;
 
 #[derive(Encode, Decode, RuntimeDebug, PartialEq, TypeInfo)]
 pub enum DataCommand<AccountId> {
-	AddBytes(OpaqueMultiaddr, Vec<u8>, AccountId),
+	AddBytes(OpaqueMultiaddr, Vec<u8>, AccountId, bool),
 	CatBytes(OpaqueMultiaddr, Vec<u8>, AccountId),
+	InsertPin(Vec<u8>, AccountId, bool),
+	RemovePin(OpaqueMultiaddr, Vec<u8>, AccountId, bool),
 }
 
 #[frame_support::pallet]
@@ -129,12 +131,13 @@ pub mod pallet {
 		PriceSet(T::AccountId, T::Hash, Option<BalanceOf<T>>),
 		Transferred(T::AccountId, T::AccountId, T::Hash),
 		Bought(T::AccountId, T::AccountId, T::Hash, BalanceOf<T>),
-		AddOwner(T::AccountId, T::Hash, T::AccountId),
-		RemoveOwner(T::AccountId, T::Hash),
-		ChangeOwnershipLayer(T::AccountId, T::Hash, T::AccountId),
+		AddOwner(T::AccountId, Vec<u8>, T::AccountId),
+		RemoveOwner(T::AccountId, Vec<u8>),
+		ChangeOwnershipLayer(T::AccountId, Vec<u8>, T::AccountId),
 		WriteIpfsAsset(T::AccountId, T::Hash),
 		ReadIpfsAsset(T::AccountId, T::Hash),
-		DeleteIpfsAsset(T::AccountId, T::Hash),
+		DeleteIpfsAsset(T::AccountId, Vec<u8>),
+		AddPin(T::AccountId, Vec<u8>),
 	}
 
 	// Storage items.
@@ -147,13 +150,13 @@ pub mod pallet {
 	/// Stores a IPFS's unique traits, owner and price.
 	#[pallet::storage]
 	#[pallet::getter(fn ipfs_asset)]
-	pub(super) type IpfsAsset<T: Config> = StorageMap<_, Twox64Concat, T::Hash, Ipfs<T>>;
+	pub(super) type IpfsAsset<T: Config> = StorageMap<_, Twox64Concat, Vec<u8>, Ipfs<T>>;
 
 	/// Keeps track of what accounts own what IPFS.
 	#[pallet::storage]
 	#[pallet::getter(fn ipfs_asset_owned)]
 	pub(super) type IpfsAssetOwned<T: Config> =
-		StorageMap<_, Twox64Concat, T::AccountId, BoundedVec<T::Hash, T::MaxIpfsOwned>, ValueQuery>;
+		StorageMap<_, Twox64Concat, T::AccountId, BoundedVec<Vec<u8>, T::MaxIpfsOwned>, ValueQuery>;
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
@@ -198,7 +201,12 @@ pub mod pallet {
 			let sender = ensure_signed(origin)?;
 			let multiaddr = OpaqueMultiaddr(addr);
 			<DataQueue<T>>::mutate(|queue| {
-				queue.push(DataCommand::AddBytes(multiaddr, ci_address.clone(), sender.clone()))
+				queue.push(DataCommand::AddBytes(
+					multiaddr,
+					ci_address.clone(),
+					sender.clone(),
+					true,
+				))
 			});
 
 			Self::deposit_event(Event::QueuedDataToAdd(sender.clone()));
@@ -206,6 +214,49 @@ pub mod pallet {
 			Ok(())
 		}
 
+		/// Pins an IPFS.
+		#[pallet::weight(0)]
+		pub fn pin_ipfs_asset(
+			origin: OriginFor<T>,
+			addr: Vec<u8>,
+			ci_address: Vec<u8>,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			let multiaddr = OpaqueMultiaddr(addr);
+			<DataQueue<T>>::mutate(|queue| {
+				queue.push(DataCommand::InsertPin(ci_address.clone(), sender.clone(), true))
+			});
+
+			Self::deposit_event(Event::AddPin(sender.clone(), ci_address.clone()));
+
+			Ok(())
+		}
+
+		/// Unpins and deletes an IPFS.
+		#[pallet::weight(0)]
+		pub fn delete_ipfs_asset(
+			origin: OriginFor<T>,
+			addr: Vec<u8>,
+			ci_address: Vec<u8>,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+			let multiaddr = OpaqueMultiaddr(addr);
+
+			<DataQueue<T>>::mutate(|queue| {
+				queue.push(DataCommand::RemovePin(
+					multiaddr,
+					ci_address.clone(),
+					sender.clone(),
+					true,
+				))
+			});
+
+			Self::deposit_event(Event::DeleteIpfsAsset(sender.clone(), ci_address.clone()));
+
+			Ok(())
+		}
+
+		/// TODO: Read an IPFS asset.
 		#[pallet::weight(0)]
 		pub fn read_file(
 			origin: OriginFor<T>,
@@ -251,10 +302,30 @@ pub mod pallet {
 			ipfs.owners.insert(who.clone(), OwnershipLayer::default());
 			let ipfs_id = T::Hashing::hash_of(&ipfs);
 
-			<IpfsAssetOwned<T>>::try_mutate(&who, |ipfs_vec| ipfs_vec.try_push(ipfs_id))
+			<IpfsAssetOwned<T>>::try_mutate(&who, |ipfs_vec| ipfs_vec.try_push(cid.clone()))
 				.map_err(|_| <Error<T>>::ExceedMaxIpfsOwned)?;
-			<IpfsAsset<T>>::insert(ipfs_id, ipfs);
+			<IpfsAsset<T>>::insert(cid.clone(), ipfs);
 
+			Ok(())
+		}
+
+		#[pallet::weight(0)]
+		pub fn submit_ipfs_delete_results(origin: OriginFor<T>, cid: Vec<u8>) -> DispatchResult {
+			let who = ensure_signed(origin)?;
+
+			let mut ipfs = Self::ipfs_asset(&cid).ok_or(<Error<T>>::IpfsNotExist)?;
+
+			<IpfsAssetOwned<T>>::try_mutate(&who, |ipfs_vec| {
+				if let Some(index) = ipfs_vec.iter().position(|i| *i == cid.clone()) {
+					ipfs_vec.swap_remove(index);
+					log::info!("qwerty\n\n");
+					Ok(true)
+				} else {
+					Ok(false)
+				}
+			})
+			.map_err(|_: bool| <Error<T>>::ExceedMaxIpfsOwned)?;
+			<IpfsAsset<T>>::remove(cid.clone());
 			Ok(())
 		}
 
@@ -262,26 +333,26 @@ pub mod pallet {
 		#[pallet::weight(0)]
 		pub fn add_owner(
 			origin: OriginFor<T>,
-			ipfs_id: T::Hash,
+			cid: Vec<u8>,
 			add_acct: T::AccountId,
 			ownership_layer: OwnershipLayer,
 		) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
 
 			ensure!(
-				Self::determine_account_ownership_layer(&ipfs_id, &signer)?
+				Self::determine_account_ownership_layer(&cid, &signer)?
 					== OwnershipLayer::Owner,
 				<Error<T>>::NotIpfsOwner
 			);
 
-			let mut ipfs = Self::ipfs_asset(&ipfs_id).ok_or(<Error<T>>::IpfsNotExist)?;
+			let mut ipfs = Self::ipfs_asset(&cid).ok_or(<Error<T>>::IpfsNotExist)?;
 			ipfs.owners.insert(add_acct.clone(), ownership_layer.clone());
 
-			<IpfsAsset<T>>::insert(&ipfs_id, ipfs);
-			<IpfsAssetOwned<T>>::try_mutate(&add_acct, |ipfs_vec| ipfs_vec.try_push(ipfs_id))
+			<IpfsAsset<T>>::insert(&cid, ipfs);
+			<IpfsAssetOwned<T>>::try_mutate(&add_acct, |ipfs_vec| ipfs_vec.try_push(cid.clone()))
 				.map_err(|_| <Error<T>>::ExceedMaxIpfsOwned)?;
 
-			Self::deposit_event(Event::AddOwner(signer, ipfs_id, add_acct));
+			Self::deposit_event(Event::AddOwner(signer, cid, add_acct));
 
 			Ok(())
 		}
@@ -290,26 +361,26 @@ pub mod pallet {
 		#[pallet::weight(0)]
 		pub fn remove_owner(
 			origin: OriginFor<T>,
-			ipfs_id: T::Hash,
+			cid: Vec<u8>,
 			remove_acct: T::AccountId,
 		) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
 
 			ensure!(signer != remove_acct, <Error<T>>::SameAccount);
 			ensure!(
-				Self::determine_account_ownership_layer(&ipfs_id, &signer)?
+				Self::determine_account_ownership_layer(&cid, &signer)?
 					== OwnershipLayer::Owner,
 				<Error<T>>::NotIpfsOwner
 			);
 
-			let mut ipfs = Self::ipfs_asset(&ipfs_id).ok_or(<Error<T>>::IpfsNotExist)?;
+			let mut ipfs = Self::ipfs_asset(&cid).ok_or(<Error<T>>::IpfsNotExist)?;
 			ensure!(ipfs.owners.contains_key(&remove_acct), <Error<T>>::AccNotExist);
 
 			ipfs.owners.remove(&remove_acct);
 
-			<IpfsAsset<T>>::insert(&ipfs_id, ipfs);
+			<IpfsAsset<T>>::insert(&cid, ipfs);
 			<IpfsAssetOwned<T>>::try_mutate(&remove_acct, |ipfs_vec| {
-				if let Some(index) = ipfs_vec.iter().position(|i| *i == ipfs_id) {
+				if let Some(index) = ipfs_vec.iter().position(|i| *i == cid) {
 					ipfs_vec.swap_remove(index);
 					log::info!("peos\n\n");
 					Ok(true)
@@ -319,7 +390,7 @@ pub mod pallet {
 			})
 			.map_err(|_: bool| <Error<T>>::ExceedMaxIpfsOwned)?;
 
-			Self::deposit_event(Event::RemoveOwner(remove_acct, ipfs_id));
+			Self::deposit_event(Event::RemoveOwner(remove_acct, cid));
 
 			Ok(())
 		}
@@ -328,40 +399,41 @@ pub mod pallet {
 		#[pallet::weight(0)]
 		pub fn change_ownership(
 			origin: OriginFor<T>,
-			ipfs_id: T::Hash,
+			cid: Vec<u8>,
 			acct_to_change: T::AccountId,
 			ownership_layer: OwnershipLayer,
 		) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
 			ensure!(
-				Self::determine_account_ownership_layer(&ipfs_id, &signer)?
+				Self::determine_account_ownership_layer(&cid, &signer)?
 					== OwnershipLayer::Owner,
 				<Error<T>>::NotIpfsOwner
 			);
 
-			let mut ipfs = Self::ipfs_asset(&ipfs_id).ok_or(<Error<T>>::IpfsNotExist)?;
-			let ownership = Self::determine_account_ownership_layer(&ipfs_id, &acct_to_change)?;
+			let mut ipfs = Self::ipfs_asset(&cid).ok_or(<Error<T>>::IpfsNotExist)?;
+			let ownership = Self::determine_account_ownership_layer(&cid, &acct_to_change)?;
 
 			ensure!(ownership != ownership_layer, <Error<T>>::SameOwnershipLayer);
 
 			ipfs.owners.insert(acct_to_change.clone(), ownership_layer);
 
-			<IpfsAsset<T>>::insert(&ipfs_id, ipfs);
-			<IpfsAssetOwned<T>>::try_mutate(&acct_to_change, |ipfs_vec| ipfs_vec.try_push(ipfs_id))
+			<IpfsAsset<T>>::insert(&cid, ipfs);
+			<IpfsAssetOwned<T>>::try_mutate(&acct_to_change, |ipfs_vec| ipfs_vec.try_push(cid.clone()))
 				.map_err(|_| <Error<T>>::ExceedMaxIpfsOwned)?;
 
-			Self::deposit_event(Event::ChangeOwnershipLayer(signer, ipfs_id, acct_to_change));
+			Self::deposit_event(Event::ChangeOwnershipLayer(signer, cid, acct_to_change));
 
 			Ok(())
 		}
+
 	}
 
 	impl<T: Config> Pallet<T> {
 		pub fn determine_account_ownership_layer(
-			ipfs_id: &T::Hash,
+			cid: &Vec<u8>,
 			acct: &T::AccountId,
 		) -> Result<OwnershipLayer, Error<T>> {
-			match Self::ipfs_asset(ipfs_id) {
+			match Self::ipfs_asset(cid) {
 				Some(ipfs) => {
 					if let Some(layer) = ipfs.owners.get_key_value(acct) {
 						Ok(layer.1.clone())
@@ -479,7 +551,7 @@ pub mod pallet {
 
 			for cmd in data_queue.into_iter() {
 				match cmd {
-					DataCommand::AddBytes(m_addr, cid, admin) => {
+					DataCommand::AddBytes(m_addr, cid, admin, is_recursive) => {
 						Self::ipfs_request(IpfsRequest::Connect(m_addr.clone()), deadline)?;
 						log::info!(
 							"IPFS: Connected to {}",
@@ -539,6 +611,22 @@ pub mod pallet {
 												),
 											}
 										}
+
+										match Self::ipfs_request(
+											IpfsRequest::InsertPin(cid.clone(), is_recursive),
+											deadline,
+										) {
+											Ok(IpfsResponse::Success) => {
+												log::info!(
+													"IPFS: pinned data with CID: {}",
+													sp_std::str::from_utf8(&cid).expect("trusted")
+												)
+											}
+											Ok(_) => {
+												unreachable!("only Success can be a response for that request type")
+											}
+											Err(e) => log::error!("IPFS: Pin Error: {:?}", e),
+										}
 									}
 									Ok(_) => unreachable!(
 										"only AddBytes can be a response for that request type"
@@ -578,9 +666,83 @@ pub mod pallet {
 							Err(e) => log::error!("IPFS: add error: {:?}", e),
 						}
 					}
+
+					DataCommand::InsertPin(cid, admin, is_recursive) => {
+						match Self::ipfs_request(
+							IpfsRequest::InsertPin(cid.clone(), is_recursive),
+							deadline,
+						) {
+							Ok(IpfsResponse::Success) => {
+								log::info!(
+									"IPFS: pinned data with CID: {}",
+									sp_std::str::from_utf8(&cid).expect("trusted")
+								)
+							}
+							Ok(_) => {
+								unreachable!("only Success can be a response for that request type")
+							}
+							Err(e) => log::error!("IPFS: Pin Error: {:?}", e),
+						}
+					}
+
+					DataCommand::RemovePin(m_addr, cid, admin, is_recursive) => {
+						match Self::ipfs_request(
+							IpfsRequest::RemovePin(cid.clone(), is_recursive),
+							deadline,
+						) {
+							Ok(IpfsResponse::Success) => {
+								log::info!(
+									"IPFS: unpinned data with CID: {:?}",
+									sp_std::str::from_utf8(&cid).expect("qrff")
+								);
+
+								match Self::ipfs_request(
+									IpfsRequest::RemoveBlock(cid.clone()),
+									deadline,
+								) {
+									Ok(IpfsResponse::RemoveBlock(cid)) => {
+										log::info!(
+											"IPFS: block deleted with CID: {}",
+											sp_std::str::from_utf8(&cid).expect("qyzc")
+										);
+										let signer = Signer::<T, T::AuthorityId>::all_accounts();
+										if !signer.can_sign() {
+											log::error!(
+											"No local account available. Consider adding one via `author_insertKey` RPC",
+										);
+										}
+
+										let results = signer.send_signed_transaction(|_account| {
+											Call::submit_ipfs_delete_results { cid: cid.clone() }
+										});
+
+										for (_, res) in &results {
+											match res {
+												Ok(()) => {
+													DataQueue::<T>::take();
+													log::info!("Submited IPFS results")
+												}
+												Err(e) => log::error!(
+													"Failed to submit transaction: {:?}",
+													e
+												),
+											}
+										}
+									}
+									Ok(_) => unreachable!(
+										"only RemoveBlock can be a response for that request type"
+									),
+									Err(e) => log::error!("IPFS: Remove Block Error: {:?}", e),
+								}
+							}
+							Ok(_) => {
+								unreachable!("only Success can be a response for that request type")
+							}
+							Err(e) => log::error!("IPFS: Remove Pin Error: {:?}", e),
+						}
+					}
 				}
 			}
-
 			Ok(())
 		}
 	}
