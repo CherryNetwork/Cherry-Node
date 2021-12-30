@@ -197,7 +197,7 @@ pub mod pallet {
 		/// Create a new unique IPFS.
 		///
 		/// The actual IPFS creation is done in the `mint()` function.
-		#[pallet::weight(0)]
+		#[pallet::weight(100)]
 		pub fn create_ipfs_asset(
 			origin: OriginFor<T>,
 			addr: Vec<u8>,
@@ -381,7 +381,6 @@ pub mod pallet {
 			<IpfsAssetOwned<T>>::try_mutate(&remove_acct, |ipfs_vec| {
 				if let Some(index) = ipfs_vec.iter().position(|i| *i == cid) {
 					ipfs_vec.swap_remove(index);
-					log::info!("peos\n\n");
 					Ok(true)
 				} else {
 					Ok(false)
