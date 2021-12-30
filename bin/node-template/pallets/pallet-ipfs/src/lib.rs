@@ -216,13 +216,9 @@ pub mod pallet {
 
 		/// Pins an IPFS.
 		#[pallet::weight(0)]
-		pub fn pin_ipfs_asset(
-			origin: OriginFor<T>,
-			addr: Vec<u8>,
-			ci_address: Vec<u8>,
-		) -> DispatchResult {
+		pub fn pin_ipfs_asset(origin: OriginFor<T>, ci_address: Vec<u8>) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
-			let multiaddr = OpaqueMultiaddr(addr);
+
 			<DataQueue<T>>::mutate(|queue| {
 				queue.push(DataCommand::InsertPin(ci_address.clone(), sender.clone(), true))
 			});
@@ -300,7 +296,7 @@ pub mod pallet {
 			};
 
 			ipfs.owners.insert(who.clone(), OwnershipLayer::default());
-			let ipfs_id = T::Hashing::hash_of(&ipfs);
+			let _ipfs_id = T::Hashing::hash_of(&ipfs);
 
 			<IpfsAssetOwned<T>>::try_mutate(&who, |ipfs_vec| ipfs_vec.try_push(cid.clone()))
 				.map_err(|_| <Error<T>>::ExceedMaxIpfsOwned)?;
@@ -313,7 +309,7 @@ pub mod pallet {
 		pub fn submit_ipfs_delete_results(origin: OriginFor<T>, cid: Vec<u8>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
 
-			let mut ipfs = Self::ipfs_asset(&cid).ok_or(<Error<T>>::IpfsNotExist)?;
+			let _ipfs = Self::ipfs_asset(&cid).ok_or(<Error<T>>::IpfsNotExist)?;
 
 			<IpfsAssetOwned<T>>::try_mutate(&who, |ipfs_vec| {
 				if let Some(index) = ipfs_vec.iter().position(|i| *i == cid.clone()) {
@@ -340,8 +336,7 @@ pub mod pallet {
 			let signer = ensure_signed(origin)?;
 
 			ensure!(
-				Self::determine_account_ownership_layer(&cid, &signer)?
-					== OwnershipLayer::Owner,
+				Self::determine_account_ownership_layer(&cid, &signer)? == OwnershipLayer::Owner,
 				<Error<T>>::NotIpfsOwner
 			);
 
@@ -368,8 +363,7 @@ pub mod pallet {
 
 			ensure!(signer != remove_acct, <Error<T>>::SameAccount);
 			ensure!(
-				Self::determine_account_ownership_layer(&cid, &signer)?
-					== OwnershipLayer::Owner,
+				Self::determine_account_ownership_layer(&cid, &signer)? == OwnershipLayer::Owner,
 				<Error<T>>::NotIpfsOwner
 			);
 
@@ -405,8 +399,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
 			ensure!(
-				Self::determine_account_ownership_layer(&cid, &signer)?
-					== OwnershipLayer::Owner,
+				Self::determine_account_ownership_layer(&cid, &signer)? == OwnershipLayer::Owner,
 				<Error<T>>::NotIpfsOwner
 			);
 
@@ -418,14 +411,15 @@ pub mod pallet {
 			ipfs.owners.insert(acct_to_change.clone(), ownership_layer);
 
 			<IpfsAsset<T>>::insert(&cid, ipfs);
-			<IpfsAssetOwned<T>>::try_mutate(&acct_to_change, |ipfs_vec| ipfs_vec.try_push(cid.clone()))
-				.map_err(|_| <Error<T>>::ExceedMaxIpfsOwned)?;
+			<IpfsAssetOwned<T>>::try_mutate(&acct_to_change, |ipfs_vec| {
+				ipfs_vec.try_push(cid.clone())
+			})
+			.map_err(|_| <Error<T>>::ExceedMaxIpfsOwned)?;
 
 			Self::deposit_event(Event::ChangeOwnershipLayer(signer, cid, acct_to_change));
 
 			Ok(())
 		}
-
 	}
 
 	impl<T: Config> Pallet<T> {
@@ -551,7 +545,7 @@ pub mod pallet {
 
 			for cmd in data_queue.into_iter() {
 				match cmd {
-					DataCommand::AddBytes(m_addr, cid, admin, is_recursive) => {
+					DataCommand::AddBytes(m_addr, cid, _admin, is_recursive) => {
 						Self::ipfs_request(IpfsRequest::Connect(m_addr.clone()), deadline)?;
 						log::info!(
 							"IPFS: Connected to {}",
@@ -641,7 +635,7 @@ pub mod pallet {
 						}
 					}
 
-					DataCommand::CatBytes(m_addr, cid, admin) => {
+					DataCommand::CatBytes(m_addr, cid, _admin) => {
 						match Self::ipfs_request(IpfsRequest::CatBytes(cid.clone()), deadline) {
 							Ok(IpfsResponse::CatBytes(data)) => {
 								log::info!("IPFS: fetched data");
@@ -667,7 +661,7 @@ pub mod pallet {
 						}
 					}
 
-					DataCommand::InsertPin(cid, admin, is_recursive) => {
+					DataCommand::InsertPin(cid, _admin, is_recursive) => {
 						match Self::ipfs_request(
 							IpfsRequest::InsertPin(cid.clone(), is_recursive),
 							deadline,
@@ -685,7 +679,7 @@ pub mod pallet {
 						}
 					}
 
-					DataCommand::RemovePin(m_addr, cid, admin, is_recursive) => {
+					DataCommand::RemovePin(_m_addr, cid, _admin, is_recursive) => {
 						match Self::ipfs_request(
 							IpfsRequest::RemovePin(cid.clone(), is_recursive),
 							deadline,
