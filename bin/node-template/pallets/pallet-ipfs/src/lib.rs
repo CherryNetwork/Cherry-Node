@@ -183,7 +183,12 @@ pub mod pallet {
 				log::error!("IPFS: Encountered an error while processing data requests: {:?}", e);
 			}
 
-			// TODO: print_metadata
+
+			if block_no % 5u32.into() == 0u32.into() {
+				if let Err(e) = Self::print_metadata() {
+					log::error!("IPFS: Encountered an error while obtaining metadata: {:?}", e);
+				}
+			}
 		}
 	}
 
@@ -737,6 +742,24 @@ pub mod pallet {
 					}
 				}
 			}
+			Ok(())
+		}
+
+		fn print_metadata() -> Result<(), Error<T>> {
+			let deadline = Some(timestamp().add(Duration::from_millis(5_000)));
+
+			let peers = if let IpfsResponse::Peers(peers) =
+				Self::ipfs_request(IpfsRequest::Peers, deadline)?
+			{
+				peers
+			} else {
+				unreachable!("only Peers can be a response for that request type: qed");
+			};
+
+			let peer_count = peers.len();
+
+			log::info!("IPFS: currently connencted to {} peers", &peer_count,);
+
 			Ok(())
 		}
 	}
