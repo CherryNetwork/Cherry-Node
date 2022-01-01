@@ -183,7 +183,6 @@ pub mod pallet {
 				log::error!("IPFS: Encountered an error while processing data requests: {:?}", e);
 			}
 
-
 			if block_no % 5u32.into() == 0u32.into() {
 				if let Err(e) = Self::print_metadata() {
 					log::error!("IPFS: Encountered an error while obtaining metadata: {:?}", e);
@@ -221,14 +220,18 @@ pub mod pallet {
 
 		/// Pins an IPFS.
 		#[pallet::weight(0)]
-		pub fn pin_ipfs_asset(origin: OriginFor<T>, ci_address: Vec<u8>) -> DispatchResult {
+		pub fn pin_ipfs_asset(origin: OriginFor<T>, cid: Vec<u8>) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
+			ensure!(
+				Self::determine_account_ownership_layer(&cid, &sender)? == OwnershipLayer::Owner,
+				<Error<T>>::NotIpfsOwner
+			);
 
 			<DataQueue<T>>::mutate(|queue| {
-				queue.push(DataCommand::InsertPin(ci_address.clone(), sender.clone(), true))
+				queue.push(DataCommand::InsertPin(cid.clone(), sender.clone(), true))
 			});
 
-			Self::deposit_event(Event::AddPin(sender.clone(), ci_address.clone()));
+			Self::deposit_event(Event::AddPin(sender.clone(), cid.clone()));
 
 			Ok(())
 		}
@@ -238,37 +241,40 @@ pub mod pallet {
 		pub fn delete_ipfs_asset(
 			origin: OriginFor<T>,
 			addr: Vec<u8>,
-			ci_address: Vec<u8>,
+			cid: Vec<u8>,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
+
+			ensure!(
+				Self::determine_account_ownership_layer(&cid, &sender)? == OwnershipLayer::Owner,
+				<Error<T>>::NotIpfsOwner
+			);
+
 			let multiaddr = OpaqueMultiaddr(addr);
 
 			<DataQueue<T>>::mutate(|queue| {
-				queue.push(DataCommand::RemovePin(
-					multiaddr,
-					ci_address.clone(),
-					sender.clone(),
-					true,
-				))
+				queue.push(DataCommand::RemovePin(multiaddr, cid.clone(), sender.clone(), true))
 			});
 
-			Self::deposit_event(Event::DeleteIpfsAsset(sender.clone(), ci_address.clone()));
+			Self::deposit_event(Event::DeleteIpfsAsset(sender.clone(), cid.clone()));
 
 			Ok(())
 		}
 
 		/// TODO: Read an IPFS asset.
 		#[pallet::weight(0)]
-		pub fn read_file(
-			origin: OriginFor<T>,
-			addr: Vec<u8>,
-			ci_address: Vec<u8>,
-		) -> DispatchResult {
+		pub fn read_file(origin: OriginFor<T>, addr: Vec<u8>, cid: Vec<u8>) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
+
+			ensure!(
+				Self::determine_account_ownership_layer(&cid, &sender)? == OwnershipLayer::Owner,
+				<Error<T>>::NotIpfsOwner
+			);
+
 			let multiaddr = OpaqueMultiaddr(addr);
 
 			<DataQueue<T>>::mutate(|queue| {
-				queue.push(DataCommand::CatBytes(multiaddr, ci_address.clone(), sender.clone()))
+				queue.push(DataCommand::CatBytes(multiaddr, cid.clone(), sender.clone()))
 			});
 
 			Self::deposit_event(Event::QueuedDataToCat(sender.clone()));
@@ -291,19 +297,21 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(0)]
-		pub fn submit_ipfs_add_results(origin: OriginFor<T>, cid: Vec<u8>) -> DispatchResult {
-			let who = ensure_signed(origin)?;
-			// let new_origin = frame_system::RawOrigin::Signed(who).into();
-			//
+		pub fn submit_ipfs_add_results(
+			origin: OriginFor<T>,
+			admin: AccountOf<T>,
+			cid: Vec<u8>,
+		) -> DispatchResult {
+			ensure_signed(origin)?;
 			let mut ipfs = Ipfs::<T> {
 				cid_addr: cid.clone(),
 				owners: BTreeMap::<AccountOf<T>, OwnershipLayer>::new(),
 			};
 
-			ipfs.owners.insert(who.clone(), OwnershipLayer::default());
+			ipfs.owners.insert(admin.clone(), OwnershipLayer::default());
 			let _ipfs_id = T::Hashing::hash_of(&ipfs);
 
-			<IpfsAssetOwned<T>>::try_mutate(&who, |ipfs_vec| ipfs_vec.try_push(cid.clone()))
+			<IpfsAssetOwned<T>>::try_mutate(&admin, |ipfs_vec| ipfs_vec.try_push(cid.clone()))
 				.map_err(|_| <Error<T>>::ExceedMaxIpfsOwned)?;
 			<IpfsAsset<T>>::insert(cid.clone(), ipfs);
 
@@ -311,22 +319,28 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(0)]
-		pub fn submit_ipfs_delete_results(origin: OriginFor<T>, cid: Vec<u8>) -> DispatchResult {
-			let who = ensure_signed(origin)?;
+		pub fn submit_ipfs_delete_results(
+			origin: OriginFor<T>,
+			admin: AccountOf<T>,
+			cid: Vec<u8>,
+		) -> DispatchResult {
+			ensure_signed(origin)?;
 
-			let _ipfs = Self::ipfs_asset(&cid).ok_or(<Error<T>>::IpfsNotExist)?;
+			let mut ipfs_asset = Self::ipfs_asset(&cid).ok_or(<Error<T>>::IpfsNotExist)?;
 
-			<IpfsAssetOwned<T>>::try_mutate(&who, |ipfs_vec| {
-				if let Some(index) = ipfs_vec.iter().position(|i| *i == cid.clone()) {
-					ipfs_vec.swap_remove(index);
-					log::info!("qwerty\n\n");
-					Ok(true)
-				} else {
-					Ok(false)
-				}
-			})
-			.map_err(|_: bool| <Error<T>>::ExceedMaxIpfsOwned)?;
+			for user in ipfs_asset.owners.iter_mut() {
+				<IpfsAssetOwned<T>>::try_mutate(&user.0, |ipfs_vec| {
+					if let Some(index) = ipfs_vec.iter().position(|i| *i == cid.clone()) {
+						ipfs_vec.swap_remove(index);
+						Ok(true)
+					} else {
+						Ok(false)
+					}
+				})
+				.map_err(|_: bool| <Error<T>>::ExceedMaxIpfsOwned)?;
+			}
 			<IpfsAsset<T>>::remove(cid.clone());
+
 			Ok(())
 		}
 
@@ -549,7 +563,7 @@ pub mod pallet {
 
 			for cmd in data_queue.into_iter() {
 				match cmd {
-					DataCommand::AddBytes(m_addr, cid, _admin, is_recursive) => {
+					DataCommand::AddBytes(m_addr, cid, admin, is_recursive) => {
 						Self::ipfs_request(IpfsRequest::Connect(m_addr.clone()), deadline)?;
 						log::info!(
 							"IPFS: Connected to {}",
@@ -586,6 +600,8 @@ pub mod pallet {
 												"our own IPFS node can be trunsted here; qed"
 											)
 										);
+
+										// signer is the probably the node account (often Alice)
 										let signer = Signer::<T, T::AuthorityId>::all_accounts();
 										if !signer.can_sign() {
 											log::error!(
@@ -594,7 +610,12 @@ pub mod pallet {
 										}
 
 										let results = signer.send_signed_transaction(|_account| {
-											Call::submit_ipfs_add_results { cid: cid.clone() }
+											Call::submit_ipfs_add_results {
+												// admin should be the actual account that we is doing
+												// the transcation in the first place(create_ipfs_asset)
+												admin: admin.clone(),
+												cid: cid.clone(),
+											}
 										});
 
 										for (_, res) in &results {
@@ -683,7 +704,7 @@ pub mod pallet {
 						}
 					}
 
-					DataCommand::RemovePin(_m_addr, cid, _admin, is_recursive) => {
+					DataCommand::RemovePin(_m_addr, cid, admin, is_recursive) => {
 						match Self::ipfs_request(
 							IpfsRequest::RemovePin(cid.clone(), is_recursive),
 							deadline,
@@ -703,6 +724,7 @@ pub mod pallet {
 											"IPFS: block deleted with CID: {}",
 											sp_std::str::from_utf8(&cid).expect("qyzc")
 										);
+
 										let signer = Signer::<T, T::AuthorityId>::all_accounts();
 										if !signer.can_sign() {
 											log::error!(
@@ -711,7 +733,10 @@ pub mod pallet {
 										}
 
 										let results = signer.send_signed_transaction(|_account| {
-											Call::submit_ipfs_delete_results { cid: cid.clone() }
+											Call::submit_ipfs_delete_results {
+												admin: admin.clone(),
+												cid: cid.clone(),
+											}
 										});
 
 										for (_, res) in &results {
