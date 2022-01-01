@@ -183,7 +183,6 @@ pub mod pallet {
 				log::error!("IPFS: Encountered an error while processing data requests: {:?}", e);
 			}
 
-
 			if block_no % 5u32.into() == 0u32.into() {
 				if let Err(e) = Self::print_metadata() {
 					log::error!("IPFS: Encountered an error while obtaining metadata: {:?}", e);
@@ -313,8 +312,6 @@ pub mod pallet {
 		#[pallet::weight(0)]
 		pub fn submit_ipfs_delete_results(origin: OriginFor<T>, cid: Vec<u8>) -> DispatchResult {
 			let who = ensure_signed(origin)?;
-
-			let _ipfs = Self::ipfs_asset(&cid).ok_or(<Error<T>>::IpfsNotExist)?;
 
 			<IpfsAssetOwned<T>>::try_mutate(&who, |ipfs_vec| {
 				if let Some(index) = ipfs_vec.iter().position(|i| *i == cid.clone()) {
