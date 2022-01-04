@@ -400,6 +400,7 @@ impl pallet_ipfs::Config for Runtime {
 	type Currency = Balances;
 	type AuthorityId = pallet_iris::crypto::TestAuthId;
 	type MaxIpfsOwned = MaxIpfsOwned;
+	type WeightInfo = pallet_ipfs::weights::SubstrateWeight<Runtime>;
 }
 
 impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Runtime
@@ -682,6 +683,7 @@ impl_runtime_apis! {
 
 			let mut list = Vec::<BenchmarkList>::new();
 
+			list_benchmark!(list, extra, pallet_ipfs, Ipfs);
 			list_benchmark!(list, extra, pallet_assets, Assets);
 			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_balances, Balances);
@@ -716,6 +718,7 @@ impl_runtime_apis! {
 			let mut batches = Vec::<BenchmarkBatch>::new();
 			let params = (&config, &whitelist);
 
+			add_benchmark!(params, batches, pallet_ipfs, Ipfs);
 			add_benchmark!(params, batches, pallet_assets, Assets);
 			add_benchmark!(params, batches, frame_system, SystemBench::<Runtime>);
 			add_benchmark!(params, batches, pallet_balances, Balances);

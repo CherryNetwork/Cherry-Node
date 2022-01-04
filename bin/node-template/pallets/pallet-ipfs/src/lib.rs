@@ -1,20 +1,51 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-pub use pallet::*;
-
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
 #[cfg(test)]
 mod mock;
-
 #[cfg(test)]
 mod tests;
+pub mod weights;
 
 use codec::{Decode, Encode};
 use frame_support::RuntimeDebug;
 use frame_system::offchain::{SendSignedTransaction, Signer};
 use scale_info::TypeInfo;
+use sp_core::crypto::KeyTypeId;
 use sp_core::offchain::{Duration, OpaqueMultiaddr, Timestamp};
 use sp_io::offchain::timestamp;
 use sp_std::vec::Vec;
+
+pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"chfs");
+
+pub mod crypto {
+	use crate::KEY_TYPE;
+	use sp_core::sr25519::Signature as Sr25519Signature;
+	use sp_runtime::app_crypto::{app_crypto, sr25519};
+	use sp_runtime::{traits::Verify, MultiSignature, MultiSigner};
+
+	app_crypto!(sr25519, KEY_TYPE);
+
+	pub struct TestAuthId;
+
+	impl frame_system::offchain::AppCrypto<MultiSigner, MultiSignature> for TestAuthId {
+		type RuntimeAppPublic = Public;
+		type GenericSignature = sp_core::sr25519::Signature;
+		type GenericPublic = sp_core::sr25519::Public;
+	}
+
+	impl frame_system::offchain::AppCrypto<<Sr25519Signature as Verify>::Signer, Sr25519Signature>
+		for TestAuthId
+	{
+		type RuntimeAppPublic = Public;
+		type GenericSignature = sp_core::sr25519::Signature;
+		type GenericPublic = sp_core::sr25519::Public;
+	}
+}
+
+pub use pallet::*;
+pub use weights::WeightInfo;
 
 #[derive(Encode, Decode, RuntimeDebug, PartialEq, TypeInfo)]
 pub enum DataCommand<AccountId> {
@@ -89,6 +120,8 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxIpfsOwned: Get<u32>;
 		type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
+
+		type WeightInfo: WeightInfo;
 	}
 
 	#[pallet::error]
@@ -196,7 +229,7 @@ pub mod pallet {
 		/// Create a new unique IPFS.
 		///
 		/// The actual IPFS creation is done in the `mint()` function.
-		#[pallet::weight(100)]
+		#[pallet::weight(T::WeightInfo::create_ipfs_asset())]
 		pub fn create_ipfs_asset(
 			origin: OriginFor<T>,
 			addr: Vec<u8>,
@@ -580,10 +613,6 @@ pub mod pallet {
 								)?;
 
 								log::info!(
-									"DATA RETRIEVED: {:?}",
-									sp_std::str::from_utf8(&data).expect("lol")
-								);
-								log::info!(
 									"IPFS: disconnected from {}",
 									sp_std::str::from_utf8(&m_addr.0)
 										.expect("our own calls can be trusted to be UTF-8; qed")
@@ -669,10 +698,6 @@ pub mod pallet {
 									deadline,
 								)?;
 
-								log::info!(
-									"DATA RETRIEVED: {:?}",
-									sp_std::str::from_utf8(&data).expect("lol")
-								);
 								log::info!(
 									"IPFS: disconnected from {}",
 									sp_std::str::from_utf8(&m_addr.0)

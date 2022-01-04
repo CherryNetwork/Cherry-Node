@@ -103,7 +103,7 @@ runtime-benchmarks = [
 	"frame-system/runtime-benchmarks",
 	"hex-literal",
 	"pallet-balances/runtime-benchmarks",
-	"pallet-iris/runtime-benchmarks",
+	"pallet-ipfs/runtime-benchmarks",
 	"pallet-timestamp/runtime-benchmarks",
 	"pallet-assets/runtime-benchmarks",
 	"sp-runtime/runtime-benchmarks",
