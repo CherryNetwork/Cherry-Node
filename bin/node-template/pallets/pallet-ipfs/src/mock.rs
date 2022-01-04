@@ -111,6 +111,7 @@ impl Config for Test {
 	type Event = Event;
 	type MaxIpfsOwned = MaxIpfsOwned;
 	type AuthorityId = pallet_ipfs::crypto::TestAuthId;
+	type WeightInfo = ();
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
