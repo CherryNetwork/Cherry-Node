@@ -1,16 +1,10 @@
 #![cfg(test)]
 use crate::{self as pallet_ipfs, Config};
 use frame_support::{construct_runtime, parameter_types};
-use sp_core::{
-	Pair,
-	H256,
-	sr25519::{
-		Signature,
-	},
-};
+use sp_core::{sr25519::Signature, Pair, H256};
 use sp_runtime::{
 	testing::{Header, TestXt},
-	traits::{BlakeTwo256, Extrinsic as ExtrinsicT, IdentityLookup, IdentifyAccount, Verify},
+	traits::{BlakeTwo256, Extrinsic as ExtrinsicT, IdentifyAccount, IdentityLookup, Verify},
 };
 // use pallet_balances::Call as BalancesCall;
 // use pallet_assets;
@@ -94,7 +88,6 @@ where
 	type Extrinsic = Extrinsic;
 }
 
-
 impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Test
 where
 	Call: From<LocalCall>,
@@ -113,11 +106,12 @@ parameter_types! {
 	pub const MaxIpfsOwned: u32 = 9999;
 }
 
-
 impl Config for Test {
 	type Currency = Balances;
 	type Event = Event;
 	type MaxIpfsOwned = MaxIpfsOwned;
+	type AuthorityId = pallet_ipfs::crypto::TestAuthId;
+	type WeightInfo = ();
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
@@ -127,6 +121,24 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	let (pair3, _) = sp_core::sr25519::Pair::generate();
 	pallet_balances::GenesisConfig::<Test> {
 		balances: vec![(pair1.public(), 10), (pair2.public(), 20), (pair3.public(), 30)],
+	}
+	.assimilate_storage(&mut t)
+	.unwrap();
+	t.into()
+}
+
+// Build genesis storage according to the mock runtime.
+pub fn new_test_ext_funded(pair1_funded: sp_core::sr25519::Pair) -> sp_io::TestExternalities {
+	let mut t = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
+	// let (pair1, _) = sp_core::sr25519::Pair::generate();
+	let (pair2, _) = sp_core::sr25519::Pair::generate();
+	let (pair3, _) = sp_core::sr25519::Pair::generate();
+	pallet_balances::GenesisConfig::<Test> {
+		balances: vec![
+			(pair1_funded.clone().public(), 10),
+			(pair2.public(), 20),
+			(pair3.public(), 30),
+		],
 	}
 	.assimilate_storage(&mut t)
 	.unwrap();
