@@ -18,6 +18,44 @@ use sp_runtime::generic::OpaqueDigestItemId;
 // 	Iris::on_initialize(number)
 // }
 
+// #[test]
+// fn ipfs_can_fetch_bytes_and_add_to_offchai_straoge() {
+// 	let (p, _) = sp_core::sr25519::Pair::generate();
+// 	let (offchain, state) = testing::TestOffchainExt::new();
+// 	let (pool, _) = testing::TestTransactionPoolExt::new();
+
+// 	const PHRASE: &str =
+// 		"news slush supreme milk chapter athlete soap sausage put clutch what kitten";
+// 	let keystore = KeyStore::new();
+// 	SyncCryptoStore::sr2519_generate_new(
+// 		&keystore,
+// 		crate::KEY_TYPE,
+// 		Some(&format!("{}/hunter1", PHRASE)),
+// 	)
+// 	.unwrap();
+
+// 	let mut t = new_test_ext_funded(p.clone());
+// 	t.register_extension(OffchainWorkerExt::new(offchain));
+// 	t.register_extension(TransactionPool::new(pool));
+// 	t.register_extension(KeyStoreExt(Arc::new(keystore)));
+
+// 	let multiaddr_vec =
+// 		"/ip4/127.0.0.1/tcp/4001/p2p/12D3KooWMvyvKxYcy9mjbFbXcogFSCvENzQ62ogRxHKZaksFCkAp"
+// 			.as_bytes()
+// 			.to_vec();
+// 	let cid_vec = "QmPZv7P8nQUSh2CpqTvUeYemFyjvMjgWEs8H1Tm8b3zAm9".as_bytes().to_vec();
+// 	let bytes = "hello test".as_bytes().to_vec();
+
+// 	{
+// 		let mut state = state.write();
+
+// 		state.expected_ipfs_requests(testing::IpfsPendingRequest {
+// 			response: Some(IpfsResponse::Success),
+// 			..Default::default()
+// 		});
+// 	}
+// }
+
 #[test]
 fn iris_initial_state() {
 	new_test_ext().execute_with(|| {
@@ -124,11 +162,9 @@ fn ipfs_insert_pin_works_for_valid_values() {
 		let actual_data_command = data_queue.pop();
 		assert_eq!(actual_data_command, Some(expected_data_command));
 
-
 		let expected_data_command =
 			crate::DataCommand::InsertPin(cid_vec.clone(), p.clone().public(), is_recursive);
 
-		
 		assert_ok!(
 			mock::Ipfs::pin_ipfs_asset(Origin::signed(p.clone().public()), cid_vec.clone(),)
 		);
@@ -203,9 +239,9 @@ fn ipfs_read_data_works_for_valid_values() {
 		p.clone().public(),
 	);
 
-	new_test_ext_funded(p.clone()).execute_with( || {
+	new_test_ext_funded(p.clone()).execute_with(|| {
 		// TODO: create ipfs
-		
+
 		assert_ok!(mock::Ipfs::read_file(
 			Origin::signed(p.clone().public()),
 			multiaddr_vec.clone(),
@@ -229,9 +265,9 @@ fn submit_ipfs_delete_results_works_for_valid_values() {
 			.to_vec();
 	let cid_vec = "QmPZv7P8nQUSh2CpqTvUeYemFyjvMjgWEs8H1Tm8b3zAm9".as_bytes().to_vec();
 
-	new_test_ext_funded(p.clone()).execute_with( || {
-		// TODO: create ipfs		
-		
+	new_test_ext_funded(p.clone()).execute_with(|| {
+		// TODO: create ipfs
+
 		assert_ok!(mock::Ipfs::submit_ipfs_delete_results(
 			Origin::signed(p.clone().public()),
 			p.clone().public(),
@@ -252,9 +288,9 @@ fn ipfs_add_owner_works_for_valid_values() {
 			.to_vec();
 	let cid_vec = "QmPZv7P8nQUSh2CpqTvUeYemFyjvMjgWEs8H1Tm8b3zAm9".as_bytes().to_vec();
 
-	new_test_ext_funded(p1.clone()).execute_with( || {
+	new_test_ext_funded(p1.clone()).execute_with(|| {
 		// TODO: create ipfs
-		
+
 		assert_ok!(mock::Ipfs::add_owner(
 			Origin::signed(p1.clone().public()),
 			cid_vec.clone(),
@@ -274,9 +310,9 @@ fn ipfs_remove_owner_works_for_valid_values() {
 			.to_vec();
 	let cid_vec = "QmPZv7P8nQUSh2CpqTvUeYemFyjvMjgWEs8H1Tm8b3zAm9".as_bytes().to_vec();
 
-	new_test_ext_funded(p1.clone()).execute_with( || {
+	new_test_ext_funded(p1.clone()).execute_with(|| {
 		// TODO: create ipfs
-		
+
 		assert_ok!(mock::Ipfs::add_owner(
 			Origin::signed(p1.clone().public()),
 			cid_vec.clone(),
@@ -302,9 +338,9 @@ fn ipfs_change_ownership_works_for_valid_values() {
 			.to_vec();
 	let cid_vec = "QmPZv7P8nQUSh2CpqTvUeYemFyjvMjgWEs8H1Tm8b3zAm9".as_bytes().to_vec();
 
-	new_test_ext_funded(p1.clone()).execute_with( || {
+	new_test_ext_funded(p1.clone()).execute_with(|| {
 		// TODO: create ipfs
-		
+
 		assert_ok!(mock::Ipfs::add_owner(
 			Origin::signed(p1.clone().public()),
 			cid_vec.clone(),
@@ -318,7 +354,7 @@ fn ipfs_change_ownership_works_for_valid_values() {
 			p2.clone().public(),
 			OwnershipLayer::Reader,
 		));
-	});	
+	});
 }
 
 // #[test]

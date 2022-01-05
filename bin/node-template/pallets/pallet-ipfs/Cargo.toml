@@ -24,6 +24,7 @@ sp-io = { version = "4.0.0-dev", default-features = false, path = "../../../../p
 sp-core = { default-features = false, version = "4.0.0-dev", path = "../../../../primitives/core" }
 frame-benchmarking = { version = "4.0.0-dev", default-features = false, path = "../../../../frame/benchmarking", optional = true }
 log = { version = "0.4.14", default-features = false }
+sp-keystore = { version = "0.10.0-dev", path = "../../../../primitives/keystore", optional = true }
 
 [dependencies.serde]
 default-features = false
