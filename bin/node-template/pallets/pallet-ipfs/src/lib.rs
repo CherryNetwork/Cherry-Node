@@ -597,13 +597,6 @@ pub mod pallet {
 			for cmd in data_queue.into_iter() {
 				match cmd {
 					DataCommand::AddBytes(m_addr, cid, admin, is_recursive) => {
-						Self::ipfs_request(IpfsRequest::Connect(m_addr.clone()), deadline)?;
-						log::info!(
-							"IPFS: Connected to {}",
-							sp_std::str::from_utf8(&m_addr.0)
-								.expect("our own calls can be trusted to be UTF-8; qed")
-						);
-
 						match Self::ipfs_request(IpfsRequest::CatBytes(cid.clone()), deadline) {
 							Ok(IpfsResponse::CatBytes(data)) => {
 								log::info!("IPFS: fetched data");
@@ -674,6 +667,21 @@ pub mod pallet {
 												unreachable!("only Success can be a response for that request type")
 											}
 											Err(e) => log::error!("IPFS: Pin Error: {:?}", e),
+										}
+
+										match Self::ipfs_request(
+											IpfsRequest::Disconnect(m_addr.clone()),
+											deadline,
+										) {
+											Ok(IpfsResponse::Success) => {
+												log::info!("IPFS: Disconeccted Succes")
+											}
+											Ok(_) => {
+												unreachable!("only Success can be a response for that request type")
+											}
+											Err(e) => {
+												log::error!("IPFS: Disconnect Error: {:?}", e)
+											}
 										}
 									}
 									Ok(_) => unreachable!(
