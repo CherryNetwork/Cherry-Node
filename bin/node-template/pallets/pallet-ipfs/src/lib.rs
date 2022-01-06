@@ -148,6 +148,8 @@ pub mod pallet {
 		SameAccount,
 		/// Ensures that an accounts onwership layer  is different.
 		SameOwnershipLayer,
+		/// Ensures that an IPFS is not already owned by the account.
+		IpfsAlreadyExist,
 		CantCreateRequest,
 		RequestTimeout,
 		RequestFailed,
@@ -340,6 +342,10 @@ pub mod pallet {
 				cid_addr: cid.clone(),
 				owners: BTreeMap::<AccountOf<T>, OwnershipLayer>::new(),
 			};
+
+			for _cid in ipfs.cid_addr.iter_mut() {
+				ensure!(_cid != cid, <Error<T>>::IpfsAlreadyExist);
+			}
 
 			ipfs.owners.insert(admin.clone(), OwnershipLayer::default());
 			let _ipfs_id = T::Hashing::hash_of(&ipfs);
