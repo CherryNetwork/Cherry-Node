@@ -149,7 +149,7 @@ pub mod pallet {
 		/// Ensures that an accounts onwership layer  is different.
 		SameOwnershipLayer,
 		/// Ensures that an IPFS is not already owned by the account.
-		IpfsAlreadyExist,
+		IpfsAlreadyOwned,
 		CantCreateRequest,
 		RequestTimeout,
 		RequestFailed,
@@ -238,7 +238,13 @@ pub mod pallet {
 			ci_address: Vec<u8>,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
+
+			ensure!(
+				<IpfsAssetOwned<T>>::get(&sender).contains(&ci_address) == false, <Error<T>>::IpfsAlreadyOwned
+			);
+
 			let multiaddr = OpaqueMultiaddr(addr);
+
 			<DataQueue<T>>::mutate(|queue| {
 				queue.push(DataCommand::AddBytes(
 					multiaddr,
@@ -342,10 +348,6 @@ pub mod pallet {
 				cid_addr: cid.clone(),
 				owners: BTreeMap::<AccountOf<T>, OwnershipLayer>::new(),
 			};
-
-			for _cid in ipfs.cid_addr.iter_mut() {
-				ensure!(_cid != cid, <Error<T>>::IpfsAlreadyExist);
-			}
 
 			ipfs.owners.insert(admin.clone(), OwnershipLayer::default());
 			let _ipfs_id = T::Hashing::hash_of(&ipfs);
