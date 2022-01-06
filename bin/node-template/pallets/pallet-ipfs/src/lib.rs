@@ -148,6 +148,8 @@ pub mod pallet {
 		SameAccount,
 		/// Ensures that an accounts onwership layer  is different.
 		SameOwnershipLayer,
+		/// Ensures that an IPFS is not already owned by the account.
+		IpfsAlreadyOwned,
 		CantCreateRequest,
 		RequestTimeout,
 		RequestFailed,
@@ -236,7 +238,13 @@ pub mod pallet {
 			ci_address: Vec<u8>,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
+
+			ensure!(
+				<IpfsAssetOwned<T>>::get(&sender).contains(&ci_address) == false, <Error<T>>::IpfsAlreadyOwned
+			);
+
 			let multiaddr = OpaqueMultiaddr(addr);
+
 			<DataQueue<T>>::mutate(|queue| {
 				queue.push(DataCommand::AddBytes(
 					multiaddr,
