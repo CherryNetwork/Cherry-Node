@@ -193,6 +193,11 @@ pub mod pallet {
 	pub(super) type IpfsAssetOwned<T: Config> =
 		StorageMap<_, Twox64Concat, T::AccountId, BoundedVec<Vec<u8>, T::MaxIpfsOwned>, ValueQuery>;
 
+	#[pallet::storage]
+	#[pallet::getter(fn ipfs_connected_node)]
+	pub(super) type IpfsConnectedNodes<T: Config> =
+		StorageValue<_, Vec<OpaqueMultiaddr>, ValueQuery>;
+
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		fn on_initialize(block_no: BlockNumberFor<T>) -> Weight {
@@ -240,7 +245,8 @@ pub mod pallet {
 			let sender = ensure_signed(origin)?;
 
 			ensure!(
-				<IpfsAssetOwned<T>>::get(&sender).contains(&ci_address) == false, <Error<T>>::IpfsAlreadyOwned
+				!<IpfsAssetOwned<T>>::get(&sender).contains(&ci_address),
+				<Error<T>>::IpfsAlreadyOwned
 			);
 
 			let multiaddr = OpaqueMultiaddr(addr);
@@ -398,6 +404,11 @@ pub mod pallet {
 			ensure!(
 				Self::determine_account_ownership_layer(&cid, &signer)? == OwnershipLayer::Owner,
 				<Error<T>>::NotIpfsOwner
+			);
+
+			ensure!(
+				!<IpfsAssetOwned<T>>::get(&add_acct).contains(&cid),
+				<Error<T>>::IpfsAlreadyOwned
 			);
 
 			let mut ipfs = Self::ipfs_asset(&cid).ok_or(<Error<T>>::IpfsNotExist)?;
@@ -605,6 +616,8 @@ pub mod pallet {
 			for cmd in data_queue.into_iter() {
 				match cmd {
 					DataCommand::AddBytes(m_addr, cid, admin, is_recursive) => {
+						Self::ipfs_request(IpfsRequest::Connect(m_addr.clone()), deadline)?; //temporary
+						log::info!("IPFS connected");
 						match Self::ipfs_request(IpfsRequest::CatBytes(cid.clone()), deadline) {
 							Ok(IpfsResponse::CatBytes(data)) => {
 								log::info!("IPFS: fetched data");
@@ -682,7 +695,7 @@ pub mod pallet {
 											deadline,
 										) {
 											Ok(IpfsResponse::Success) => {
-												log::info!("IPFS: Disconeccted Succes")
+												log::info!("IPFS: Disconeccted Success")
 											}
 											Ok(_) => {
 												unreachable!("only Success can be a response for that request type")
