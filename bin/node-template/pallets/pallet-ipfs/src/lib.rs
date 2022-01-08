@@ -240,7 +240,7 @@ pub mod pallet {
 			let sender = ensure_signed(origin)?;
 
 			ensure!(
-				<IpfsAssetOwned<T>>::get(&sender).contains(&ci_address) == false,
+				!<IpfsAssetOwned<T>>::get(&sender).contains(&ci_address),
 				<Error<T>>::IpfsAlreadyOwned
 			);
 
@@ -403,6 +403,11 @@ pub mod pallet {
 			ensure!(
 				Self::determine_account_ownership_layer(&cid, &signer)? == OwnershipLayer::Owner,
 				<Error<T>>::NotIpfsOwner
+			);
+
+			ensure!(
+				!<IpfsAssetOwned<T>>::get(&add_acct).contains(&cid),
+				<Error<T>>::IpfsAlreadyOwned
 			);
 
 			let mut ipfs = Self::ipfs_asset(&cid).ok_or(<Error<T>>::IpfsNotExist)?;
