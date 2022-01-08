@@ -193,11 +193,6 @@ pub mod pallet {
 	pub(super) type IpfsAssetOwned<T: Config> =
 		StorageMap<_, Twox64Concat, T::AccountId, BoundedVec<Vec<u8>, T::MaxIpfsOwned>, ValueQuery>;
 
-	#[pallet::storage]
-	#[pallet::getter(fn ipfs_connected_node)]
-	pub(super) type IpfsConnectedNodes<T: Config> =
-		StorageValue<_, Vec<OpaqueMultiaddr>, ValueQuery>;
-
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		fn on_initialize(block_no: BlockNumberFor<T>) -> Weight {
@@ -616,8 +611,6 @@ pub mod pallet {
 			for cmd in data_queue.into_iter() {
 				match cmd {
 					DataCommand::AddBytes(m_addr, cid, admin, is_recursive) => {
-						Self::ipfs_request(IpfsRequest::Connect(m_addr.clone()), deadline)?; //temporary
-						log::info!("IPFS connected");
 						match Self::ipfs_request(IpfsRequest::CatBytes(cid.clone()), deadline) {
 							Ok(IpfsResponse::CatBytes(data)) => {
 								log::info!("IPFS: fetched data");
