@@ -163,10 +163,10 @@ fn ipfs_insert_pin_works_for_valid_values() {
 		assert_eq!(actual_data_command, Some(expected_data_command));
 
 		let expected_data_command =
-			crate::DataCommand::InsertPin(cid_vec.clone(), p.clone().public(), is_recursive);
+			crate::DataCommand::InsertPin(OpaqueMultiaddr(multiaddr_vec.clone()), cid_vec.clone(), p.clone().public(), is_recursive);
 
 		assert_ok!(
-			mock::Ipfs::pin_ipfs_asset(Origin::signed(p.clone().public()), cid_vec.clone(),)
+			mock::Ipfs::pin_ipfs_asset(Origin::signed(p.clone().public()), multiaddr_vec.clone(), cid_vec.clone(),)
 		);
 
 		let mut data_queue = crate::DataQueue::<Test>::get();
@@ -190,11 +190,11 @@ fn ipfs_remove_pin_works_for_valid_values() {
 	// TODO: create ipfs
 
 	let expected_data_command =
-		crate::DataCommand::InsertPin(cid_vec.clone(), p.clone().public(), is_recursive);
+		crate::DataCommand::InsertPin(OpaqueMultiaddr(multiaddr_vec.clone()), cid_vec.clone(), p.clone().public(), is_recursive);
 
 	new_test_ext_funded(p.clone()).execute_with(|| {
 		assert_ok!(
-			mock::Ipfs::pin_ipfs_asset(Origin::signed(p.clone().public()), cid_vec.clone(),)
+			mock::Ipfs::pin_ipfs_asset(Origin::signed(p.clone().public()), multiaddr_vec.clone(), cid_vec.clone(),)
 		);
 
 		let mut data_queue = crate::DataQueue::<Test>::get();
