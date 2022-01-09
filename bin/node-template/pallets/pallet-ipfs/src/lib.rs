@@ -51,14 +51,17 @@ pub use weights::WeightInfo;
 pub enum DataCommand<AccountId> {
 	AddBytes(OpaqueMultiaddr, Vec<u8>, AccountId, bool),
 	CatBytes(OpaqueMultiaddr, Vec<u8>, AccountId),
-	InsertPin(Vec<u8>, AccountId, bool),
+	InsertPin(OpaqueMultiaddr, Vec<u8>, AccountId, bool),
 	RemovePin(OpaqueMultiaddr, Vec<u8>, AccountId, bool),
+	RemoveBlock(OpaqueMultiaddr, Vec<u8>, AccountId),
 }
 
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use frame_support::{pallet_prelude::*, sp_runtime::traits::Hash, traits::Currency};
+	use frame_support::{
+		dispatch::DispatchResult, pallet_prelude::*, sp_runtime::traits::Hash, traits::Currency,
+	};
 	use frame_system::{
 		offchain::{AppCrypto, CreateSignedTransaction},
 		pallet_prelude::*,
@@ -173,6 +176,7 @@ pub mod pallet {
 		ReadIpfsAsset(T::AccountId, T::Hash),
 		DeleteIpfsAsset(T::AccountId, Vec<u8>),
 		AddPin(T::AccountId, Vec<u8>),
+		UnpinIpfsAsset(T::AccountId, Vec<u8>),
 	}
 
 	// Storage items.
@@ -262,15 +266,17 @@ pub mod pallet {
 
 		/// Pins an IPFS.
 		#[pallet::weight(0)]
-		pub fn pin_ipfs_asset(origin: OriginFor<T>, cid: Vec<u8>) -> DispatchResult {
+		pub fn pin_ipfs_asset(origin: OriginFor<T>, addr: Vec<u8>, cid: Vec<u8>) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 			ensure!(
 				Self::determine_account_ownership_layer(&cid, &sender)? == OwnershipLayer::Owner,
 				<Error<T>>::NotIpfsOwner
 			);
 
+			let multiaddr = OpaqueMultiaddr(addr);
+
 			<DataQueue<T>>::mutate(|queue| {
-				queue.push(DataCommand::InsertPin(cid.clone(), sender.clone(), true))
+				queue.push(DataCommand::InsertPin(multiaddr, cid.clone(), sender.clone(), true))
 			});
 
 			Self::deposit_event(Event::AddPin(sender.clone(), cid.clone()));
@@ -278,7 +284,32 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Unpins and deletes an IPFS.
+		/// Unpins an IPFS.
+		#[pallet::weight(0)]
+		pub fn unpin_ipfs_asset(
+			origin: OriginFor<T>,
+			addr: Vec<u8>,
+			cid: Vec<u8>,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+
+			ensure!(
+				Self::determine_account_ownership_layer(&cid, &sender)? == OwnershipLayer::Owner,
+				<Error<T>>::NotIpfsOwner
+			);
+
+			let multiaddr = OpaqueMultiaddr(addr);
+
+			<DataQueue<T>>::mutate(|queue| {
+				queue.push(DataCommand::RemovePin(multiaddr, cid.clone(), sender.clone(), true))
+			});
+
+			Self::deposit_event(Event::UnpinIpfsAsset(sender.clone(), cid.clone()));
+
+			Ok(())
+		}
+
+		/// Deletes an IPFS.
 		#[pallet::weight(0)]
 		pub fn delete_ipfs_asset(
 			origin: OriginFor<T>,
@@ -295,7 +326,7 @@ pub mod pallet {
 			let multiaddr = OpaqueMultiaddr(addr);
 
 			<DataQueue<T>>::mutate(|queue| {
-				queue.push(DataCommand::RemovePin(multiaddr, cid.clone(), sender.clone(), true))
+				queue.push(DataCommand::RemoveBlock(multiaddr, cid.clone(), sender.clone()))
 			});
 
 			Self::deposit_event(Event::DeleteIpfsAsset(sender.clone(), cid.clone()));
@@ -358,6 +389,32 @@ pub mod pallet {
 			<IpfsAssetOwned<T>>::try_mutate(&admin, |ipfs_vec| ipfs_vec.try_push(cid.clone()))
 				.map_err(|_| <Error<T>>::ExceedMaxIpfsOwned)?;
 			<IpfsAsset<T>>::insert(cid.clone(), ipfs);
+
+			Ok(())
+		}
+
+		#[pallet::weight(0)]
+		pub fn submit_ipfs_pin_results(
+			origin: OriginFor<T>,
+			admin: AccountOf<T>,
+			cid: Vec<u8>,
+		) -> DispatchResult {
+			ensure_signed(origin)?;
+
+			<DataQueue<T>>::take();
+
+			Ok(())
+		}
+
+		#[pallet::weight(0)]
+		pub fn submit_ipfs_unpin_results(
+			origin: OriginFor<T>,
+			admin: AccountOf<T>,
+			cid: Vec<u8>,
+		) -> DispatchResult {
+			ensure_signed(origin)?;
+
+			<DataQueue<T>>::take();
 
 			Ok(())
 		}
@@ -753,7 +810,7 @@ pub mod pallet {
 						}
 					}
 
-					DataCommand::InsertPin(cid, _admin, is_recursive) => {
+					DataCommand::InsertPin(m_addr, cid, _admin, is_recursive) => {
 						match Self::ipfs_request(
 							IpfsRequest::InsertPin(cid.clone(), is_recursive),
 							deadline,
@@ -762,7 +819,32 @@ pub mod pallet {
 								log::info!(
 									"IPFS: pinned data with CID: {}",
 									sp_std::str::from_utf8(&cid).expect("trusted")
-								)
+								);
+
+								let signer = Signer::<T, T::AuthorityId>::all_accounts();
+								if !signer.can_sign() {
+									log::error!(
+									"No local account available. Consider adding one via `author_insertKey` RPC",
+								);
+								}
+
+								let results = signer.send_signed_transaction(|_account| {
+									Call::submit_ipfs_pin_results {
+										admin: _admin.clone(),
+										cid: cid.clone(),
+									}
+								});
+
+								for (_, res) in &results {
+									match res {
+										Ok(()) => {
+											log::info!("Submited IPFS results")
+										}
+										Err(e) => {
+											log::error!("Failed to submit transaction: {:?}", e)
+										}
+									}
+								}
 							}
 							Ok(_) => {
 								unreachable!("only Success can be a response for that request type")
@@ -782,52 +864,75 @@ pub mod pallet {
 									sp_std::str::from_utf8(&cid).expect("qrff")
 								);
 
-								match Self::ipfs_request(
-									IpfsRequest::RemoveBlock(cid.clone()),
-									deadline,
-								) {
-									Ok(IpfsResponse::RemoveBlock(cid)) => {
-										log::info!(
-											"IPFS: block deleted with CID: {}",
-											sp_std::str::from_utf8(&cid).expect("qyzc")
-										);
+								let signer = Signer::<T, T::AuthorityId>::all_accounts();
+								if !signer.can_sign() {
+									log::error!(
+										"No local account available. Consider adding one via `author_insertKey` RPC",
+									);
+								}
 
-										let signer = Signer::<T, T::AuthorityId>::all_accounts();
-										if !signer.can_sign() {
-											log::error!(
-											"No local account available. Consider adding one via `author_insertKey` RPC",
-										);
+								let results = signer.send_signed_transaction(|_account| {
+									Call::submit_ipfs_unpin_results {
+										admin: admin.clone(),
+										cid: cid.clone(),
+									}
+								});
+
+								for (_, res) in &results {
+									match res {
+										Ok(()) => {
+											log::info!("Submited IPFS results")
 										}
-
-										let results = signer.send_signed_transaction(|_account| {
-											Call::submit_ipfs_delete_results {
-												admin: admin.clone(),
-												cid: cid.clone(),
-											}
-										});
-
-										for (_, res) in &results {
-											match res {
-												Ok(()) => {
-													log::info!("Submited IPFS results")
-												}
-												Err(e) => log::error!(
-													"Failed to submit transaction: {:?}",
-													e
-												),
-											}
+										Err(e) => {
+											log::error!("Failed to submit transaction: {:?}", e)
 										}
 									}
-									Ok(_) => unreachable!(
-										"only RemoveBlock can be a response for that request type"
-									),
-									Err(e) => log::error!("IPFS: Remove Block Error: {:?}", e),
 								}
 							}
 							Ok(_) => {
 								unreachable!("only Success can be a response for that request type")
 							}
 							Err(e) => log::error!("IPFS: Remove Pin Error: {:?}", e),
+						}
+					}
+
+					DataCommand::RemoveBlock(_m_addr, cid, admin) => {
+						match Self::ipfs_request(IpfsRequest::RemoveBlock(cid.clone()), deadline) {
+							Ok(IpfsResponse::RemoveBlock(cid)) => {
+								log::info!(
+									"IPFS: block deleted with CID: {}",
+									sp_std::str::from_utf8(&cid).expect("qyzc")
+								);
+
+								let signer = Signer::<T, T::AuthorityId>::all_accounts();
+								if !signer.can_sign() {
+									log::error!(
+										"No local account available. Consider adding one via `author_insertKey` RPC",
+									);
+								}
+
+								let results = signer.send_signed_transaction(|_account| {
+									Call::submit_ipfs_delete_results {
+										admin: admin.clone(),
+										cid: cid.clone(),
+									}
+								});
+
+								for (_, res) in &results {
+									match res {
+										Ok(()) => {
+											log::info!("Submited IPFS results")
+										}
+										Err(e) => {
+											log::error!("Failed to submit transaction: {:?}", e)
+										}
+									}
+								}
+							}
+							Ok(_) => unreachable!(
+								"only RemoveBlock can be a response for that request type"
+							),
+							Err(e) => log::error!("IPFS: Remove Block Error: {:?}", e),
 						}
 					}
 				}
