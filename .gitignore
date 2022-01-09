@@ -25,4 +25,3 @@ rls*.log
 .cargo-remote.toml
 *.bin
 *.iml
-/scripts
