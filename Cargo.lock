@@ -5068,6 +5068,7 @@ dependencies = [
  "pallet-iris",
  "pallet-iris-rpc-runtime-api",
  "pallet-randomness-collective-flip",
+ "pallet-scheduler",
  "pallet-sudo",
  "pallet-timestamp",
  "pallet-transaction-payment",
