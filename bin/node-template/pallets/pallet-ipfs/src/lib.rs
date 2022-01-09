@@ -208,15 +208,6 @@ pub mod pallet {
 		}
 
 		fn offchain_worker(block_no: BlockNumberFor<T>) {
-			if block_no % 5u32.into() == 0u32.into() {
-				if let Err(e) = Self::connection_housekeeping() {
-					log::error!(
-						"IPFS: Encountered an error while processing data requests: {:?}",
-						e
-					);
-				}
-			}
-
 			// handle data requests each block
 			if let Err(e) = Self::handle_data_requests() {
 				log::error!("IPFS: Encountered an error while processing data requests: {:?}", e);
@@ -589,74 +580,6 @@ pub mod pallet {
 					}
 					Error::<T>::RequestFailed
 				})
-		}
-
-		fn connection_housekeeping() -> Result<(), Error<T>> {
-			let deadline = Some(timestamp().add(Duration::from_millis(5_000)));
-
-			let (public_key, addrs) = if let IpfsResponse::Identity(public_key, addrs) =
-				Self::ipfs_request(IpfsRequest::Identity, deadline)?
-			{
-				(public_key, addrs)
-			} else {
-				unreachable!("only `Identity` is a valid response type.");
-			};
-
-			if !<BootstrapNodes<T>>::contains_key(public_key.clone()) {
-				if let Some(bootstrap_node) = &<BootstrapNodes<T>>::iter().nth(0) {
-					if let Some(bootnode_maddr) = bootstrap_node.1.clone().pop() {
-						if let IpfsResponse::Success = Self::ipfs_request(
-							IpfsRequest::Connect(bootnode_maddr.clone()),
-							deadline,
-						)? {
-							log::info!(
-								"Succesfully connected to a bootstrap node: {:?}",
-								&bootnode_maddr.0
-							);
-						} else {
-							log::info!(
-								"Failed to  connect to a bootstrap node with multi_address: {:?}",
-								&bootnode_maddr.0
-							);
-
-							if let Some(next_bootnode_maddr) = bootstrap_node.1.clone().pop() {
-								if let IpfsResponse::Success = Self::ipfs_request(
-									IpfsRequest::Connect(next_bootnode_maddr.clone()),
-									deadline,
-								)? {
-									log::info!(
-										"Succesfully connected to a bootstrap node: {:?}",
-										&next_bootnode_maddr.0
-									);
-								} else {
-									log::info!("Failed to  connect to a bootstrap node with multi_address: {:?}", &next_bootnode_maddr.0);
-								}
-							}
-						}
-					}
-				}
-
-				let signer = Signer::<T, T::AuthorityId>::all_accounts();
-				if !signer.can_sign() {
-					log::error!(
-						"No local accounts available. Consider adding one via `author_insertKey` RPC",
-					);
-				}
-
-				let results =
-					signer.send_signed_transaction(|_account| Call::submit_ipfs_identity {
-						public_key: public_key.clone(),
-						multiaddress: addrs.clone(),
-					});
-
-				for (_, res) in &results {
-					match res {
-						Ok(()) => log::info!("Submitted ipfs identity results"),
-						Err(e) => log::error!("Failed to submit transcation: {:?}", e),
-					}
-				}
-			}
-			Ok(())
 		}
 
 		fn handle_data_requests() -> Result<(), Error<T>> {
