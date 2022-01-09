@@ -47,8 +47,8 @@ use pallet_transaction_payment::CurrencyAdapter;
 pub use sp_runtime::BuildStorage;
 pub use sp_runtime::{Perbill, Permill};
 
-pub use pallet_custom;
 pub use pallet_ipfs;
+pub use pallet_scheduler;
 
 /// An index to a block.
 pub type BlockNumber = u32;
@@ -110,7 +110,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	//   `spec_version`, and `authoring_version` are the same between Wasm and native.
 	// This value is set to 100 to notify Polkadot-JS App (https://polkadot.js.org/apps) to use
 	//   the compatible custom types.
-	spec_version: 100,
+	spec_version: 103,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 1,
@@ -227,6 +227,22 @@ impl frame_system::Config for Runtime {
 	type SS58Prefix = SS58Prefix;
 	/// The set code logic, just the default since we're not a parachain.
 	type OnSetCode = ();
+}
+
+parameter_types! {
+	pub MaximumSchedulerWeight: Weight = Perbill::from_percent(80) * RuntimeBlockWeights::get().max_block;
+	pub const MaxScheduledPerBlock: u32 = 50;
+}
+
+impl pallet_scheduler::Config for Runtime {
+	type Call = Call;
+	type Event = Event;
+	type MaxScheduledPerBlock = MaxScheduledPerBlock;
+	type MaximumWeight = MaximumSchedulerWeight;
+	type Origin = Origin;
+	type PalletsOrigin = OriginCaller;
+	type ScheduleOrigin = EnsureRoot<AccountId>;
+	type WeightInfo = pallet_scheduler::weights::SubstrateWeight<Runtime>;
 }
 
 parameter_types! {
@@ -381,17 +397,12 @@ impl pallet_assets::Config for Runtime {
 	type WeightInfo = pallet_assets::weights::SubstrateWeight<Runtime>;
 }
 
-/// Configure the pallet-template in pallets/template.
-impl pallet_custom::Config for Runtime {
-	type Event = Event;
-}
-
 /// Payload data to be signed when making signed transaction from off-chain workers,
 ///   inside `create_transaction` function.
 pub type SignedPayload = generic::SignedPayload<Call, SignedExtra>;
 
 parameter_types! {
-	pub const MaxIpfsOwned: u32 = 9999;
+	pub const MaxIpfsOwned: u32 = 5;
 }
 
 /// Configure the pallet-kitties in pallets/kitties.
@@ -468,9 +479,10 @@ construct_runtime!(
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		TransactionPayment: pallet_transaction_payment::{Pallet, Storage},
 		Sudo: pallet_sudo::{Pallet, Call, Config<T>, Storage, Event<T>},
-		// Include the custom logic from the pallet-template in the runtime.
-		CustomAssets: pallet_custom::{Pallet, Call, Storage, Event<T>},
+
 		Ipfs: pallet_ipfs::{Pallet, Call, Storage, Event<T>},
+		Scheduler: pallet_scheduler::{Pallet, Call, Storage, Event<T>},
+
 		// removed call to make extrinsics uncallable
 		Assets: pallet_assets::{Pallet, Storage, Event<T>},
 		Contracts: pallet_contracts::{Pallet, Call, Storage, Event<T>},
