@@ -4878,8 +4878,8 @@ version = "3.0.0-dev"
 dependencies = [
  "jsonrpc-core",
  "node-primitives",
- "pallet-contracts-rpc",
  "pallet-cherry-rpc",
+ "pallet-contracts-rpc",
  "pallet-mmr-rpc",
  "pallet-transaction-payment-rpc",
  "sc-chain-spec",
@@ -5059,6 +5059,8 @@ dependencies = [
  "pallet-assets",
  "pallet-aura",
  "pallet-balances",
+ "pallet-cherry",
+ "pallet-cherry-rpc-runtime-api",
  "pallet-contracts",
  "pallet-contracts-primitives",
  "pallet-contracts-rpc-runtime-api",
@@ -5066,8 +5068,6 @@ dependencies = [
  "pallet-grandpa",
  "pallet-ipfs",
  "pallet-ipfs-rpc-runtime-api",
- "pallet-cherry",
- "pallet-cherry-rpc-runtime-api",
  "pallet-randomness-collective-flip",
  "pallet-scheduler",
  "pallet-sudo",
@@ -5552,6 +5552,52 @@ dependencies = [
 ]
 
 [[package]]
+name = "pallet-cherry"
+version = "3.0.0"
+dependencies = [
+ "frame-benchmarking",
+ "frame-support",
+ "frame-system",
+ "log 0.4.14",
+ "pallet-assets",
+ "pallet-balances",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-core",
+ "sp-io",
+ "sp-keystore",
+ "sp-runtime",
+ "sp-std",
+]
+
+[[package]]
+name = "pallet-cherry-rpc"
+version = "4.0.0-dev"
+dependencies = [
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "pallet-cherry-rpc-runtime-api",
+ "parity-scale-codec",
+ "sp-api",
+ "sp-blockchain",
+ "sp-core",
+ "sp-rpc",
+ "sp-runtime",
+]
+
+[[package]]
+name = "pallet-cherry-rpc-runtime-api"
+version = "4.0.0-dev"
+dependencies = [
+ "pallet-cherry",
+ "parity-scale-codec",
+ "sp-api",
+ "sp-core",
+ "sp-runtime",
+]
+
+[[package]]
 name = "pallet-collective"
 version = "4.0.0-dev"
 dependencies = [
@@ -5940,52 +5986,6 @@ name = "pallet-ipfs-rpc-runtime-api"
 version = "4.0.0-dev"
 dependencies = [
  "pallet-ipfs",
- "parity-scale-codec",
- "sp-api",
- "sp-core",
- "sp-runtime",
-]
-
-[[package]]
-name = "pallet-cherry"
-version = "3.0.0"
-dependencies = [
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "log 0.4.14",
- "pallet-assets",
- "pallet-balances",
- "parity-scale-codec",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-keystore",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-cherry-rpc"
-version = "4.0.0-dev"
-dependencies = [
- "jsonrpc-core",
- "jsonrpc-core-client",
- "jsonrpc-derive",
- "pallet-cherry-rpc-runtime-api",
- "parity-scale-codec",
- "sp-api",
- "sp-blockchain",
- "sp-core",
- "sp-rpc",
- "sp-runtime",
-]
-
-[[package]]
-name = "pallet-cherry-rpc-runtime-api"
-version = "4.0.0-dev"
-dependencies = [
- "pallet-cherry",
  "parity-scale-codec",
  "sp-api",
  "sp-core",
