@@ -375,11 +375,13 @@ pub mod pallet {
 			};
 
 			ipfs.owners.insert(admin.clone(), OwnershipLayer::default());
-			let _ipfs_id = T::Hashing::hash_of(&ipfs);
+
+			let new_cnt = Self::ipfs_cnt().checked_add(1).ok_or(<Error<T>>::IpfsCntOverflow)?;
 
 			<IpfsAssetOwned<T>>::try_mutate(&admin, |ipfs_vec| ipfs_vec.try_push(cid.clone()))
 				.map_err(|_| <Error<T>>::ExceedMaxIpfsOwned)?;
 			<IpfsAsset<T>>::insert(cid.clone(), ipfs);
+			<IpfsCnt<T>>::put(new_cnt);
 
 			Ok(())
 		}
