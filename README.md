@@ -1,16 +1,15 @@
 # Substrate &middot; [![GitHub license](https://img.shields.io/badge/license-GPL3%2FApache2-blue)](#LICENSE) [![GitLab Status](https://gitlab.parity.io/parity/substrate/badges/master/pipeline.svg)](https://gitlab.parity.io/parity/substrate/pipelines) [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](docs/CONTRIBUTING.adoc) [![Matrix](https://img.shields.io/matrix/substrate-technical:matrix.org)](https://matrix.to/#/#substrate-technical:matrix.org)
 
 <p align="center">
-  <img src="/docs/media/sub.gif">
+  <img src="/docs/media/cherry-horizontal.png">
 </p>
 
-Substrate is a next-generation framework for blockchain innovation 🚀.
+Decentralized File Storage, Smarter.
 
 ## Trying it out
+We are building out a knowledge base and documentation. In the meanwhile, freestyle!
 
-Simply go to [substrate.dev](https://substrate.dev) and follow the
-[installation](https://substrate.dev/docs/en/knowledgebase/getting-started/) instructions. You can
-also try out one of the [tutorials](https://substrate.dev/en/tutorials).
+Deploy this node now with our easy [linux installation script](/scripts/run.sh)
 
 ## Contributions & Code of Conduct
 
