@@ -26,3 +26,4 @@ rls*.log
 *.bin
 *.iml
 swarm.key
+scripts/docker-build-push.sh
