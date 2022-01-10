@@ -3,7 +3,7 @@
   "id": "cherry_testnet",
   "chainType": "Live",
   "bootNodes": [
-    "/ip4/127.0.0.1/tcp/30333/p2p/12D3KooWFeGq7ezey7TigJmeuzdHxu9mmABsjZFosQwTEqzMGh7Q"
+    "/ip4/35.180.24.228/tcp/30333/p2p/12D3KooWK3j2Ab3F4TkJsbsCQ3sbLuj6g2hJ5JLvg5GzWXXEMY8k"
   ],
   "telemetryEndpoints": null,
   "protocolId": "tcher",
