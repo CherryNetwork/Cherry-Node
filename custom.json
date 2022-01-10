@@ -1,13 +1,16 @@
 {
-  "name": "Local Testnet",
-  "id": "local_testnet",
-  "chainType": "Local",
+  "name": "Cherry Testnet",
+  "id": "cherry_testnet",
+  "chainType": "Live",
   "bootNodes": [
     "/ip4/127.0.0.1/tcp/30333/p2p/12D3KooWFeGq7ezey7TigJmeuzdHxu9mmABsjZFosQwTEqzMGh7Q"
   ],
   "telemetryEndpoints": null,
-  "protocolId": null,
-  "properties": null,
+  "protocolId": "tcher",
+  "properties": {
+    "tokenDecimals": 15,
+    "tokenSymbol": "tCHER"
+  },
   "consensusEngine": null,
   "codeSubstitutes": {},
   "genesis": {
