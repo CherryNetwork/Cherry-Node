@@ -60,7 +60,7 @@ use sp_std::{
     convert::TryInto,
 };
 
-pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"cherry");
+pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"cher");
 
 
 pub mod crypto {
