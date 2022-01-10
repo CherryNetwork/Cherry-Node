@@ -13,7 +13,8 @@ use frame_support::RuntimeDebug;
 use frame_system::offchain::{SendSignedTransaction, Signer};
 use scale_info::TypeInfo;
 use sp_core::crypto::KeyTypeId;
-use sp_core::offchain::{Duration, OpaqueMultiaddr, Timestamp};
+use sp_core::offchain::{Duration, OpaqueMultiaddr, StorageKind, Timestamp};
+use sp_core::Bytes;
 use sp_io::offchain::timestamp;
 use sp_std::vec::Vec;
 
@@ -80,6 +81,7 @@ pub mod pallet {
 	#[scale_info(skip_type_params(T))]
 	pub struct Ipfs<T: Config> {
 		pub cid_addr: Vec<u8>,
+		pub gateway_url: Vec<u8>,
 		pub owners: BTreeMap<AccountOf<T>, OwnershipLayer>,
 	}
 
@@ -369,8 +371,12 @@ pub mod pallet {
 			ensure_signed(origin)?;
 
 			<DataQueue<T>>::take();
+
+			let mut _gateway_url = "http://15.237.121.241:8080/ipfs/".as_bytes().to_vec();
+			_gateway_url.append(&mut cid.clone());
 			let mut ipfs = Ipfs::<T> {
 				cid_addr: cid.clone(),
+				gateway_url: _gateway_url.clone(),
 				owners: BTreeMap::<AccountOf<T>, OwnershipLayer>::new(),
 			};
 
@@ -542,6 +548,17 @@ pub mod pallet {
 	}
 
 	impl<T: Config> Pallet<T> {
+		pub fn retrieve_bytes(_public_key: Bytes, _signature: Bytes, message: Bytes) -> Bytes {
+			let message_vec: Vec<u8> = message.to_vec();
+			if let Some(data) =
+				sp_io::offchain::local_storage_get(StorageKind::PERSISTENT, &message_vec)
+			{
+				Bytes(data.clone())
+			} else {
+				Bytes(Vec::new())
+			}
+		}
+
 		pub fn determine_account_ownership_layer(
 			cid: &Vec<u8>,
 			acct: &T::AccountId,

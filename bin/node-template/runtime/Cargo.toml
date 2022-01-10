@@ -57,6 +57,7 @@ pallet-ipfs = { version = "4.0.0-dev", default-features = false, path = "../pall
 pallet-contracts = { version = "4.0.0-dev", default-features = false, path = "../../../frame/contracts" }
 pallet-contracts-primitives = { version = "4.0.0-dev", default-features = false, path = "../../../frame/contracts/common" }
 pallet-contracts-rpc-runtime-api = { version = "4.0.0-dev", default-features = false, path = "../../../frame/contracts/rpc/runtime-api" }
+pallet-ipfs-rpc-runtime-api = { version = "4.0.0-dev", default-features = false, path = "../pallets/pallet-ipfs/rpc/runtime-api/" }
 
 
 [build-dependencies]
@@ -83,7 +84,7 @@ std = [
 	"pallet-iris/std",
 	"pallet-timestamp/std",
 	"pallet-transaction-payment-rpc-runtime-api/std",
-	"pallet-iris-rpc-runtime-api/std",
+	"pallet-ipfs-rpc-runtime-api/std",
 	"pallet-transaction-payment/std",
 	"pallet-assets/std",
 	"sp-api/std",

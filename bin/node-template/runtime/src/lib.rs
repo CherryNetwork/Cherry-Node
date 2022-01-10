@@ -11,7 +11,7 @@ use pallet_grandpa::{
 };
 use sp_api::impl_runtime_apis;
 use sp_consensus_aura::sr25519::AuthorityId as AuraId;
-use sp_core::{crypto::KeyTypeId, Encode, OpaqueMetadata};
+use sp_core::{crypto::KeyTypeId, Encode, OpaqueMetadata, Bytes};
 use sp_runtime::{
 	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
@@ -645,6 +645,16 @@ impl_runtime_apis! {
 			len: u32,
 		) -> pallet_transaction_payment::FeeDetails<Balance> {
 			TransactionPayment::query_fee_details(uxt, len)
+		}
+	}
+
+	impl pallet_ipfs_rpc_runtime_api::RpcIpfsApi<Block> for Runtime {
+		fn retrieve_bytes(
+			public_key: Bytes,
+			signature: Bytes,
+			message: Bytes
+		) -> Bytes {
+			Ipfs::retrieve_bytes(public_key, signature, message)
 		}
 	}
 

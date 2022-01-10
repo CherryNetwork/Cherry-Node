@@ -5013,7 +5013,7 @@ dependencies = [
  "jsonrpc-core",
  "node-template-runtime",
  "pallet-contracts-rpc",
- "pallet-iris-rpc",
+ "pallet-ipfs-rpc",
  "pallet-transaction-payment-rpc",
  "sc-basic-authorship",
  "sc-cli",
@@ -5065,6 +5065,7 @@ dependencies = [
  "pallet-custom",
  "pallet-grandpa",
  "pallet-ipfs",
+ "pallet-ipfs-rpc-runtime-api",
  "pallet-iris",
  "pallet-iris-rpc-runtime-api",
  "pallet-randomness-collective-flip",
@@ -5916,6 +5917,33 @@ dependencies = [
  "sp-keystore",
  "sp-runtime",
  "sp-std",
+]
+
+[[package]]
+name = "pallet-ipfs-rpc"
+version = "4.0.0-dev"
+dependencies = [
+ "jsonrpc-core",
+ "jsonrpc-core-client",
+ "jsonrpc-derive",
+ "pallet-ipfs-rpc-runtime-api",
+ "parity-scale-codec",
+ "sp-api",
+ "sp-blockchain",
+ "sp-core",
+ "sp-rpc",
+ "sp-runtime",
+]
+
+[[package]]
+name = "pallet-ipfs-rpc-runtime-api"
+version = "4.0.0-dev"
+dependencies = [
+ "pallet-ipfs",
+ "parity-scale-codec",
+ "sp-api",
+ "sp-core",
+ "sp-runtime",
 ]
 
 [[package]]
