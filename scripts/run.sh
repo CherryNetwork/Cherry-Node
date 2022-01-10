@@ -2,6 +2,9 @@
 # This script is meant to be run on Unix/Linux based systems
 set -e
 
+sudo apt update
+sudo apt install -y git clang curl libssl-dev llvm libudev-dev pkg-config
+
 echo "*** Initializing WASM build environment"
 
 if [ -z $CI_PROJECT_NAME ]; then
