@@ -14,9 +14,4 @@ fi
 
 rustup target add wasm32-unknown-unknown --toolchain nightly
 
-cargo b --release && ./target/release/node-template \
-    --chain=./customRaw.json \
-    --rpc-cors all \
-    --rpc-methods=unsafe \
-    --rpc-external \
-    --ws-external
+cargo b --release && ./target/release/node-template --chain=./customRaw.json --bootnodes /ip4/13.38.120.202/tcp/30333/p2p/12D3KooWAjU4ejFZ9eGVmHKzj7TeSoSEY2faR4ZDpnhnnT6vD6Cx
