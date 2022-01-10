@@ -1,0 +1,26 @@
+[package]
+description = "Endpoint to expose Prometheus metrics"
+name = "substrate-prometheus-endpoint"
+version = "0.9.0"
+license = "Apache-2.0"
+authors = ["Parity Technologies <admin@parity.io>"]
+edition = "2018"
+homepage = "https://substrate.dev"
+repository = "https://github.com/paritytech/substrate/"
+readme = "README.md"
+
+[package.metadata.docs.rs]
+targets = ["x86_64-unknown-linux-gnu"]
+
+[dependencies]
+log = "0.4.8"
+prometheus = { version = "0.11.0", default-features = false }
+futures-util = { version = "0.3.17", default-features = false, features = ["io"] }
+derive_more = "0.99"
+async-std = { version = "1.10.0", features = ["unstable"] }
+tokio = "1.10"
+hyper = { version = "0.14.11", default-features = false, features = ["http1", "server", "tcp"] }
+
+[dev-dependencies]
+hyper = { version = "0.14.11", features = ["client"] }
+tokio = { version = "1.10", features = ["rt-multi-thread"] }
