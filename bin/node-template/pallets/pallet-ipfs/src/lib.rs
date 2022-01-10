@@ -372,7 +372,7 @@ pub mod pallet {
 
 			<DataQueue<T>>::take();
 
-			let mut _gateway_url = "http://15.237.121.241:8080/ipfs/".as_bytes().to_vec();
+			let mut _gateway_url = "http://15.188.14.75:8080/ipfs/".as_bytes().to_vec();
 			_gateway_url.append(&mut cid.clone());
 			let mut ipfs = Ipfs::<T> {
 				cid_addr: cid.clone(),
