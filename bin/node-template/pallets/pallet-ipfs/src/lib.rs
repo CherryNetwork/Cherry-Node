@@ -61,7 +61,7 @@ pub enum DataCommand<AccountId> {
 pub mod pallet {
 	use super::*;
 	use frame_support::{
-		dispatch::DispatchResult, pallet_prelude::*, sp_runtime::traits::Hash, traits::Currency,
+		dispatch::DispatchResult, pallet_prelude::*, traits::Currency,
 	};
 	use frame_system::{
 		offchain::{AppCrypto, CreateSignedTransaction},
@@ -69,7 +69,9 @@ pub mod pallet {
 	};
 	use scale_info::TypeInfo;
 	use sp_core::offchain::OpaqueMultiaddr;
-	use sp_runtime::offchain::{ipfs, IpfsRequest, IpfsResponse};
+	use sp_runtime::{
+		offchain::{ipfs, IpfsRequest, IpfsResponse},
+	};
 	use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
 	type AccountOf<T> = <T as frame_system::Config>::AccountId;
@@ -83,6 +85,7 @@ pub mod pallet {
 		pub cid_addr: Vec<u8>,
 		pub gateway_url: Vec<u8>,
 		pub owners: BTreeMap<AccountOf<T>, OwnershipLayer>,
+		pub pinned: bool,
 	}
 
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
@@ -378,6 +381,7 @@ pub mod pallet {
 				cid_addr: cid.clone(),
 				gateway_url: _gateway_url.clone(),
 				owners: BTreeMap::<AccountOf<T>, OwnershipLayer>::new(),
+				pinned: true, // true by default.
 			};
 
 			ipfs.owners.insert(admin.clone(), OwnershipLayer::default());
@@ -393,11 +397,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(0)]
-		pub fn submit_ipfs_pin_results(
-			origin: OriginFor<T>,
-			admin: AccountOf<T>,
-			cid: Vec<u8>,
-		) -> DispatchResult {
+		pub fn submit_ipfs_pin_results(origin: OriginFor<T>, _cid: Vec<u8>) -> DispatchResult {
 			ensure_signed(origin)?;
 
 			<DataQueue<T>>::take();
@@ -406,12 +406,13 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(0)]
-		pub fn submit_ipfs_unpin_results(
-			origin: OriginFor<T>,
-			admin: AccountOf<T>,
-			cid: Vec<u8>,
-		) -> DispatchResult {
+		pub fn submit_ipfs_unpin_results(origin: OriginFor<T>, cid: Vec<u8>) -> DispatchResult {
 			ensure_signed(origin)?;
+
+			let mut ipfs_asset = Self::ipfs_asset(&cid).ok_or(<Error<T>>::IpfsNotExist)?;
+
+			ipfs_asset.pinned = false;
+			<IpfsAsset<T>>::insert(cid.clone(), ipfs_asset);
 
 			<DataQueue<T>>::take();
 
@@ -419,17 +420,12 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(0)]
-		pub fn submit_ipfs_delete_results(
-			origin: OriginFor<T>,
-			admin: AccountOf<T>,
-			cid: Vec<u8>,
-		) -> DispatchResult {
+		pub fn submit_ipfs_delete_results(origin: OriginFor<T>, cid: Vec<u8>) -> DispatchResult {
 			ensure_signed(origin)?;
 
 			<DataQueue<T>>::take();
 
 			let mut ipfs_asset = Self::ipfs_asset(&cid).ok_or(<Error<T>>::IpfsNotExist)?;
-
 			for user in ipfs_asset.owners.iter_mut() {
 				<IpfsAssetOwned<T>>::try_mutate(&user.0, |ipfs_vec| {
 					if let Some(index) = ipfs_vec.iter().position(|i| *i == cid.clone()) {
@@ -441,7 +437,11 @@ pub mod pallet {
 				})
 				.map_err(|_: bool| <Error<T>>::ExceedMaxIpfsOwned)?;
 			}
+
+			let new_cnt = Self::ipfs_cnt().checked_sub(1).unwrap();
+
 			<IpfsAsset<T>>::remove(cid.clone());
+			<IpfsCnt<T>>::put(new_cnt);
 
 			Ok(())
 		}
@@ -732,7 +732,7 @@ pub mod pallet {
 
 					DataCommand::CatBytes(m_addr, cid, _admin) => {
 						match Self::ipfs_request(IpfsRequest::CatBytes(cid.clone()), deadline) {
-							Ok(IpfsResponse::CatBytes(data)) => {
+							Ok(IpfsResponse::CatBytes(_data)) => {
 								log::info!("IPFS: fetched data");
 								Self::ipfs_request(
 									IpfsRequest::Disconnect(m_addr.clone()),
@@ -752,7 +752,7 @@ pub mod pallet {
 						}
 					}
 
-					DataCommand::InsertPin(m_addr, cid, _admin, is_recursive) => {
+					DataCommand::InsertPin(_m_addr, cid, _admin, is_recursive) => {
 						match Self::ipfs_request(
 							IpfsRequest::InsertPin(cid.clone(), is_recursive),
 							deadline,
@@ -771,10 +771,7 @@ pub mod pallet {
 								}
 
 								let results = signer.send_signed_transaction(|_account| {
-									Call::submit_ipfs_pin_results {
-										admin: _admin.clone(),
-										cid: cid.clone(),
-									}
+									Call::submit_ipfs_pin_results { cid: cid.clone() }
 								});
 
 								for (_, res) in &results {
@@ -795,7 +792,7 @@ pub mod pallet {
 						}
 					}
 
-					DataCommand::RemovePin(_m_addr, cid, admin, is_recursive) => {
+					DataCommand::RemovePin(_m_addr, cid, _admin, is_recursive) => {
 						match Self::ipfs_request(
 							IpfsRequest::RemovePin(cid.clone(), is_recursive),
 							deadline,
@@ -814,10 +811,7 @@ pub mod pallet {
 								}
 
 								let results = signer.send_signed_transaction(|_account| {
-									Call::submit_ipfs_unpin_results {
-										admin: admin.clone(),
-										cid: cid.clone(),
-									}
+									Call::submit_ipfs_unpin_results { cid: cid.clone() }
 								});
 
 								for (_, res) in &results {
@@ -838,7 +832,7 @@ pub mod pallet {
 						}
 					}
 
-					DataCommand::RemoveBlock(_m_addr, cid, admin) => {
+					DataCommand::RemoveBlock(_m_addr, cid, _admin) => {
 						match Self::ipfs_request(IpfsRequest::RemoveBlock(cid.clone()), deadline) {
 							Ok(IpfsResponse::RemoveBlock(cid)) => {
 								log::info!(
@@ -854,10 +848,7 @@ pub mod pallet {
 								}
 
 								let results = signer.send_signed_transaction(|_account| {
-									Call::submit_ipfs_delete_results {
-										admin: admin.clone(),
-										cid: cid.clone(),
-									}
+									Call::submit_ipfs_delete_results { cid: cid.clone() }
 								});
 
 								for (_, res) in &results {
