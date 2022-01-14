@@ -27,3 +27,6 @@ rls*.log
 *.iml
 swarm.key
 scripts/docker-build-push.sh
+custom.json
+customSpec.json
+cherry-testnet.json
