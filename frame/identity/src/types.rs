@@ -311,7 +311,7 @@ pub struct IdentityInfo<FieldLimit: Get<u32>> {
 	/// Stored as UTF-8.
 	pub web: Data,
 
-	/// The Riot/Matrix handle held by the controller of the account.
+	/// The Discord handle held by the controller of the account.
 	///
 	/// Stored as UTF-8.
 	pub discord: Data,
