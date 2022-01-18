@@ -4878,7 +4878,6 @@ version = "3.0.0-dev"
 dependencies = [
  "jsonrpc-core",
  "node-primitives",
- "pallet-cherry-rpc",
  "pallet-contracts-rpc",
  "pallet-mmr-rpc",
  "pallet-transaction-payment-rpc",
@@ -4948,6 +4947,7 @@ dependencies = [
  "pallet-identity",
  "pallet-im-online",
  "pallet-indices",
+ "pallet-ipfs",
  "pallet-lottery",
  "pallet-membership",
  "pallet-mmr",
@@ -5002,92 +5002,6 @@ dependencies = [
  "generate-bags",
  "node-runtime",
  "structopt",
-]
-
-[[package]]
-name = "node-template"
-version = "3.0.0"
-dependencies = [
- "frame-benchmarking",
- "frame-benchmarking-cli",
- "jsonrpc-core",
- "node-template-runtime",
- "pallet-contracts-rpc",
- "pallet-ipfs-rpc",
- "pallet-transaction-payment-rpc",
- "sc-basic-authorship",
- "sc-cli",
- "sc-client-api",
- "sc-consensus",
- "sc-consensus-aura",
- "sc-executor",
- "sc-finality-grandpa",
- "sc-keystore",
- "sc-rpc",
- "sc-rpc-api",
- "sc-service",
- "sc-telemetry",
- "sc-transaction-pool",
- "sc-transaction-pool-api",
- "sp-api",
- "sp-block-builder",
- "sp-blockchain",
- "sp-consensus",
- "sp-consensus-aura",
- "sp-core",
- "sp-finality-grandpa",
- "sp-keystore",
- "sp-runtime",
- "sp-timestamp",
- "structopt",
- "substrate-build-script-utils",
- "substrate-frame-rpc-system",
-]
-
-[[package]]
-name = "node-template-runtime"
-version = "3.0.0"
-dependencies = [
- "frame-benchmarking",
- "frame-executive",
- "frame-support",
- "frame-system",
- "frame-system-benchmarking",
- "frame-system-rpc-runtime-api",
- "hex-literal",
- "log 0.4.14",
- "pallet-assets",
- "pallet-aura",
- "pallet-balances",
- "pallet-cherry",
- "pallet-cherry-rpc-runtime-api",
- "pallet-contracts",
- "pallet-contracts-primitives",
- "pallet-contracts-rpc-runtime-api",
- "pallet-custom",
- "pallet-grandpa",
- "pallet-ipfs",
- "pallet-ipfs-rpc-runtime-api",
- "pallet-randomness-collective-flip",
- "pallet-scheduler",
- "pallet-sudo",
- "pallet-timestamp",
- "pallet-transaction-payment",
- "pallet-transaction-payment-rpc-runtime-api",
- "parity-scale-codec",
- "scale-info",
- "sp-api",
- "sp-block-builder",
- "sp-consensus-aura",
- "sp-core",
- "sp-inherents",
- "sp-offchain",
- "sp-runtime",
- "sp-session",
- "sp-std",
- "sp-transaction-pool",
- "sp-version",
- "substrate-wasm-builder",
 ]
 
 [[package]]
@@ -5552,52 +5466,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "pallet-cherry"
-version = "3.0.0"
-dependencies = [
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "log 0.4.14",
- "pallet-assets",
- "pallet-balances",
- "parity-scale-codec",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-keystore",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-cherry-rpc"
-version = "4.0.0-dev"
-dependencies = [
- "jsonrpc-core",
- "jsonrpc-core-client",
- "jsonrpc-derive",
- "pallet-cherry-rpc-runtime-api",
- "parity-scale-codec",
- "sp-api",
- "sp-blockchain",
- "sp-core",
- "sp-rpc",
- "sp-runtime",
-]
-
-[[package]]
-name = "pallet-cherry-rpc-runtime-api"
-version = "4.0.0-dev"
-dependencies = [
- "pallet-cherry",
- "parity-scale-codec",
- "sp-api",
- "sp-core",
- "sp-runtime",
-]
-
-[[package]]
 name = "pallet-collective"
 version = "4.0.0-dev"
 dependencies = [
@@ -5963,33 +5831,6 @@ dependencies = [
  "sp-keystore",
  "sp-runtime",
  "sp-std",
-]
-
-[[package]]
-name = "pallet-ipfs-rpc"
-version = "4.0.0-dev"
-dependencies = [
- "jsonrpc-core",
- "jsonrpc-core-client",
- "jsonrpc-derive",
- "pallet-ipfs-rpc-runtime-api",
- "parity-scale-codec",
- "sp-api",
- "sp-blockchain",
- "sp-core",
- "sp-rpc",
- "sp-runtime",
-]
-
-[[package]]
-name = "pallet-ipfs-rpc-runtime-api"
-version = "4.0.0-dev"
-dependencies = [
- "pallet-ipfs",
- "parity-scale-codec",
- "sp-api",
- "sp-core",
- "sp-runtime",
 ]
 
 [[package]]
