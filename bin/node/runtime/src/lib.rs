@@ -89,13 +89,14 @@ use impls::Author;
 
 /// Constant values used within the runtime.
 pub mod constants;
+
 use constants::currency::*;
 
 #[cfg(not(feature = "dev"))]
-pub use constants::dev_durations::*;
+use constants::time_prod::*;
 
 #[cfg(feature = "dev")]
-pub use constants::prod_durations::*;
+use constants::time_dev::*;
 
 use sp_runtime::generic::Era;
 
@@ -126,7 +127,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 268,
+	spec_version: 267,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 2,
@@ -440,7 +441,7 @@ parameter_types! {
 
 impl pallet_timestamp::Config for Runtime {
 	type Moment = Moment;
-	type OnTimestampSet = ();
+	type OnTimestampSet = Babe;
 	type MinimumPeriod = MinimumPeriod;
 	type WeightInfo = pallet_timestamp::weights::SubstrateWeight<Runtime>;
 }
@@ -577,10 +578,10 @@ parameter_types! {
 sp_npos_elections::generate_solution_type!(
 	#[compact]
 	pub struct NposSolution16::<
-		VoterIndex = u32,
+			VoterIndex = u32,
 		TargetIndex = u16,
 		Accuracy = sp_runtime::PerU16,
-	>(16)
+		>(16)
 );
 
 pub const MAX_NOMINATIONS: u32 = <NposSolution16 as sp_npos_elections::NposSolution>::LIMIT as u32;
@@ -903,9 +904,9 @@ parameter_types! {
 	// The weight needed for decoding the queue should be less or equal than a fifth
 	// of the overall weight dedicated to the lazy deletion.
 	pub DeletionQueueDepth: u32 = ((DeletionWeightLimit::get() / (
-			<Runtime as pallet_contracts::Config>::WeightInfo::on_initialize_per_queue_item(1) -
+		<Runtime as pallet_contracts::Config>::WeightInfo::on_initialize_per_queue_item(1) -
 			<Runtime as pallet_contracts::Config>::WeightInfo::on_initialize_per_queue_item(0)
-		)) / 5) as u32;
+	)) / 5) as u32;
 	pub Schedule: pallet_contracts::Schedule<Runtime> = Default::default();
 }
 
@@ -1248,26 +1249,12 @@ impl pallet_transaction_storage::Config for Runtime {
 	type WeightInfo = pallet_transaction_storage::weights::SubstrateWeight<Runtime>;
 }
 
-parameter_types! {
-	pub const MaxIpfsOwned: u32 = 5;
-}
-
-/// Configure the pallet-kitties in pallets/kitties.
-impl pallet_ipfs::Config for Runtime {
-	type Event = Event;
-	type Currency = Balances;
-	type AuthorityId = pallet_ipfs::crypto::TestAuthId;
-	type MaxIpfsOwned = MaxIpfsOwned;
-	type WeightInfo = pallet_ipfs::weights::SubstrateWeight<Runtime>;
-}
-
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
-		NodeBlock = node_primitives::Block,
-		UncheckedExtrinsic = UncheckedExtrinsic
+	NodeBlock = node_primitives::Block,
+	UncheckedExtrinsic = UncheckedExtrinsic
 	{
-		Ipfs: pallet_ipfs::{Pallet, Call, Storage, Event<T>},
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Utility: pallet_utility::{Pallet, Call, Event},
 		Babe: pallet_babe::{Pallet, Call, Storage, Config, ValidateUnsigned},
@@ -1428,9 +1415,9 @@ impl_runtime_apis! {
 
 		fn submit_report_equivocation_unsigned_extrinsic(
 			equivocation_proof: fg_primitives::EquivocationProof<
-				<Block as BlockT>::Hash,
+					<Block as BlockT>::Hash,
 				NumberFor<Block>,
-			>,
+				>,
 			key_owner_proof: fg_primitives::OpaqueKeyOwnershipProof,
 		) -> Option<()> {
 			let key_owner_proof = key_owner_proof.decode()?;
@@ -1519,8 +1506,8 @@ impl_runtime_apis! {
 	}
 
 	impl pallet_contracts_rpc_runtime_api::ContractsApi<
-		Block, AccountId, Balance, BlockNumber, Hash,
-	>
+			Block, AccountId, Balance, BlockNumber, Hash,
+		>
 		for Runtime
 	{
 		fn call(
@@ -1554,9 +1541,9 @@ impl_runtime_apis! {
 	}
 
 	impl pallet_transaction_payment_rpc_runtime_api::TransactionPaymentApi<
-		Block,
+			Block,
 		Balance,
-	> for Runtime {
+		> for Runtime {
 		fn query_info(uxt: <Block as BlockT>::Extrinsic, len: u32) -> RuntimeDispatchInfo<Balance> {
 			TransactionPayment::query_info(uxt, len)
 		}
@@ -1566,18 +1553,18 @@ impl_runtime_apis! {
 	}
 
 	impl pallet_mmr::primitives::MmrApi<
-		Block,
+			Block,
 		mmr::Hash,
-	> for Runtime {
+		> for Runtime {
 		fn generate_proof(leaf_index: u64)
-			-> Result<(mmr::EncodableOpaqueLeaf, mmr::Proof<mmr::Hash>), mmr::Error>
+						  -> Result<(mmr::EncodableOpaqueLeaf, mmr::Proof<mmr::Hash>), mmr::Error>
 		{
 			Mmr::generate_proof(leaf_index)
 				.map(|(leaf, proof)| (mmr::EncodableOpaqueLeaf::from_leaf(&leaf), proof))
 		}
 
 		fn verify_proof(leaf: mmr::EncodableOpaqueLeaf, proof: mmr::Proof<mmr::Hash>)
-			-> Result<(), mmr::Error>
+						-> Result<(), mmr::Error>
 		{
 			let leaf: mmr::Leaf = leaf
 				.into_opaque_leaf()
