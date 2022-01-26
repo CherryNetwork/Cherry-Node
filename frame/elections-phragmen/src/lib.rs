@@ -299,6 +299,9 @@ pub mod pallet {
 			#[pallet::compact] value: BalanceOf<T>,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
+			// get GovToken's AssetId && check if balance is non-zero - @charmitro
+			let balance = <pallet_assets::Pallet<T>>::balance(<GovTokenId<T>>::get(), who.clone());
+			ensure!(!balance.is_zero(), Error::<T>::IncorrectToken);
 
 			// votes should not be empty and more than `MAXIMUM_VOTE` in any case.
 			ensure!(votes.len() <= MAXIMUM_VOTE, Error::<T>::MaximumVotesExceeded);
@@ -361,11 +364,13 @@ pub mod pallet {
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::remove_voter())]
 		pub fn remove_voter(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
+			let balance = <pallet_assets::Pallet<T>>::balance(<GovTokenId<T>>::get(), who.clone());
+			ensure!(!balance.is_zero(), Error::<T>::IncorrectToken);
+
 			ensure!(Self::is_voter(&who), Error::<T>::MustBeVoter);
 			Self::do_remove_voter(&who);
 			Ok(None.into())
 		}
-
 
 		/// !SUDO call to set the Governance Token Asset ID
 		#[pallet::weight(0)]
@@ -401,6 +406,8 @@ pub mod pallet {
 			#[pallet::compact] candidate_count: u32,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
+			let balance = <pallet_assets::Pallet<T>>::balance(<GovTokenId<T>>::get(), who.clone());
+			ensure!(!balance.is_zero(), Error::<T>::IncorrectToken);
 
 			let actual_count = <Candidates<T>>::decode_len().unwrap_or(0);
 			ensure!(actual_count as u32 <= candidate_count, Error::<T>::InvalidWitnessData);
@@ -445,6 +452,9 @@ pub mod pallet {
 			renouncing: Renouncing,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
+			let balance = <pallet_assets::Pallet<T>>::balance(<GovTokenId<T>>::get(), who.clone());
+			ensure!(!balance.is_zero(), Error::<T>::IncorrectToken);
+
 			match renouncing {
 				Renouncing::Member => {
 					let _ = Self::remove_and_replace_member(&who, false)
@@ -622,6 +632,8 @@ pub mod pallet {
 		InvalidRenouncing,
 		/// Prediction regarding replacement after member removal is wrong.
 		InvalidReplacement,
+		/// The provided token payment is not the GovTokenId
+		IncorrectToken,
 	}
 
 	/// The current elected members.
