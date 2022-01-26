@@ -26,9 +26,10 @@ sp-std = { version = "4.0.0-dev", default-features = false, path = "../../primit
 sp-core = { version = "4.0.0-dev", default-features = false, path = "../../primitives/core" }
 frame-benchmarking = { version = "4.0.0-dev", default-features = false, path = "../benchmarking", optional = true }
 log = { version = "0.4.14", default-features = false }
+pallet-balances = { version = "4.0.0-dev", default-features = false, path = "../balances" }
+pallet-assets = { version = "4.0.0-dev", default-features = false, path = "../assets" }
 
 [dev-dependencies]
-pallet-balances = { version = "4.0.0-dev", path = "../balances" }
 sp-core = { version = "4.0.0-dev", path = "../../primitives/core" }
 substrate-test-utils = { version = "4.0.0-dev", path = "../../test-utils" }
 
