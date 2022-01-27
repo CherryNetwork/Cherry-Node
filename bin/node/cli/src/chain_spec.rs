@@ -21,7 +21,7 @@
 use grandpa_primitives::AuthorityId as GrandpaId;
 use hex_literal::hex;
 use node_runtime::{
-	constants::currency::*, wasm_binary_unwrap, AuthorityDiscoveryConfig, BabeConfig,
+	constants::currency::*, wasm_binary_unwrap, AssetsConfig, AuthorityDiscoveryConfig, BabeConfig,
 	BalancesConfig, Block, CouncilConfig, DemocracyConfig, ElectionsConfig, GrandpaConfig,
 	ImOnlineConfig, IndicesConfig, SessionConfig, SessionKeys, SocietyConfig, StakerStatus,
 	StakingConfig, SudoConfig, SystemConfig, TechnicalCommitteeConfig, MAX_NOMINATIONS,
@@ -362,7 +362,15 @@ pub fn testnet_genesis(
 		},
 		vesting: Default::default(),
 		assets: AssetsConfig {
-			assets: vec![],
+			assets: vec![
+				(999, get_account_id_from_seed::<sr25519::Public>("Alice"), true, 1),
+			],
+			metadata: vec![
+				(999, "Governance Token".into(), "tGov".into(), 18),
+			],
+			accounts: vec![
+				(999, get_account_id_from_seed::<sr25519::Public>("Alice"), 100),
+			],
 		},
 		gilt: Default::default(),
 		transaction_storage: Default::default(),
