@@ -366,10 +366,10 @@ pub fn testnet_genesis(
 				(999, root_key.clone(), true, 1),
 			],
 			metadata: vec![
-				(999, "Governance Token".into(), "tGov".into(), 18),
+				(999, "Governance Token".into(), "tGov".into(), 8),
 			],
 			accounts: vec![
-				(999, root_key.clone(), 100),
+				(999, root_key.clone(), 1_000_000_000),
 			],
 
 		},
