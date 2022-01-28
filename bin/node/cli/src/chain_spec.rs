@@ -341,7 +341,7 @@ pub fn testnet_genesis(
 				.collect(),
 			phantom: Default::default(),
 		},
-		sudo: SudoConfig { key: root_key },
+		sudo: SudoConfig { key: root_key.clone() },
 		babe: BabeConfig {
 			authorities: vec![],
 			epoch_config: Some(node_runtime::BABE_GENESIS_EPOCH_CONFIG),
@@ -363,14 +363,15 @@ pub fn testnet_genesis(
 		vesting: Default::default(),
 		assets: AssetsConfig {
 			assets: vec![
-				(999, get_account_id_from_seed::<sr25519::Public>("Alice"), true, 1),
+				(999, root_key.clone(), true, 1),
 			],
 			metadata: vec![
 				(999, "Governance Token".into(), "tGov".into(), 18),
 			],
 			accounts: vec![
-				(999, get_account_id_from_seed::<sr25519::Public>("Alice"), 100),
+				(999, root_key.clone(), 100),
 			],
+
 		},
 		gilt: Default::default(),
 		transaction_storage: Default::default(),
