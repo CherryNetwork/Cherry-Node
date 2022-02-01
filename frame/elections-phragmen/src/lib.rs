@@ -177,11 +177,13 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
+	use codec::HasCompact;
+
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config: frame_system::Config + pallet_assets::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		/// Identifier for the elections-phragmen pallet's lock
@@ -287,9 +289,9 @@ pub mod pallet {
 		/// We assume the maximum weight among all 3 cases: vote_equal, vote_more and vote_less.
 		/// # </weight>
 		#[pallet::weight(
-			T::WeightInfo::vote_more(votes.len() as u32)
-			.max(T::WeightInfo::vote_less(votes.len() as u32))
-			.max(T::WeightInfo::vote_equal(votes.len() as u32))
+			<T as pallet::Config>::WeightInfo::vote_more(votes.len() as u32)
+			.max(<T as pallet::Config>::WeightInfo::vote_less(votes.len() as u32))
+			.max(<T as pallet::Config>::WeightInfo::vote_equal(votes.len() as u32))
 		)]
 		pub fn vote(
 			origin: OriginFor<T>,
@@ -297,6 +299,9 @@ pub mod pallet {
 			#[pallet::compact] value: BalanceOf<T>,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
+			// get GovToken's AssetId && check if balance is non-zero - @charmitro
+			let balance = <pallet_assets::Pallet<T>>::balance(<GovTokenId<T>>::get(), who.clone());
+			ensure!(!balance.is_zero(), Error::<T>::IncorrectToken);
 
 			// votes should not be empty and more than `MAXIMUM_VOTE` in any case.
 			ensure!(votes.len() <= MAXIMUM_VOTE, Error::<T>::MaximumVotesExceeded);
@@ -314,7 +319,10 @@ pub mod pallet {
 			ensure!(!allowed_votes.is_zero(), Error::<T>::UnableToVote);
 			ensure!(votes.len() <= allowed_votes, Error::<T>::TooManyVotes);
 
-			ensure!(value > T::Currency::minimum_balance(), Error::<T>::LowBalance);
+			ensure!(
+				value > <T as pallet::Config>::Currency::minimum_balance(),
+				Error::<T>::LowBalance
+			);
 
 			// Reserve bond.
 			let new_deposit = Self::deposit_of(votes.len());
@@ -323,21 +331,26 @@ pub mod pallet {
 				Ordering::Greater => {
 					// Must reserve a bit more.
 					let to_reserve = new_deposit - old_deposit;
-					T::Currency::reserve(&who, to_reserve)
+					<T as pallet::Config>::Currency::reserve(&who, to_reserve)
 						.map_err(|_| Error::<T>::UnableToPayBond)?;
 				},
 				Ordering::Equal => {},
 				Ordering::Less => {
 					// Must unreserve a bit.
 					let to_unreserve = old_deposit - new_deposit;
-					let _remainder = T::Currency::unreserve(&who, to_unreserve);
+					let _remainder = <T as pallet::Config>::Currency::unreserve(&who, to_unreserve);
 					debug_assert!(_remainder.is_zero());
 				},
 			};
 
 			// Amount to be locked up.
-			let locked_stake = value.min(T::Currency::total_balance(&who));
-			T::Currency::set_lock(T::PalletId::get(), &who, locked_stake, WithdrawReasons::all());
+			let locked_stake = value.min(<T as pallet::Config>::Currency::total_balance(&who));
+			<T as pallet::Config>::Currency::set_lock(
+				T::PalletId::get(),
+				&who,
+				locked_stake,
+				WithdrawReasons::all(),
+			);
 
 			Voting::<T>::insert(&who, Voter { votes, deposit: new_deposit, stake: locked_stake });
 			Ok(None.into())
@@ -348,12 +361,28 @@ pub mod pallet {
 		/// This removes the lock and returns the deposit.
 		///
 		/// The dispatch origin of this call must be signed and be a voter.
-		#[pallet::weight(T::WeightInfo::remove_voter())]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::remove_voter())]
 		pub fn remove_voter(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
+			let balance = <pallet_assets::Pallet<T>>::balance(<GovTokenId<T>>::get(), who.clone());
+			ensure!(!balance.is_zero(), Error::<T>::IncorrectToken);
+
 			ensure!(Self::is_voter(&who), Error::<T>::MustBeVoter);
 			Self::do_remove_voter(&who);
 			Ok(None.into())
+		}
+
+		/// !SUDO call to set the Governance Token Asset ID
+		#[pallet::weight(0)]
+		pub fn set_gov_token_id(
+			origin: OriginFor<T>,
+			token_id: <T as pallet_assets::Config>::AssetId,
+		) -> DispatchResult {
+			let _who = ensure_root(origin)?;
+
+			<GovTokenId<T>>::put(token_id);
+
+			Ok(())
 		}
 
 		/// Submit oneself for candidacy. A fixed amount of deposit is recorded.
@@ -371,12 +400,14 @@ pub mod pallet {
 		/// # <weight>
 		/// The number of current candidates must be provided as witness data.
 		/// # </weight>
-		#[pallet::weight(T::WeightInfo::submit_candidacy(*candidate_count))]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::submit_candidacy(*candidate_count))]
 		pub fn submit_candidacy(
 			origin: OriginFor<T>,
 			#[pallet::compact] candidate_count: u32,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
+			let balance = <pallet_assets::Pallet<T>>::balance(<GovTokenId<T>>::get(), who.clone());
+			ensure!(!balance.is_zero(), Error::<T>::IncorrectToken);
 
 			let actual_count = <Candidates<T>>::decode_len().unwrap_or(0);
 			ensure!(actual_count as u32 <= candidate_count, Error::<T>::InvalidWitnessData);
@@ -386,7 +417,7 @@ pub mod pallet {
 			ensure!(!Self::is_member(&who), Error::<T>::MemberSubmit);
 			ensure!(!Self::is_runner_up(&who), Error::<T>::RunnerUpSubmit);
 
-			T::Currency::reserve(&who, T::CandidacyBond::get())
+			<T as pallet::Config>::Currency::reserve(&who, T::CandidacyBond::get())
 				.map_err(|_| Error::<T>::InsufficientCandidateFunds)?;
 
 			<Candidates<T>>::mutate(|c| c.insert(index, (who, T::CandidacyBond::get())));
@@ -412,15 +443,18 @@ pub mod pallet {
 		/// The type of renouncing must be provided as witness data.
 		/// # </weight>
 		#[pallet::weight(match *renouncing {
-			Renouncing::Candidate(count) => T::WeightInfo::renounce_candidacy_candidate(count),
-			Renouncing::Member => T::WeightInfo::renounce_candidacy_members(),
-			Renouncing::RunnerUp => T::WeightInfo::renounce_candidacy_runners_up(),
+			Renouncing::Candidate(count) => <T as pallet::Config>::WeightInfo::renounce_candidacy_candidate(count),
+			Renouncing::Member => <T as pallet::Config>::WeightInfo::renounce_candidacy_members(),
+			Renouncing::RunnerUp => <T as pallet::Config>::WeightInfo::renounce_candidacy_runners_up(),
 		})]
 		pub fn renounce_candidacy(
 			origin: OriginFor<T>,
 			renouncing: Renouncing,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
+			let balance = <pallet_assets::Pallet<T>>::balance(<GovTokenId<T>>::get(), who.clone());
+			ensure!(!balance.is_zero(), Error::<T>::IncorrectToken);
+
 			match renouncing {
 				Renouncing::Member => {
 					let _ = Self::remove_and_replace_member(&who, false)
@@ -435,7 +469,7 @@ pub mod pallet {
 							.ok_or(Error::<T>::InvalidRenouncing)?;
 						// can't fail anymore.
 						let SeatHolder { deposit, .. } = runners_up.remove(index);
-						let _remainder = T::Currency::unreserve(&who, deposit);
+						let _remainder = <T as pallet::Config>::Currency::unreserve(&who, deposit);
 						debug_assert!(_remainder.is_zero());
 						Self::deposit_event(Event::Renounced(who));
 						Ok(())
@@ -448,7 +482,7 @@ pub mod pallet {
 							.binary_search_by(|(c, _)| c.cmp(&who))
 							.map_err(|_| Error::<T>::InvalidRenouncing)?;
 						let (_removed, deposit) = candidates.remove(index);
-						let _remainder = T::Currency::unreserve(&who, deposit);
+						let _remainder = <T as pallet::Config>::Currency::unreserve(&who, deposit);
 						debug_assert!(_remainder.is_zero());
 						Self::deposit_event(Event::Renounced(who));
 						Ok(())
@@ -473,9 +507,9 @@ pub mod pallet {
 		/// will go into phragmen, we assume full block for now.
 		/// # </weight>
 		#[pallet::weight(if *has_replacement {
-			T::WeightInfo::remove_member_with_replacement()
+			<T as pallet::Config>::WeightInfo::remove_member_with_replacement()
 		} else {
-			T::WeightInfo::remove_member_without_replacement()
+			<T as pallet::Config>::WeightInfo::remove_member_without_replacement()
 		})]
 		pub fn remove_member(
 			origin: OriginFor<T>,
@@ -490,8 +524,8 @@ pub mod pallet {
 				// In both cases, we will change more weight than need. Refund and abort.
 				return Err(Error::<T>::InvalidReplacement.with_weight(
 					// refund. The weight value comes from a benchmark which is special to this.
-					T::WeightInfo::remove_member_wrong_refund(),
-				))
+					<T as pallet::Config>::WeightInfo::remove_member_wrong_refund(),
+				));
 			}
 
 			let had_replacement = Self::remove_and_replace_member(&who, true)?;
@@ -516,7 +550,7 @@ pub mod pallet {
 		/// # <weight>
 		/// The total number of voters and those that are defunct must be provided as witness data.
 		/// # </weight>
-		#[pallet::weight(T::WeightInfo::clean_defunct_voters(*_num_voters, *_num_defunct))]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::clean_defunct_voters(*_num_voters, *_num_defunct))]
 		pub fn clean_defunct_voters(
 			origin: OriginFor<T>,
 			_num_voters: u32,
@@ -598,6 +632,8 @@ pub mod pallet {
 		InvalidRenouncing,
 		/// Prediction regarding replacement after member removal is wrong.
 		InvalidReplacement,
+		/// The provided token payment is not the GovTokenId
+		IncorrectToken,
 	}
 
 	/// The current elected members.
@@ -607,6 +643,11 @@ pub mod pallet {
 	#[pallet::getter(fn members)]
 	pub type Members<T: Config> =
 		StorageValue<_, Vec<SeatHolder<T::AccountId, BalanceOf<T>>>, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn govtokenid)]
+	pub type GovTokenId<T: Config> =
+		StorageValue<_, <T as pallet_assets::Config>::AssetId, ValueQuery>;
 
 	/// The current reserved runners-up.
 	///
@@ -665,7 +706,7 @@ pub mod pallet {
 				.map(|(ref member, ref stake)| {
 					// make sure they have enough stake.
 					assert!(
-						T::Currency::free_balance(member) >= *stake,
+						<T as pallet::Config>::Currency::free_balance(member) >= *stake,
 						"Genesis member does not have enough stake.",
 					);
 
@@ -745,12 +786,13 @@ impl<T: Config> Pallet<T> {
 
 			// slash or unreserve
 			if slash {
-				let (imbalance, _remainder) = T::Currency::slash_reserved(who, removed.deposit);
+				let (imbalance, _remainder) =
+					<T as pallet::Config>::Currency::slash_reserved(who, removed.deposit);
 				debug_assert!(_remainder.is_zero());
 				T::LoserCandidate::on_unbalanced(imbalance);
 				Self::deposit_event(Event::SeatHolderSlashed(who.clone(), removed.deposit));
 			} else {
-				T::Currency::unreserve(who, removed.deposit);
+				<T as pallet::Config>::Currency::unreserve(who, removed.deposit);
 			}
 
 			let maybe_next_best = <RunnersUp<T>>::mutate(|r| r.pop()).map(|next_best| {
@@ -860,11 +902,11 @@ impl<T: Config> Pallet<T> {
 		let Voter { deposit, .. } = <Voting<T>>::take(who);
 
 		// remove storage, lock and unreserve.
-		T::Currency::remove_lock(T::PalletId::get(), who);
+		<T as pallet::Config>::Currency::remove_lock(T::PalletId::get(), who);
 
 		// NOTE: we could check the deposit amount before removing and skip if zero, but it will be
 		// a noop anyhow.
-		let _remainder = T::Currency::unreserve(who, deposit);
+		let _remainder = <T as pallet::Config>::Currency::unreserve(who, deposit);
 		debug_assert!(_remainder.is_zero());
 	}
 
@@ -883,7 +925,7 @@ impl<T: Config> Pallet<T> {
 
 		if candidates_and_deposit.len().is_zero() {
 			Self::deposit_event(Event::EmptyTerm);
-			return T::DbWeight::get().reads(5)
+			return T::DbWeight::get().reads(5);
 		}
 
 		// All of the new winners that come out of phragmen will thus have a deposit recorded.
@@ -891,9 +933,12 @@ impl<T: Config> Pallet<T> {
 			candidates_and_deposit.iter().map(|(x, _)| x).cloned().collect::<Vec<_>>();
 
 		// helper closures to deal with balance/stake.
-		let total_issuance = T::Currency::total_issuance();
-		let to_votes = |b: BalanceOf<T>| T::CurrencyToVote::to_vote(b, total_issuance);
-		let to_balance = |e: ExtendedBalance| T::CurrencyToVote::to_currency(e, total_issuance);
+		let total_issuance = <T as pallet::Config>::Currency::total_issuance();
+		let to_votes =
+			|b: BalanceOf<T>| <T as pallet::Config>::CurrencyToVote::to_vote(b, total_issuance);
+		let to_balance = |e: ExtendedBalance| {
+			<T as pallet::Config>::CurrencyToVote::to_currency(e, total_issuance)
+		};
 
 		let mut num_edges: u32 = 0;
 		// used for prime election.
@@ -996,10 +1041,10 @@ impl<T: Config> Pallet<T> {
 			// All candidates/members/runners-up who are no longer retaining a position as a
 			// seat holder will lose their bond.
 			candidates_and_deposit.iter().for_each(|(c, d)| {
-				if new_members_ids_sorted.binary_search(c).is_err() &&
-					new_runners_up_ids_sorted.binary_search(c).is_err()
+				if new_members_ids_sorted.binary_search(c).is_err()
+					&& new_runners_up_ids_sorted.binary_search(c).is_err()
 				{
-					let (imbalance, _) = T::Currency::slash_reserved(c, *d);
+					let (imbalance, _) = <T as pallet::Config>::Currency::slash_reserved(c, *d);
 					T::LoserCandidate::on_unbalanced(imbalance);
 					Self::deposit_event(Event::CandidateSlashed(c.clone(), *d));
 				}
@@ -1053,7 +1098,11 @@ impl<T: Config> Pallet<T> {
 			Self::deposit_event(Event::ElectionError);
 		});
 
-		T::WeightInfo::election_phragmen(weight_candidates, weight_voters, weight_edges)
+		<T as pallet::Config>::WeightInfo::election_phragmen(
+			weight_candidates,
+			weight_voters,
+			weight_edges,
+		)
 	}
 }
 
