@@ -108,6 +108,7 @@ use frame_support::{
 	},
 	weights::Weight,
 };
+use pallet_assets as assets;
 use scale_info::TypeInfo;
 use sp_npos_elections::{ElectionResult, ExtendedBalance};
 use sp_runtime::{
@@ -177,13 +178,12 @@ pub use pallet::*;
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use codec::HasCompact;
 
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
 
 	#[pallet::config]
-	pub trait Config: frame_system::Config + pallet_assets::Config {
+	pub trait Config: frame_system::Config + assets::Config {
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
 		/// Identifier for the elections-phragmen pallet's lock
@@ -300,8 +300,8 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			// get GovToken's AssetId && check if balance is non-zero - @charmitro
-			let balance = <pallet_assets::Pallet<T>>::balance(<GovTokenId<T>>::get(), who.clone());
-			ensure!(!balance.is_zero(), Error::<T>::IncorrectToken);
+			let balance = <assets::Pallet<T>>::balance(<GovTokenId<T>>::get(), who.clone());
+			ensure!(!balance.is_zero(), Error::<T>::InsufficientCandidateFunds);
 
 			// votes should not be empty and more than `MAXIMUM_VOTE` in any case.
 			ensure!(votes.len() <= MAXIMUM_VOTE, Error::<T>::MaximumVotesExceeded);
@@ -364,8 +364,8 @@ pub mod pallet {
 		#[pallet::weight(<T as pallet::Config>::WeightInfo::remove_voter())]
 		pub fn remove_voter(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let balance = <pallet_assets::Pallet<T>>::balance(<GovTokenId<T>>::get(), who.clone());
-			ensure!(!balance.is_zero(), Error::<T>::IncorrectToken);
+			let balance = <assets::Pallet<T>>::balance(<GovTokenId<T>>::get(), who.clone());
+			ensure!(!balance.is_zero(), Error::<T>::InsufficientCandidateFunds);
 
 			ensure!(Self::is_voter(&who), Error::<T>::MustBeVoter);
 			Self::do_remove_voter(&who);
@@ -376,7 +376,7 @@ pub mod pallet {
 		#[pallet::weight(0)]
 		pub fn set_gov_token_id(
 			origin: OriginFor<T>,
-			token_id: <T as pallet_assets::Config>::AssetId,
+			token_id: <T as assets::Config>::AssetId,
 		) -> DispatchResult {
 			let _who = ensure_root(origin)?;
 
@@ -406,8 +406,8 @@ pub mod pallet {
 			#[pallet::compact] candidate_count: u32,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let balance = <pallet_assets::Pallet<T>>::balance(<GovTokenId<T>>::get(), who.clone());
-			ensure!(!balance.is_zero(), Error::<T>::IncorrectToken);
+			let balance = <assets::Pallet<T>>::balance(<GovTokenId<T>>::get(), who.clone());
+			ensure!(!balance.is_zero(), Error::<T>::InsufficientCandidateFunds);
 
 			let actual_count = <Candidates<T>>::decode_len().unwrap_or(0);
 			ensure!(actual_count as u32 <= candidate_count, Error::<T>::InvalidWitnessData);
@@ -452,8 +452,8 @@ pub mod pallet {
 			renouncing: Renouncing,
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
-			let balance = <pallet_assets::Pallet<T>>::balance(<GovTokenId<T>>::get(), who.clone());
-			ensure!(!balance.is_zero(), Error::<T>::IncorrectToken);
+			let balance = <assets::Pallet<T>>::balance(<GovTokenId<T>>::get(), who.clone());
+			ensure!(!balance.is_zero(), Error::<T>::InsufficientCandidateFunds);
 
 			match renouncing {
 				Renouncing::Member => {
@@ -632,8 +632,6 @@ pub mod pallet {
 		InvalidRenouncing,
 		/// Prediction regarding replacement after member removal is wrong.
 		InvalidReplacement,
-		/// The provided token payment is not the GovTokenId
-		IncorrectToken,
 	}
 
 	/// The current elected members.
@@ -646,8 +644,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn govtokenid)]
-	pub type GovTokenId<T: Config> =
-		StorageValue<_, <T as pallet_assets::Config>::AssetId, ValueQuery>;
+	pub type GovTokenId<T: Config> = StorageValue<_, <T as assets::Config>::AssetId, ValueQuery>;
 
 	/// The current reserved runners-up.
 	///
