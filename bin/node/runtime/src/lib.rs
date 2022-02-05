@@ -1256,7 +1256,7 @@ parameter_types! {
 impl pallet_ipfs::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
-	type AuthorityId = pallet_ipfs::crypto::TestAuthId;
+	type AuthorityId = pallet_ipfs::crypto::AuthorityId;
 	type MaxIpfsOwned = MaxIpfsOwned;
 	type WeightInfo = pallet_ipfs::weights::SubstrateWeight<Runtime>;
 }
