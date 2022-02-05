@@ -110,7 +110,7 @@ impl Config for Test {
 	type Currency = Balances;
 	type Event = Event;
 	type MaxIpfsOwned = MaxIpfsOwned;
-	type AuthorityId = pallet_ipfs::crypto::TestAuthId;
+	type AuthorityId = pallet_ipfs::crypto::AuthorityId;
 	type WeightInfo = ();
 }
 
