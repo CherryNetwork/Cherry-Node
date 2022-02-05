@@ -51,6 +51,7 @@ pub use weights::WeightInfo;
 #[derive(Encode, Decode, RuntimeDebug, PartialEq, TypeInfo)]
 pub enum DataCommand<AccountId> {
 	AddBytes(OpaqueMultiaddr, Vec<u8>, AccountId, bool),
+	AddBytesRaw(OpaqueMultiaddr, Vec<u8>, AccountId, bool),
 	CatBytes(OpaqueMultiaddr, Vec<u8>, AccountId),
 	InsertPin(OpaqueMultiaddr, Vec<u8>, AccountId, bool),
 	RemovePin(OpaqueMultiaddr, Vec<u8>, AccountId, bool),
@@ -61,7 +62,7 @@ pub enum DataCommand<AccountId> {
 pub mod pallet {
 	use super::*;
 	use frame_support::{
-		dispatch::DispatchResult, pallet_prelude::*, sp_runtime::traits::Hash, traits::Currency,
+		dispatch::DispatchResult, pallet_prelude::*, traits::Currency,
 	};
 	use frame_system::{
 		offchain::{AppCrypto, CreateSignedTransaction},
@@ -69,7 +70,9 @@ pub mod pallet {
 	};
 	use scale_info::TypeInfo;
 	use sp_core::offchain::OpaqueMultiaddr;
-	use sp_runtime::offchain::{ipfs, IpfsRequest, IpfsResponse};
+	use sp_runtime::{
+		offchain::{ipfs, IpfsRequest, IpfsResponse},
+	};
 	use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
 	type AccountOf<T> = <T as frame_system::Config>::AccountId;
@@ -83,6 +86,7 @@ pub mod pallet {
 		pub cid_addr: Vec<u8>,
 		pub gateway_url: Vec<u8>,
 		pub owners: BTreeMap<AccountOf<T>, OwnershipLayer>,
+		pub pinned: bool,
 	}
 
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
@@ -226,30 +230,48 @@ pub mod pallet {
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
 		/// Create a new unique IPFS.
-		///
-		/// The actual IPFS creation is done in the `mint()` function.
 		#[pallet::weight(T::WeightInfo::create_ipfs_asset())]
 		pub fn create_ipfs_asset(
 			origin: OriginFor<T>,
 			addr: Vec<u8>,
-			ci_address: Vec<u8>,
+			cid: Vec<u8>,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
 			ensure!(
-				!<IpfsAssetOwned<T>>::get(&sender).contains(&ci_address),
+				!<IpfsAssetOwned<T>>::get(&sender).contains(&cid),
 				<Error<T>>::IpfsAlreadyOwned
 			);
 
 			let multiaddr = OpaqueMultiaddr(addr);
 
 			<DataQueue<T>>::mutate(|queue| {
-				queue.push(DataCommand::AddBytes(
-					multiaddr,
-					ci_address.clone(),
-					sender.clone(),
-					true,
-				))
+				queue.push(DataCommand::AddBytes(multiaddr, cid.clone(), sender.clone(), true))
+			});
+
+			Self::deposit_event(Event::QueuedDataToAdd(sender.clone()));
+
+			Ok(())
+		}
+
+		/// Create a new unique IPFS.
+		#[pallet::weight(T::WeightInfo::create_ipfs_asset())]
+		pub fn create_ipfs_asset_raw(
+			origin: OriginFor<T>,
+			addr: Vec<u8>,
+			data: Vec<u8>,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+
+			ensure!(
+				!<IpfsAssetOwned<T>>::get(&sender).contains(&data),
+				<Error<T>>::IpfsAlreadyOwned
+			);
+
+			let multiaddr = OpaqueMultiaddr(addr);
+
+			<DataQueue<T>>::mutate(|queue| {
+				queue.push(DataCommand::AddBytesRaw(multiaddr, data.clone(), sender.clone(), true))
 			});
 
 			Self::deposit_event(Event::QueuedDataToAdd(sender.clone()));
@@ -378,6 +400,7 @@ pub mod pallet {
 				cid_addr: cid.clone(),
 				gateway_url: _gateway_url.clone(),
 				owners: BTreeMap::<AccountOf<T>, OwnershipLayer>::new(),
+				pinned: true, // true by default.
 			};
 
 			ipfs.owners.insert(admin.clone(), OwnershipLayer::default());
@@ -393,11 +416,7 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(0)]
-		pub fn submit_ipfs_pin_results(
-			origin: OriginFor<T>,
-			admin: AccountOf<T>,
-			cid: Vec<u8>,
-		) -> DispatchResult {
+		pub fn submit_ipfs_pin_results(origin: OriginFor<T>, _cid: Vec<u8>) -> DispatchResult {
 			ensure_signed(origin)?;
 
 			<DataQueue<T>>::take();
@@ -406,12 +425,13 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(0)]
-		pub fn submit_ipfs_unpin_results(
-			origin: OriginFor<T>,
-			admin: AccountOf<T>,
-			cid: Vec<u8>,
-		) -> DispatchResult {
+		pub fn submit_ipfs_unpin_results(origin: OriginFor<T>, cid: Vec<u8>) -> DispatchResult {
 			ensure_signed(origin)?;
+
+			let mut ipfs_asset = Self::ipfs_asset(&cid).ok_or(<Error<T>>::IpfsNotExist)?;
+
+			ipfs_asset.pinned = false;
+			<IpfsAsset<T>>::insert(cid.clone(), ipfs_asset);
 
 			<DataQueue<T>>::take();
 
@@ -419,17 +439,12 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(0)]
-		pub fn submit_ipfs_delete_results(
-			origin: OriginFor<T>,
-			admin: AccountOf<T>,
-			cid: Vec<u8>,
-		) -> DispatchResult {
+		pub fn submit_ipfs_delete_results(origin: OriginFor<T>, cid: Vec<u8>) -> DispatchResult {
 			ensure_signed(origin)?;
 
 			<DataQueue<T>>::take();
 
 			let mut ipfs_asset = Self::ipfs_asset(&cid).ok_or(<Error<T>>::IpfsNotExist)?;
-
 			for user in ipfs_asset.owners.iter_mut() {
 				<IpfsAssetOwned<T>>::try_mutate(&user.0, |ipfs_vec| {
 					if let Some(index) = ipfs_vec.iter().position(|i| *i == cid.clone()) {
@@ -441,7 +456,11 @@ pub mod pallet {
 				})
 				.map_err(|_: bool| <Error<T>>::ExceedMaxIpfsOwned)?;
 			}
+
+			let new_cnt = Self::ipfs_cnt().checked_sub(1).unwrap();
+
 			<IpfsAsset<T>>::remove(cid.clone());
+			<IpfsCnt<T>>::put(new_cnt);
 
 			Ok(())
 		}
@@ -570,7 +589,7 @@ pub mod pallet {
 					} else {
 						Err(<Error<T>>::AccNotExist)
 					}
-				}
+				},
 				None => Err(<Error<T>>::IpfsNotExist),
 			}
 		}
@@ -672,7 +691,7 @@ pub mod pallet {
 													Ok(()) => {
 														// also this probably doesn't work.
 														log::info!("Submited IPFS results")
-													}
+													},
 													Err(e) => log::error!(
 														"Failed to submit transaction: {:?}",
 														e
@@ -690,10 +709,10 @@ pub mod pallet {
 														sp_std::str::from_utf8(&cid)
 															.expect("trusted")
 													)
-												}
+												},
 												Ok(_) => {
 													unreachable!("only Success can be a response for that request type")
-												}
+												},
 												Err(e) => log::error!("IPFS: Pin Error: {:?}", e),
 											}
 
@@ -703,21 +722,21 @@ pub mod pallet {
 											) {
 												Ok(IpfsResponse::Success) => {
 													log::info!("IPFS: Disconeccted Succes")
-												}
+												},
 												Ok(_) => {
 													unreachable!("only Success can be a response for that request type")
-												}
+												},
 												Err(e) => {
 													log::error!("IPFS: Disconnect Error: {:?}", e)
-												}
+												},
 											}
-										}
+										},
 										Ok(_) => unreachable!(
 											"only AddBytes can be a response for that request type"
 										),
 										Err(e) => log::error!("IPFS: Add Error: {:?}", e),
 									}
-								}
+								},
 								Ok(_) => unreachable!(
 									"only AddBytes can be a response for that request type."
 								),
@@ -728,11 +747,99 @@ pub mod pallet {
 							),
 							Err(e) => log::error!("IPFS: add error: {:?}", e),
 						}
-					}
+					},
+
+					DataCommand::AddBytesRaw(m_addr, data, admin, is_recursive) => {
+						// this should work for different CID's. If you try to
+						// connect and upload the same CID, you will get a duplicate
+						// conn error. @charmitro
+						match Self::ipfs_request(IpfsRequest::Connect(m_addr.clone()), deadline) {
+							Ok(IpfsResponse::Success) => match Self::ipfs_request(
+								IpfsRequest::AddBytes(data.clone()),
+								deadline,
+							) {
+								Ok(IpfsResponse::AddBytes(cid)) => {
+									log::info!("IPFS: added data");
+									Self::ipfs_request(
+										IpfsRequest::Disconnect(m_addr.clone()),
+										deadline,
+									)?;
+
+									// signer is the probably the node account (often Alice)
+									let signer = Signer::<T, T::AuthorityId>::all_accounts();
+									if !signer.can_sign() {
+										log::error!(
+												"No local account available. Consider adding one via `author_insertKey` RPC.",
+											);
+									}
+
+									let results = signer.send_signed_transaction(|_account| {
+										Call::submit_ipfs_add_results {
+											// admin should be the actual account that we is doing
+											// the transcation in the first place(create_ipfs_asset)
+											admin: admin.clone(),
+											cid: cid.clone(),
+										}
+									});
+
+									for (_, res) in &results {
+										match res {
+											Ok(()) => {
+												// also this probably doesn't work.
+												log::info!("Submited IPFS results")
+											},
+											Err(e) => {
+												log::error!("Failed to submit transaction: {:?}", e)
+											},
+										}
+									}
+
+									match Self::ipfs_request(
+										IpfsRequest::InsertPin(cid.clone(), is_recursive),
+										deadline,
+									) {
+										Ok(IpfsResponse::Success) => {
+											log::info!(
+												"IPFS: pinned data with CID: {}",
+												sp_std::str::from_utf8(&cid).expect("trusted")
+											)
+										},
+										Ok(_) => {
+											unreachable!("only Success can be a response for that request type")
+										},
+										Err(e) => log::error!("IPFS: Pin Error: {:?}", e),
+									}
+
+									match Self::ipfs_request(
+										IpfsRequest::Disconnect(m_addr.clone()),
+										deadline,
+									) {
+										Ok(IpfsResponse::Success) => {
+											log::info!("IPFS: Disconeccted Succes")
+										},
+										Ok(_) => {
+											unreachable!("only Success can be a response for that request type")
+										},
+										Err(e) => {
+											log::error!("IPFS: Disconnect Error: {:?}", e)
+										},
+									}
+								},
+								Ok(_) => unreachable!(
+									"only AddBytes can be a response for that request type."
+								),
+								Err(e) => log::error!("IPFS: add error: {:?}", e),
+							},
+							Ok(_) => unreachable!(
+								"only AddBytes can be a response for that request type."
+							),
+							Err(e) => log::error!("IPFS: add error: {:?}", e),
+						}
+					},
 
 					DataCommand::CatBytes(m_addr, cid, _admin) => {
 						match Self::ipfs_request(IpfsRequest::CatBytes(cid.clone()), deadline) {
-							Ok(IpfsResponse::CatBytes(data)) => {
+							Ok(IpfsResponse::CatBytes(_data)) => {
 								log::info!("IPFS: fetched data");
 								Self::ipfs_request(
 									IpfsRequest::Disconnect(m_addr.clone()),
@@ -744,15 +851,15 @@ pub mod pallet {
 									sp_std::str::from_utf8(&m_addr.0)
 										.expect("our own calls can be trusted to be UTF-8; qed")
 								);
-							}
+							},
 							Ok(_) => unreachable!(
 								"only AddBytes can be a response for that request type."
 							),
 							Err(e) => log::error!("IPFS: add error: {:?}", e),
 						}
-					}
+					},
 
-					DataCommand::InsertPin(m_addr, cid, _admin, is_recursive) => {
+					DataCommand::InsertPin(_m_addr, cid, _admin, is_recursive) => {
 						match Self::ipfs_request(
 							IpfsRequest::InsertPin(cid.clone(), is_recursive),
 							deadline,
@@ -771,31 +878,28 @@ pub mod pallet {
 								}
 
 								let results = signer.send_signed_transaction(|_account| {
-									Call::submit_ipfs_pin_results {
-										admin: _admin.clone(),
-										cid: cid.clone(),
-									}
+									Call::submit_ipfs_pin_results { cid: cid.clone() }
 								});
 
 								for (_, res) in &results {
 									match res {
 										Ok(()) => {
 											log::info!("Submited IPFS results")
-										}
+										},
 										Err(e) => {
 											log::error!("Failed to submit transaction: {:?}", e)
-										}
+										},
 									}
 								}
-							}
+							},
 							Ok(_) => {
 								unreachable!("only Success can be a response for that request type")
-							}
+							},
 							Err(e) => log::error!("IPFS: Pin Error: {:?}", e),
 						}
-					}
+					},
 
-					DataCommand::RemovePin(_m_addr, cid, admin, is_recursive) => {
+					DataCommand::RemovePin(_m_addr, cid, _admin, is_recursive) => {
 						match Self::ipfs_request(
 							IpfsRequest::RemovePin(cid.clone(), is_recursive),
 							deadline,
@@ -814,31 +918,28 @@ pub mod pallet {
 								}
 
 								let results = signer.send_signed_transaction(|_account| {
-									Call::submit_ipfs_unpin_results {
-										admin: admin.clone(),
-										cid: cid.clone(),
-									}
+									Call::submit_ipfs_unpin_results { cid: cid.clone() }
 								});
 
 								for (_, res) in &results {
 									match res {
 										Ok(()) => {
 											log::info!("Submited IPFS results")
-										}
+										},
 										Err(e) => {
 											log::error!("Failed to submit transaction: {:?}", e)
-										}
+										},
 									}
 								}
-							}
+							},
 							Ok(_) => {
 								unreachable!("only Success can be a response for that request type")
-							}
+							},
 							Err(e) => log::error!("IPFS: Remove Pin Error: {:?}", e),
 						}
-					}
+					},
 
-					DataCommand::RemoveBlock(_m_addr, cid, admin) => {
+					DataCommand::RemoveBlock(_m_addr, cid, _admin) => {
 						match Self::ipfs_request(IpfsRequest::RemoveBlock(cid.clone()), deadline) {
 							Ok(IpfsResponse::RemoveBlock(cid)) => {
 								log::info!(
@@ -854,29 +955,26 @@ pub mod pallet {
 								}
 
 								let results = signer.send_signed_transaction(|_account| {
-									Call::submit_ipfs_delete_results {
-										admin: admin.clone(),
-										cid: cid.clone(),
-									}
+									Call::submit_ipfs_delete_results { cid: cid.clone() }
 								});
 
 								for (_, res) in &results {
 									match res {
 										Ok(()) => {
 											log::info!("Submited IPFS results")
-										}
+										},
 										Err(e) => {
 											log::error!("Failed to submit transaction: {:?}", e)
-										}
+										},
 									}
 								}
-							}
+							},
 							Ok(_) => unreachable!(
 								"only RemoveBlock can be a response for that request type"
 							),
 							Err(e) => log::error!("IPFS: Remove Block Error: {:?}", e),
 						}
-					}
+					},
 				}
 			}
 			Ok(())
