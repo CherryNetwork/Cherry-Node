@@ -17,6 +17,7 @@ use sp_core::offchain::{Duration, OpaqueMultiaddr, StorageKind, Timestamp};
 use sp_core::Bytes;
 use sp_io::offchain::timestamp;
 use sp_std::vec::Vec;
+use frame_system;
 
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"chfs");
 
@@ -49,8 +50,8 @@ pub use pallet::*;
 pub use weights::WeightInfo;
 
 #[derive(Encode, Decode, RuntimeDebug, PartialEq, TypeInfo)]
-pub enum DataCommand<AccountId> {
-	AddBytes(OpaqueMultiaddr, Vec<u8>, AccountId, bool),
+pub enum DataCommand<BalanceOf, AccountId> {
+	AddBytes(OpaqueMultiaddr, Vec<u8>, AccountId, BalanceOf, bool),
 	CatBytes(OpaqueMultiaddr, Vec<u8>, AccountId),
 	InsertPin(OpaqueMultiaddr, Vec<u8>, AccountId, bool),
 	RemovePin(OpaqueMultiaddr, Vec<u8>, AccountId, bool),
@@ -70,7 +71,7 @@ pub mod pallet {
 	use scale_info::TypeInfo;
 	use sp_core::offchain::OpaqueMultiaddr;
 	use sp_runtime::offchain::{ipfs, IpfsRequest, IpfsResponse};
-	use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
+	use sp_std::{collections::btree_map::BTreeMap, vec::Vec, convert::TryInto};
 
 	type AccountOf<T> = <T as frame_system::Config>::AccountId;
 	type BalanceOf<T> =
@@ -83,6 +84,8 @@ pub mod pallet {
 		pub cid_addr: Vec<u8>,
 		pub gateway_url: Vec<u8>,
 		pub owners: BTreeMap<AccountOf<T>, OwnershipLayer>,
+		pub created_at: T::BlockNumber,
+		pub deleting_at: T::BlockNumber,
 	}
 
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
@@ -111,7 +114,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn data_queue)]
 	pub(super) type DataQueue<T: Config> =
-		StorageValue<_, Vec<DataCommand<T::AccountId>>, ValueQuery>;
+		StorageValue<_, Vec<DataCommand<BalanceOf<T>, T::AccountId>>, ValueQuery>;
 
 	#[pallet::config]
 	pub trait Config: CreateSignedTransaction<Call<Self>> + frame_system::Config {
@@ -233,6 +236,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			addr: Vec<u8>,
 			ci_address: Vec<u8>,
+			fee: BalanceOf<T>,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
@@ -248,11 +252,36 @@ pub mod pallet {
 					multiaddr,
 					ci_address.clone(),
 					sender.clone(),
+					fee,
 					true,
 				))
 			});
 
 			Self::deposit_event(Event::QueuedDataToAdd(sender.clone()));
+
+			Ok(())
+		}
+
+		/// Extends the duration of an Ipfs asset
+		#[pallet::weight(0)]
+		pub fn extend_duration(
+			origin: OriginFor<T>,
+			ci_address: Vec<u8>,
+			fee: BalanceOf<T>,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
+
+			ensure!(
+				Self::determine_account_ownership_layer(&ci_address, &sender)? == OwnershipLayer::Owner,
+				<Error<T>>::NotIpfsOwner
+			);
+
+			let x = TryInto::<u32>::try_into(fee).ok();
+			let extra_duration = x.unwrap() / 16;  // 16 coins per 1 second
+			// let old_duration = <IpfsAsset<T>>::get(&ci_address); //get deleting_at data of cid
+			// let new_duration = old_duration + extra_duration.into();
+
+			// update the Ipfs struct with new deleting_at duration.
 
 			Ok(())
 		}
@@ -367,6 +396,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			admin: AccountOf<T>,
 			cid: Vec<u8>,
+			fee: BalanceOf<T>,
 		) -> DispatchResult {
 			ensure_signed(origin)?;
 
@@ -374,10 +404,20 @@ pub mod pallet {
 
 			let mut _gateway_url = "http://15.188.14.75:8080/ipfs/".as_bytes().to_vec();
 			_gateway_url.append(&mut cid.clone());
+			let current_block = <frame_system::Pallet<T>>::block_number();
+			let secs_per_block: u32 = 6;
+			let created = current_block * secs_per_block.into();
+			let min_time: u32 = 600;
+			let fee_to_u32 = TryInto::<u32>::try_into(fee).ok();
+			let fee_duration = fee_to_u32.unwrap() / 16;
+			let deleting = created + min_time.into() + fee_duration.into();
+			
 			let mut ipfs = Ipfs::<T> {
 				cid_addr: cid.clone(),
 				gateway_url: _gateway_url.clone(),
 				owners: BTreeMap::<AccountOf<T>, OwnershipLayer>::new(),
+				created_at: created,
+				deleting_at: deleting,
 			};
 
 			ipfs.owners.insert(admin.clone(), OwnershipLayer::default());
@@ -613,7 +653,7 @@ pub mod pallet {
 
 			for cmd in data_queue.into_iter() {
 				match cmd {
-					DataCommand::AddBytes(m_addr, cid, admin, is_recursive) => {
+					DataCommand::AddBytes(m_addr, cid, admin, fee, is_recursive) => {
 						// this should work for different CID's. If you try to
 						// connect and upload the same CID, you will get a duplicate
 						// conn error. @charmitro
@@ -664,6 +704,7 @@ pub mod pallet {
 														// the transcation in the first place(create_ipfs_asset)
 														admin: admin.clone(),
 														cid: cid.clone(),
+														fee: fee,
 													}
 												});
 
