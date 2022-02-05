@@ -50,7 +50,7 @@ pub use weights::WeightInfo;
 
 #[derive(Encode, Decode, RuntimeDebug, PartialEq, TypeInfo)]
 pub enum DataCommand<AccountId> {
-	AddBytes(OpaqueMultiaddr, Vec<u8>, AccountId, bool),
+	AddBytes(OpaqueMultiaddr, Vec<u8>, u64, AccountId, bool),
 	AddBytesRaw(OpaqueMultiaddr, Vec<u8>, AccountId, bool),
 	CatBytes(OpaqueMultiaddr, Vec<u8>, AccountId),
 	InsertPin(OpaqueMultiaddr, Vec<u8>, AccountId, bool),
@@ -83,7 +83,8 @@ pub mod pallet {
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
 	#[scale_info(skip_type_params(T))]
 	pub struct Ipfs<T: Config> {
-		pub cid_addr: Vec<u8>,
+		pub cid: Vec<u8>,
+		pub size: u64,
 		pub gateway_url: Vec<u8>,
 		pub owners: BTreeMap<AccountOf<T>, OwnershipLayer>,
 		pub pinned: bool,
@@ -106,11 +107,6 @@ pub mod pallet {
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
-
-	#[pallet::storage]
-	#[pallet::getter(fn bootstrap_nodes)]
-	pub(super) type BootstrapNodes<T: Config> =
-		StorageMap<_, Blake2_128Concat, Vec<u8>, Vec<OpaqueMultiaddr>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn data_queue)]
@@ -207,7 +203,7 @@ pub mod pallet {
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
 		fn on_initialize(block_no: BlockNumberFor<T>) -> Weight {
 			if block_no % 2u32.into() == 1u32.into() {
-				<DataQueue<T>>::kill();
+				<DataQueue<T>>::kill(); // Research this - @charmitro
 			}
 
 			0
@@ -235,6 +231,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			addr: Vec<u8>,
 			cid: Vec<u8>,
+			size: u64,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
@@ -246,7 +243,7 @@ pub mod pallet {
 			let multiaddr = OpaqueMultiaddr(addr);
 
 			<DataQueue<T>>::mutate(|queue| {
-				queue.push(DataCommand::AddBytes(multiaddr, cid.clone(), sender.clone(), true))
+				queue.push(DataCommand::AddBytes(multiaddr, cid, size, sender.clone(), true))
 			});
 
 			Self::deposit_event(Event::QueuedDataToAdd(sender.clone()));
@@ -389,16 +386,19 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			admin: AccountOf<T>,
 			cid: Vec<u8>,
+			size: u64,
 		) -> DispatchResult {
 			ensure_signed(origin)?;
 
 			<DataQueue<T>>::take();
 
-			let mut _gateway_url = "http://15.188.14.75:8080/ipfs/".as_bytes().to_vec();
-			_gateway_url.append(&mut cid.clone());
+			let mut gateway_url = "http://15.188.14.75:8080/ipfs/".as_bytes().to_vec();
+			gateway_url.append(&mut cid.clone());
+
 			let mut ipfs = Ipfs::<T> {
-				cid_addr: cid.clone(),
-				gateway_url: _gateway_url.clone(),
+				cid: cid.clone(),
+				size,
+				gateway_url,
 				owners: BTreeMap::<AccountOf<T>, OwnershipLayer>::new(),
 				pinned: true, // true by default.
 			};
@@ -499,7 +499,7 @@ pub mod pallet {
 
 		/// Remove the ownership layer of a user.
 		#[pallet::weight(0)]
-		pub fn remove_owner(
+		pub fn remove_ownership(
 			origin: OriginFor<T>,
 			cid: Vec<u8>,
 			remove_acct: T::AccountId,
@@ -632,7 +632,7 @@ pub mod pallet {
 
 			for cmd in data_queue.into_iter() {
 				match cmd {
-					DataCommand::AddBytes(m_addr, cid, admin, is_recursive) => {
+					DataCommand::AddBytes(m_addr, cid, size, admin, is_recursive) => {
 						// this should work for different CID's. If you try to
 						// connect and upload the same CID, you will get a duplicate
 						// conn error. @charmitro
@@ -683,6 +683,7 @@ pub mod pallet {
 														// the transcation in the first place(create_ipfs_asset)
 														admin: admin.clone(),
 														cid: cid.clone(),
+														size: size.clone(),
 													}
 												});
 
@@ -779,6 +780,7 @@ pub mod pallet {
 											// the transcation in the first place(create_ipfs_asset)
 											admin: admin.clone(),
 											cid: cid.clone(),
+											size: data.len() as u64,
 										}
 									});
 
