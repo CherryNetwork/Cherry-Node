@@ -10,6 +10,7 @@ pub mod weights;
 
 use codec::{Decode, Encode};
 use frame_support::RuntimeDebug;
+use frame_system;
 use frame_system::offchain::{SendSignedTransaction, Signer};
 use scale_info::TypeInfo;
 use sp_core::crypto::KeyTypeId;
@@ -17,7 +18,6 @@ use sp_core::offchain::{Duration, OpaqueMultiaddr, StorageKind, Timestamp};
 use sp_core::Bytes;
 use sp_io::offchain::timestamp;
 use sp_std::vec::Vec;
-use frame_system;
 
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"chfs");
 
@@ -71,7 +71,7 @@ pub mod pallet {
 	use scale_info::TypeInfo;
 	use sp_core::offchain::OpaqueMultiaddr;
 	use sp_runtime::offchain::{ipfs, IpfsRequest, IpfsResponse};
-	use sp_std::{collections::btree_map::BTreeMap, vec::Vec, convert::TryInto};
+	use sp_std::{collections::btree_map::BTreeMap, convert::TryInto, vec::Vec};
 
 	type AccountOf<T> = <T as frame_system::Config>::AccountId;
 	type BalanceOf<T> =
@@ -262,29 +262,29 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Extends the duration of an Ipfs asset
-		#[pallet::weight(0)]
-		pub fn extend_duration(
-			origin: OriginFor<T>,
-			ci_address: Vec<u8>,
-			fee: BalanceOf<T>,
-		) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
+		// /// Extends the duration of an Ipfs asset
+		// #[pallet::weight(0)]
+		// pub fn extend_duration(
+		// 	origin: OriginFor<T>,
+		// 	ci_address: Vec<u8>,
+		// 	fee: BalanceOf<T>,
+		// ) -> DispatchResult {
+		// 	let sender = ensure_signed(origin)?;
 
-			ensure!(
-				Self::determine_account_ownership_layer(&ci_address, &sender)? == OwnershipLayer::Owner,
-				<Error<T>>::NotIpfsOwner
-			);
+		// 	ensure!(
+		// 		Self::determine_account_ownership_layer(&ci_address, &sender)? == OwnershipLayer::Owner,
+		// 		<Error<T>>::NotIpfsOwner
+		// 	);
 
-			let x = TryInto::<u32>::try_into(fee).ok();
-			let extra_duration = x.unwrap() / 16;  // 16 coins per 1 second
-			// let old_duration = <IpfsAsset<T>>::get(&ci_address); //get deleting_at data of cid
-			// let new_duration = old_duration + extra_duration.into();
+		// 	let x = TryInto::<u32>::try_into(fee).ok();
+		// 	let extra_duration = x.unwrap() / 16;  // 16 coins per 1 second
+		// 	// let old_duration = <IpfsAsset<T>>::get(&ci_address); //get deleting_at data of cid
+		// 	// let new_duration = old_duration + extra_duration.into();
 
-			// update the Ipfs struct with new deleting_at duration.
+		// 	// update the Ipfs struct with new deleting_at duration.
 
-			Ok(())
-		}
+		// 	Ok(())
+		// }
 
 		/// Pins an IPFS.
 		#[pallet::weight(0)]
@@ -411,7 +411,7 @@ pub mod pallet {
 			let fee_to_u32 = TryInto::<u32>::try_into(fee).ok();
 			let fee_duration = fee_to_u32.unwrap() / 16;
 			let deleting = created + min_time.into() + fee_duration.into();
-			
+
 			let mut ipfs = Ipfs::<T> {
 				cid_addr: cid.clone(),
 				gateway_url: _gateway_url.clone(),
@@ -610,7 +610,7 @@ pub mod pallet {
 					} else {
 						Err(<Error<T>>::AccNotExist)
 					}
-				}
+				},
 				None => Err(<Error<T>>::IpfsNotExist),
 			}
 		}
@@ -704,7 +704,7 @@ pub mod pallet {
 														// the transcation in the first place(create_ipfs_asset)
 														admin: admin.clone(),
 														cid: cid.clone(),
-														fee: fee,
+														fee,
 													}
 												});
 
@@ -713,7 +713,7 @@ pub mod pallet {
 													Ok(()) => {
 														// also this probably doesn't work.
 														log::info!("Submited IPFS results")
-													}
+													},
 													Err(e) => log::error!(
 														"Failed to submit transaction: {:?}",
 														e
@@ -731,10 +731,10 @@ pub mod pallet {
 														sp_std::str::from_utf8(&cid)
 															.expect("trusted")
 													)
-												}
+												},
 												Ok(_) => {
 													unreachable!("only Success can be a response for that request type")
-												}
+												},
 												Err(e) => log::error!("IPFS: Pin Error: {:?}", e),
 											}
 
@@ -744,21 +744,21 @@ pub mod pallet {
 											) {
 												Ok(IpfsResponse::Success) => {
 													log::info!("IPFS: Disconeccted Succes")
-												}
+												},
 												Ok(_) => {
 													unreachable!("only Success can be a response for that request type")
-												}
+												},
 												Err(e) => {
 													log::error!("IPFS: Disconnect Error: {:?}", e)
-												}
+												},
 											}
-										}
+										},
 										Ok(_) => unreachable!(
 											"only AddBytes can be a response for that request type"
 										),
 										Err(e) => log::error!("IPFS: Add Error: {:?}", e),
 									}
-								}
+								},
 								Ok(_) => unreachable!(
 									"only AddBytes can be a response for that request type."
 								),
@@ -769,7 +769,7 @@ pub mod pallet {
 							),
 							Err(e) => log::error!("IPFS: add error: {:?}", e),
 						}
-					}
+					},
 
 					DataCommand::CatBytes(m_addr, cid, _admin) => {
 						match Self::ipfs_request(IpfsRequest::CatBytes(cid.clone()), deadline) {
@@ -785,13 +785,13 @@ pub mod pallet {
 									sp_std::str::from_utf8(&m_addr.0)
 										.expect("our own calls can be trusted to be UTF-8; qed")
 								);
-							}
+							},
 							Ok(_) => unreachable!(
 								"only AddBytes can be a response for that request type."
 							),
 							Err(e) => log::error!("IPFS: add error: {:?}", e),
 						}
-					}
+					},
 
 					DataCommand::InsertPin(m_addr, cid, _admin, is_recursive) => {
 						match Self::ipfs_request(
@@ -822,19 +822,19 @@ pub mod pallet {
 									match res {
 										Ok(()) => {
 											log::info!("Submited IPFS results")
-										}
+										},
 										Err(e) => {
 											log::error!("Failed to submit transaction: {:?}", e)
-										}
+										},
 									}
 								}
-							}
+							},
 							Ok(_) => {
 								unreachable!("only Success can be a response for that request type")
-							}
+							},
 							Err(e) => log::error!("IPFS: Pin Error: {:?}", e),
 						}
-					}
+					},
 
 					DataCommand::RemovePin(_m_addr, cid, admin, is_recursive) => {
 						match Self::ipfs_request(
@@ -865,19 +865,19 @@ pub mod pallet {
 									match res {
 										Ok(()) => {
 											log::info!("Submited IPFS results")
-										}
+										},
 										Err(e) => {
 											log::error!("Failed to submit transaction: {:?}", e)
-										}
+										},
 									}
 								}
-							}
+							},
 							Ok(_) => {
 								unreachable!("only Success can be a response for that request type")
-							}
+							},
 							Err(e) => log::error!("IPFS: Remove Pin Error: {:?}", e),
 						}
-					}
+					},
 
 					DataCommand::RemoveBlock(_m_addr, cid, admin) => {
 						match Self::ipfs_request(IpfsRequest::RemoveBlock(cid.clone()), deadline) {
@@ -905,19 +905,19 @@ pub mod pallet {
 									match res {
 										Ok(()) => {
 											log::info!("Submited IPFS results")
-										}
+										},
 										Err(e) => {
 											log::error!("Failed to submit transaction: {:?}", e)
-										}
+										},
 									}
 								}
-							}
+							},
 							Ok(_) => unreachable!(
 								"only RemoveBlock can be a response for that request type"
 							),
 							Err(e) => log::error!("IPFS: Remove Block Error: {:?}", e),
 						}
-					}
+					},
 				}
 			}
 			Ok(())
