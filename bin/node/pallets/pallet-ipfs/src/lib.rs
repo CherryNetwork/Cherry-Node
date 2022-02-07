@@ -374,7 +374,6 @@ pub mod pallet {
 			multiaddress: Vec<OpaqueMultiaddr>,
 		) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
-			<BootstrapNodes<T>>::insert(public_key.clone(), multiaddress.clone());
 
 			Self::deposit_event(Event::PublishedIdentity(signer.clone()));
 
