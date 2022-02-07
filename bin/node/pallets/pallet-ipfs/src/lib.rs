@@ -370,8 +370,8 @@ pub mod pallet {
 		#[pallet::weight(0)]
 		pub fn submit_ipfs_identity(
 			origin: OriginFor<T>,
-			public_key: Vec<u8>,
-			multiaddress: Vec<OpaqueMultiaddr>,
+			_public_key: Vec<u8>,
+			_multiaddress: Vec<OpaqueMultiaddr>,
 		) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
 
