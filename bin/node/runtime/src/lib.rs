@@ -1262,6 +1262,18 @@ impl pallet_transaction_storage::Config for Runtime {
 	type WeightInfo = pallet_transaction_storage::weights::SubstrateWeight<Runtime>;
 }
 
+parameter_types! {
+	pub const MaxIpfsOwned: u32 = 5;
+}
+
+impl pallet_ipfs::Config for Runtime {
+	type Event = Event;
+	type Currency = Balances;
+	type AuthorityId = pallet_ipfs::crypto::AuthorityId;
+	type MaxIpfsOwned = MaxIpfsOwned;
+	type WeightInfo = pallet_ipfs::weights::SubstrateWeight<Runtime>;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,

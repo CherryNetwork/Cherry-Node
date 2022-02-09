@@ -137,7 +137,7 @@ pub struct OffchainState {
 	/// List of pending IPFS requests
 	pub ipfs_requests: BTreeMap<IpfsRequestId, IpfsPendingRequest>,
 	/// Map of  requests that the test is expected to perform
-	expected_ipfs_requests: BTreeMap<IpfsRequestId, IpfsPendingRequest>,
+	_expected_ipfs_requests: BTreeMap<IpfsRequestId, IpfsPendingRequest>,
 	/// Persistent local storage
 	pub persistent_storage: TestPersistentOffchainDB,
 	/// Local storage
