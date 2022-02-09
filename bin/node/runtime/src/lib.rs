@@ -457,19 +457,6 @@ impl pallet_authorship::Config for Runtime {
 	type EventHandler = (Staking, ImOnline);
 }
 
-parameter_types! {
-	pub const MaxIpfsOwned: u32 = 5;
-}
-
-/// Configure the pallet-kitties in pallets/kitties.
-impl pallet_ipfs::Config for Runtime {
-	type Event = Event;
-	type Currency = Balances;
-	type AuthorityId = pallet_ipfs::crypto::TestAuthId;
-	type MaxIpfsOwned = MaxIpfsOwned;
-	type WeightInfo = pallet_ipfs::weights::SubstrateWeight<Runtime>;
-}
-
 impl_opaque_keys! {
 	pub struct SessionKeys {
 		pub grandpa: Grandpa,
