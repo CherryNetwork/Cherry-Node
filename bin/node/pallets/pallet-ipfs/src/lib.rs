@@ -62,18 +62,14 @@ pub enum DataCommand<AccountId> {
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use frame_support::{
-		dispatch::DispatchResult, pallet_prelude::*, traits::Currency,
-	};
+	use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::Currency};
 	use frame_system::{
 		offchain::{AppCrypto, CreateSignedTransaction},
 		pallet_prelude::*,
 	};
 	use scale_info::TypeInfo;
 	use sp_core::offchain::OpaqueMultiaddr;
-	use sp_runtime::{
-		offchain::{ipfs, IpfsRequest, IpfsResponse},
-	};
+	use sp_runtime::offchain::{ipfs, IpfsRequest, IpfsResponse};
 	use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
 	type AccountOf<T> = <T as frame_system::Config>::AccountId;
@@ -127,6 +123,9 @@ pub mod pallet {
 		/// The maximum amount of IPFS Assets a single account can own.
 		#[pallet::constant]
 		type MaxIpfsOwned: Get<u32>;
+
+		type Call: From<Call<Self>>;
+
 		type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
 
 		type WeightInfo: WeightInfo;
@@ -244,9 +243,14 @@ pub mod pallet {
 			);
 
 			let multiaddr = OpaqueMultiaddr(addr);
-
 			<DataQueue<T>>::mutate(|queue| {
-				queue.push(DataCommand::AddBytes(multiaddr, cid, size, sender.clone(), true))
+				queue.push(DataCommand::AddBytes(
+					multiaddr,
+					cid,
+					size,
+					sender.clone(),
+					true,
+				))
 			});
 
 			Self::deposit_event(Event::QueuedDataToAdd(sender.clone()));
@@ -649,7 +653,7 @@ pub mod pallet {
 				})
 		}
 
-		fn handle_data_requests() -> Result<(), Error<T>> {
+		pub fn handle_data_requests() -> Result<(), Error<T>> {
 			let data_queue = DataQueue::<T>::get();
 			let len = data_queue.len();
 
@@ -779,9 +783,6 @@ pub mod pallet {
 						}
 					},
 					DataCommand::AddBytesRaw(m_addr, data, admin, is_recursive) => {
-						// this should work for different CID's. If you try to
-						// connect and upload the same CID, you will get a duplicate
-						// conn error. @charmitro
 						match Self::ipfs_request(IpfsRequest::Connect(m_addr.clone()), deadline) {
 							Ok(IpfsResponse::Success) => match Self::ipfs_request(
 								IpfsRequest::AddBytes(data.clone()),
