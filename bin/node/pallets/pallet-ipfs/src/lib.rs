@@ -381,7 +381,14 @@ pub mod pallet {
 			);
 
 			let multiaddr = OpaqueMultiaddr(addr);
+			let ipfs_asset = Self::ipfs_asset(&cid).ok_or(<Error<T>>::IpfsNotExist)?;
 
+			if ipfs_asset.pinned == true {
+				<DataQueue<T>>::mutate(|queue| {
+					queue.push(DataCommand::RemovePin(multiaddr.clone(), cid.clone(), sender.clone(), true))
+				});
+			}
+		
 			<DataQueue<T>>::mutate(|queue| {
 				queue.push(DataCommand::RemoveBlock(multiaddr, cid.clone(), sender.clone()))
 			});
