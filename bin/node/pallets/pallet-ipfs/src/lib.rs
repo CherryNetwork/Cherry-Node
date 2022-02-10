@@ -159,6 +159,8 @@ pub mod pallet {
 		IpfsAlreadyOwned,
 		/// Ensures that an IPFS is not already pinned.
 		IpfsAlreadyPinned,
+		/// Ensures that an IPFS is pinned.
+		IpfsNotPinned,
 		CantCreateRequest,
 		RequestTimeout,
 		RequestFailed,
@@ -349,6 +351,11 @@ pub mod pallet {
 			);
 
 			let multiaddr = OpaqueMultiaddr(addr);
+			let ipfs_asset = Self::ipfs_asset(&cid).ok_or(<Error<T>>::IpfsNotExist)?;
+
+			ensure!(
+				ipfs_asset.pinned == true, <Error<T>>::IpfsNotPinned
+			);
 
 			<DataQueue<T>>::mutate(|queue| {
 				queue.push(DataCommand::RemovePin(multiaddr, cid.clone(), sender.clone(), true))
