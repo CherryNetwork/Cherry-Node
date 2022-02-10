@@ -26,6 +26,8 @@ frame-benchmarking = { version = "4.0.0-dev", default-features = false, path = "
 log = { version = "0.4.14", default-features = false }
 sp-keystore = { version = "0.10.0-dev", path = "../../../../primitives/keystore", optional = true }
 
+pallet-assets = { version = "4.0.0-dev", default-features = false, path = "../../../../frame/assets" }
+
 [dependencies.serde]
 default-features = false
 version = '1.0.119'
@@ -44,8 +46,12 @@ std = [
 	"pallet-balances/std",
 	"scale-info/std",
 	"sp-io/std",
+	"sp-keystore/std",
+	"sp-core/std",
 	"sp-runtime/std",
-	"sp-std/std"
+	"sp-std/std",
+	'pallet-assets/std',
+	'pallet-balances/std',
 ]
 runtime-benchmarks = ["frame-benchmarking"]
 try-runtime = ["frame-support/try-runtime"]
