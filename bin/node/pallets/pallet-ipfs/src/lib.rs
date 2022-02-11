@@ -157,6 +157,10 @@ pub mod pallet {
 		SameOwnershipLayer,
 		/// Ensures that an IPFS is not already owned by the account.
 		IpfsAlreadyOwned,
+		/// Ensures that an IPFS is not already pinned.
+		IpfsAlreadyPinned,
+		/// Ensures that an IPFS is pinned.
+		IpfsNotPinned,
 		CantCreateRequest,
 		RequestTimeout,
 		RequestFailed,
@@ -317,6 +321,11 @@ pub mod pallet {
 			);
 
 			let multiaddr = OpaqueMultiaddr(addr);
+			let ipfs_asset = Self::ipfs_asset(&cid).ok_or(<Error<T>>::IpfsNotExist)?;
+
+			ensure!(
+				ipfs_asset.pinned != true, <Error<T>>::IpfsAlreadyPinned
+			);
 
 			<DataQueue<T>>::mutate(|queue| {
 				queue.push(DataCommand::InsertPin(multiaddr, cid.clone(), sender.clone(), true))
@@ -342,6 +351,11 @@ pub mod pallet {
 			);
 
 			let multiaddr = OpaqueMultiaddr(addr);
+			let ipfs_asset = Self::ipfs_asset(&cid).ok_or(<Error<T>>::IpfsNotExist)?;
+
+			ensure!(
+				ipfs_asset.pinned == true, <Error<T>>::IpfsNotPinned
+			);
 
 			<DataQueue<T>>::mutate(|queue| {
 				queue.push(DataCommand::RemovePin(multiaddr, cid.clone(), sender.clone(), true))
@@ -367,7 +381,14 @@ pub mod pallet {
 			);
 
 			let multiaddr = OpaqueMultiaddr(addr);
+			let ipfs_asset = Self::ipfs_asset(&cid).ok_or(<Error<T>>::IpfsNotExist)?;
 
+			if ipfs_asset.pinned == true {
+				<DataQueue<T>>::mutate(|queue| {
+					queue.push(DataCommand::RemovePin(multiaddr.clone(), cid.clone(), sender.clone(), true))
+				});
+			}
+		
 			<DataQueue<T>>::mutate(|queue| {
 				queue.push(DataCommand::RemoveBlock(multiaddr, cid.clone(), sender.clone()))
 			});
@@ -449,8 +470,13 @@ pub mod pallet {
 		}
 
 		#[pallet::weight(0)]
-		pub fn submit_ipfs_pin_results(origin: OriginFor<T>, _cid: Vec<u8>) -> DispatchResult {
+		pub fn submit_ipfs_pin_results(origin: OriginFor<T>, cid: Vec<u8>) -> DispatchResult {
 			ensure_signed(origin)?;
+
+			let mut ipfs_asset = Self::ipfs_asset(&cid).ok_or(<Error<T>>::IpfsNotExist)?;
+
+			ipfs_asset.pinned = true;
+			<IpfsAsset<T>>::insert(cid.clone(), ipfs_asset);
 
 			<DataQueue<T>>::take();
 
