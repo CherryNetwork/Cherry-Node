@@ -129,6 +129,7 @@ pub struct Proposal<AccountId, Balance> {
 	beneficiary: AccountId,
 	/// The amount held on deposit (reserved) for making this proposal.
 	bond: Balance,
+	duration: u32,
 }
 
 #[frame_support::pallet]
@@ -322,6 +323,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			#[pallet::compact] value: BalanceOf<T, I>,
 			beneficiary: <T::Lookup as StaticLookup>::Source,
+			duration: u32,
 		) -> DispatchResult {
 			let proposer = ensure_signed(origin)?;
 			let beneficiary = T::Lookup::lookup(beneficiary)?;
@@ -330,13 +332,46 @@ pub mod pallet {
 			T::Currency::reserve(&proposer, bond)
 				.map_err(|_| Error::<T, I>::InsufficientProposersBalance)?;
 
+			// let value = value / months.into();
 			let c = Self::proposal_count();
 			<ProposalCount<T, I>>::put(c + 1);
-			<Proposals<T, I>>::insert(c, Proposal { proposer, value, beneficiary, bond });
+			<Proposals<T, I>>::insert(c, Proposal { proposer, value, beneficiary, bond, duration });
 
 			Self::deposit_event(Event::Proposed(c));
 			Ok(())
 		}
+
+		// // propose-recurring-spend
+		// #[pallet::weight(0)]
+		// pub fn propose_recurring_spend(
+		// 	origin: OriginFor<T>,
+		// 	#[pallet::compact] value: BalanceOf<T, I>,
+		// 	beneficiary: <T::Lookup as StaticLookup>::Source,
+		// 	months: u32,
+		// ) -> DispatchResult {
+		// 	let proposer = ensure_signed(origin)?;
+		// 	let beneficiary = T::Lookup::lookup(beneficiary)?;
+
+		// 	let bond = Self::calculate_bond(value);
+		// 	T::Currency::reserve(&proposer, bond)
+		// 		.map_err(|_| Error::<T, I>::InsufficientProposersBalance)?;
+
+		// 	// 28 = spend_period, 24 = hours per day, 3600 = secs per hour
+		// 	let blocks_per_spend_period: u32 = 28 * 24 * 3600 / 6;
+		// 	let timeslot: T::BlockNumber = blocks_per_spend_period.into();
+
+		// 	let c = Self::proposal_count();
+		// 	let value = value / months.into();
+		// 	<ProposalCount<T, I>>::put(c + 1);
+		// 	<Proposals<T, I>>::insert(c, Proposal { proposer, value, beneficiary, bond });
+
+		// 	Self::deposit_event(Event::Proposed(c));
+		// 	Ok(())
+		// }
+
+		// cancel-recurring-spend
+		
+
 
 		/// Reject a proposed spend. The original deposit will be slashed.
 		///
@@ -382,8 +417,12 @@ pub mod pallet {
 			T::ApproveOrigin::ensure_origin(origin)?;
 
 			ensure!(<Proposals<T, I>>::contains_key(proposal_id), Error::<T, I>::InvalidIndex);
-			Approvals::<T, I>::try_append(proposal_id)
-				.map_err(|_| Error::<T, I>::TooManyApprovals)?;
+			// let months = proposal.duration;
+			for i in 0..2 {
+				Approvals::<T, I>::try_append(proposal_id)
+					.map_err(|_| Error::<T, I>::TooManyApprovals)?;
+			}
+
 			Ok(())
 		}
 	}
@@ -420,29 +459,29 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			v.retain(|&index| {
 				// Should always be true, but shouldn't panic if false or we're screwed.
 				if let Some(p) = Self::proposals(index) {
-					if p.value <= budget_remaining {
-						budget_remaining -= p.value;
-						<Proposals<T, I>>::remove(index);
+						if p.value <= budget_remaining {
+							budget_remaining -= p.value;
+							<Proposals<T, I>>::remove(index);
 
-						// return their deposit.
-						let err_amount = T::Currency::unreserve(&p.proposer, p.bond);
-						debug_assert!(err_amount.is_zero());
+							// return their deposit.
+							let err_amount = T::Currency::unreserve(&p.proposer, p.bond);
+							debug_assert!(err_amount.is_zero());
 
-						// provide the allocation.
-						imbalance.subsume(T::Currency::deposit_creating(&p.beneficiary, p.value));
+							// provide the allocation.
+							imbalance.subsume(T::Currency::deposit_creating(&p.beneficiary, p.value));
 
-						Self::deposit_event(Event::Awarded(index, p.value, p.beneficiary));
-						false
+							Self::deposit_event(Event::Awarded(index, p.value, p.beneficiary));
+							false
+						} else {
+							missed_any = true;
+							true
+						}
 					} else {
-						missed_any = true;
-						true
+						false
 					}
-				} else {
-					false
-				}
+				});
+				proposals_approvals_len
 			});
-			proposals_approvals_len
-		});
 
 		total_weight += T::WeightInfo::on_initialize_proposals(proposals_len);
 
