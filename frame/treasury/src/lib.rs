@@ -129,8 +129,10 @@ pub struct Proposal<AccountId, Balance> {
 	beneficiary: AccountId,
 	/// The amount held on deposit (reserved) for making this proposal.
 	bond: Balance,
-	/// How many times should this be repeated
+	/// How many times should this be repeated.
 	occurs: u32,
+	/// How many times left to be repeated.
+	remaining_occurs: u32,
 }
 
 #[frame_support::pallet]
@@ -345,42 +347,13 @@ pub mod pallet {
 					beneficiary: beneficiary.clone(),
 					bond,
 					occurs: chunks,
+					remaining_occurs: chunks,
 				},
 			);
 
 			Self::deposit_event(Event::Proposed(c_proposals));
 			Ok(())
 		}
-
-		// // propose-recurring-spend
-		// #[pallet::weight(0)]
-		// pub fn propose_recurring_spend(
-		// 	origin: OriginFor<T>,
-		// 	#[pallet::compact] value: BalanceOf<T, I>,
-		// 	beneficiary: <T::Lookup as StaticLookup>::Source,
-		// 	months: u32,
-		// ) -> DispatchResult {
-		// 	let proposer = ensure_signed(origin)?;
-		// 	let beneficiary = T::Lookup::lookup(beneficiary)?;
-
-		// 	let bond = Self::calculate_bond(value);
-		// 	T::Currency::reserve(&proposer, bond)
-		// 		.map_err(|_| Error::<T, I>::InsufficientProposersBalance)?;
-
-		// 	// 28 = spend_period, 24 = hours per day, 3600 = secs per hour
-		// 	let blocks_per_spend_period: u32 = 28 * 24 * 3600 / 6;
-		// 	let timeslot: T::BlockNumber = blocks_per_spend_period.into();
-
-		// 	let c = Self::proposal_count();
-		// 	let value = value / months.into();
-		// 	<ProposalCount<T, I>>::put(c + 1);
-		// 	<Proposals<T, I>>::insert(c, Proposal { proposer, value, beneficiary, bond });
-
-		// 	Self::deposit_event(Event::Proposed(c));
-		// 	Ok(())
-		// }
-
-		// cancel-recurring-spend
 
 		/// Reject a proposed spend. The original deposit will be slashed.
 		///
@@ -467,8 +440,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				if let Some(mut p) = Self::proposals(index) {
 					if p.value <= budget_remaining {
 						budget_remaining -= p.value;
-						p.occurs = p.occurs - 1;
-						if p.occurs <= 0 {
+						p.remaining_occurs = p.remaining_occurs - 1;
+						if p.remaining_occurs <= 0 {
 							<Proposals<T, I>>::remove(index);
 						} else {
 							<Proposals<T, I>>::remove(index);
@@ -484,6 +457,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 						Self::deposit_event(Event::Awarded(index, p.value, p.beneficiary.clone()));
 						false
 					} else {
+						log::info!("qewrasdfa");
 						missed_any = true;
 						true
 					}
