@@ -77,7 +77,7 @@ pub mod time_dev {
 	pub const REPORT_LONGEVITY: u64 =
 		BONDING_DURATION as u64 * SESSIONS_PER_ERA as u64 * EPOCH_DURATION_IN_SLOTS as u64;
 
-	pub const TERM_DURATION: BlockNumber = 7 * DAYS;
+	pub const TERM_DURATION: BlockNumber = 2 * MINUTES;
 	pub const COUNCIL_MOTION_DURATION: BlockNumber = 10 * MINUTES;
 	pub const TECHNICAL_MOTION_DURATION: BlockNumber = 10 * MINUTES;
 	pub const ENACTMENT_PERIOD: BlockNumber = 1 * MINUTES;
@@ -86,7 +86,7 @@ pub mod time_dev {
 	pub const FAST_TRACK_VOTING_PERIOD: BlockNumber = 2 * MINUTES;
 	pub const COOLOFF_PERIOD: BlockNumber = 60 * MINUTES;
 
-	pub const SPEND_PERIOD: BlockNumber = 15 * MINUTES;
+	pub const SPEND_PERIOD: BlockNumber = 2 * MINUTES;
 	pub const BOUNTY_DEPOSIT_PAYOUT_DELAY: BlockNumber = 1 * MINUTES;
 	pub const TIP_COUNTDOWN: BlockNumber = 1 * MINUTES;
 	pub const BOUNTY_UPDATE_PERIOD: BlockNumber = 5 * MINUTES;
