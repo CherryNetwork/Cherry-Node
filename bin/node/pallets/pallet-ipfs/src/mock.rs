@@ -1,5 +1,5 @@
 #![cfg(test)]
-use crate::{self as pallet_ipfs, Config};
+use crate::{self as pallet_cherry, Config};
 use frame_support::{construct_runtime, parameter_types};
 use sp_core::{sr25519::Signature, Pair, H256};
 use sp_runtime::{
@@ -21,7 +21,8 @@ construct_runtime!(
 	{
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
-		Ipfs: pallet_ipfs::{Pallet, Call, Storage, Event<T>},
+		Assets: pallet_assets::{Pallet, Storage, Event<T>},
+		Ipfs: pallet_cherry::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
@@ -72,6 +73,31 @@ impl pallet_balances::Config for Test {
 	type WeightInfo = ();
 }
 
+parameter_types! {
+	pub const AssetDeposit: u64 = 1;
+	pub const ApprovalDeposit: u64 = 1;
+	pub const StringLimit: u32 = 50;
+	pub const MetadataDepositBase: u64 = 1;
+	pub const MetadataDepositPerByte: u64 = 1;
+	pub const MaxIpfsOwned: u32 = 5;
+}
+
+impl pallet_assets::Config for Test {
+	type Event = Event;
+	type Balance = u64;
+	type AssetId = u32;
+	type Currency = Balances;
+	type ForceOrigin = frame_system::EnsureRoot<sp_core::sr25519::Public>;
+	type AssetDeposit = AssetDeposit;
+	type MetadataDepositBase = MetadataDepositBase;
+	type MetadataDepositPerByte = MetadataDepositPerByte;
+	type ApprovalDeposit = ApprovalDeposit;
+	type StringLimit = StringLimit;
+	type Freezer = ();
+	type WeightInfo = ();
+	type Extra = ();
+}
+
 type Extrinsic = TestXt<Call, ()>;
 type AccountId = <<Signature as Verify>::Signer as IdentifyAccount>::AccountId;
 
@@ -102,16 +128,13 @@ where
 	}
 }
 
-parameter_types! {
-	pub const MaxIpfsOwned: u32 = 9999;
-}
-
 impl Config for Test {
 	type Currency = Balances;
+	type Call = Call;
 	type Event = Event;
+	type AuthorityId = pallet_cherry::crypto::AuthorityId;
 	type MaxIpfsOwned = MaxIpfsOwned;
-	type AuthorityId = pallet_ipfs::crypto::AuthorityId;
-	type WeightInfo = ();
+	type WeightInfo = pallet_cherry::weights::SubstrateWeight<Test>;
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
