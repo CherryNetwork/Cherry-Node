@@ -28,7 +28,7 @@ frame-benchmarking = { version = "4.0.0-dev", default-features = false, path = "
 frame-support = { version = "4.0.0-dev", default-features = false, path = "../support" }
 frame-system = { version = "4.0.0-dev", default-features = false, path = "../system" }
 pallet-balances = { version = "4.0.0-dev", default-features = false, path = "../balances" }
-
+log = { version = "0.4.14", default-features = false }
 
 [dev-dependencies]
 sp-io = { version = "4.0.0-dev", path = "../../primitives/io" }

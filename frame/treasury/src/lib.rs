@@ -129,6 +129,10 @@ pub struct Proposal<AccountId, Balance> {
 	beneficiary: AccountId,
 	/// The amount held on deposit (reserved) for making this proposal.
 	bond: Balance,
+	/// How many times should this be repeated.
+	occurs: u32,
+	/// How many times left to be repeated.
+	remaining_occurs: u32,
 }
 
 #[frame_support::pallet]
@@ -322,19 +326,32 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			#[pallet::compact] value: BalanceOf<T, I>,
 			beneficiary: <T::Lookup as StaticLookup>::Source,
+			chunks: u32,
 		) -> DispatchResult {
 			let proposer = ensure_signed(origin)?;
 			let beneficiary = T::Lookup::lookup(beneficiary)?;
+
+			let chunk = value / chunks.into();
 
 			let bond = Self::calculate_bond(value);
 			T::Currency::reserve(&proposer, bond)
 				.map_err(|_| Error::<T, I>::InsufficientProposersBalance)?;
 
-			let c = Self::proposal_count();
-			<ProposalCount<T, I>>::put(c + 1);
-			<Proposals<T, I>>::insert(c, Proposal { proposer, value, beneficiary, bond });
+			let c_proposals = Self::proposal_count();
+			<ProposalCount<T, I>>::put(c_proposals + 1);
+			<Proposals<T, I>>::insert(
+				c_proposals,
+				Proposal {
+					proposer: proposer.clone(),
+					value: chunk.clone(),
+					beneficiary: beneficiary.clone(),
+					bond,
+					occurs: chunks,
+					remaining_occurs: chunks,
+				},
+			);
 
-			Self::deposit_event(Event::Proposed(c));
+			Self::deposit_event(Event::Proposed(c_proposals));
 			Ok(())
 		}
 
@@ -384,6 +401,7 @@ pub mod pallet {
 			ensure!(<Proposals<T, I>>::contains_key(proposal_id), Error::<T, I>::InvalidIndex);
 			Approvals::<T, I>::try_append(proposal_id)
 				.map_err(|_| Error::<T, I>::TooManyApprovals)?;
+
 			Ok(())
 		}
 	}
@@ -419,21 +437,27 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			let proposals_approvals_len = v.len() as u32;
 			v.retain(|&index| {
 				// Should always be true, but shouldn't panic if false or we're screwed.
-				if let Some(p) = Self::proposals(index) {
+				if let Some(mut p) = Self::proposals(index) {
 					if p.value <= budget_remaining {
 						budget_remaining -= p.value;
-						<Proposals<T, I>>::remove(index);
+						p.remaining_occurs = p.remaining_occurs - 1;
+						if p.remaining_occurs <= 0 {
+							<Proposals<T, I>>::remove(index);
+						} else {
+							<Proposals<T, I>>::remove(index);
+							<Proposals<T, I>>::insert(index, p.clone());
+						}
 
 						// return their deposit.
 						let err_amount = T::Currency::unreserve(&p.proposer, p.bond);
 						debug_assert!(err_amount.is_zero());
-
 						// provide the allocation.
 						imbalance.subsume(T::Currency::deposit_creating(&p.beneficiary, p.value));
 
-						Self::deposit_event(Event::Awarded(index, p.value, p.beneficiary));
+						Self::deposit_event(Event::Awarded(index, p.value, p.beneficiary.clone()));
 						false
 					} else {
+						log::info!("qewrasdfa");
 						missed_any = true;
 						true
 					}
