@@ -4947,7 +4947,6 @@ dependencies = [
  "pallet-identity",
  "pallet-im-online",
  "pallet-indices",
- "pallet-ipfs",
  "pallet-lottery",
  "pallet-membership",
  "pallet-mmr",
