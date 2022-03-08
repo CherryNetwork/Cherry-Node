@@ -14,7 +14,7 @@ COPY . /substrate
 RUN cargo build --release
 
 # This is the 2nd stage: a very small image where we copy the Substrate binary."
-FROM docker.io/library/ubuntu:18.04
+FROM docker.io/library/ubuntu:20.04
 LABEL description="Multistage Docker image for Substrate: a platform for web3" \
     io.parity.image.type="builder" \
     io.parity.image.authors="chevdor@gmail.com, devops-team@parity.io" \
@@ -27,7 +27,7 @@ COPY --from=builder /substrate/target/release/cherry /usr/local/bin
 COPY --from=builder /substrate/target/release/subkey /usr/local/bin
 COPY --from=builder /substrate/target/release/chain-spec-builder /usr/local/bin
 
-RUN apt update && apt install -y git clang curl libssl-dev llvm libudev-dev libc-bin
+RUN apt update && apt install -y git clang curl libssl-dev llvm libudev-dev libc-bin libc6
 
 RUN useradd -m -u 1000 -U -s /bin/sh -d /substrate substrate && \
     mkdir -p /data /substrate/.local/share/substrate && \
