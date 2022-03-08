@@ -1,7 +1,7 @@
 # This is the build stage for Substrate. Here we create the binary.
 FROM rust:1.59 as builder
 
-RUN apt update && apt install -y git clang curl libssl-dev llvm libudev-dev
+RUN apt update && apt install -y git clang curl libssl-dev llvm libudev-dev libc-bin
 
 RUN rustup default stable
 RUN rustup update
@@ -18,15 +18,16 @@ FROM docker.io/library/ubuntu:18.04
 LABEL description="Multistage Docker image for Substrate: a platform for web3" \
     io.parity.image.type="builder" \
     io.parity.image.authors="chevdor@gmail.com, devops-team@parity.io" \
-    io.parity.image.vendor="P		arity Technologies" \
+    io.parity.image.vendor="Parity Technologies" \
     io.parity.image.description="Substrate is a next-generation framework for blockchain innovation 🚀" \
     io.parity.image.source="https://github.com/paritytech/polkadot/blob/${VCS_REF}/docker/substrate_builder.Dockerfile" \
     io.parity.image.documentation="https://github.com/paritytech/polkadot/"
 
 COPY --from=builder /substrate/target/release/cherry /usr/local/bin
-COPY --from=builder /substrate/target/release/subkcey /usr/local/bin
-COPY --from=builder /substrate/target/release/node-template /usr/local/bin
+COPY --from=builder /substrate/target/release/subkey /usr/local/bin
 COPY --from=builder /substrate/target/release/chain-spec-builder /usr/local/bin
+
+RUN apt update && apt install -y git clang curl libssl-dev llvm libudev-dev libc-bin
 
 RUN useradd -m -u 1000 -U -s /bin/sh -d /substrate substrate && \
     mkdir -p /data /substrate/.local/share/substrate && \
@@ -35,7 +36,6 @@ RUN useradd -m -u 1000 -U -s /bin/sh -d /substrate substrate && \
     # unclutter and minimize the attack surface
     rm -rf /usr/bin /usr/sbin && \
     # Sanity checks
-    ldd /usr/local/bin/cherry && \
     /usr/local/bin/cherry --version
 
 USER substrate
