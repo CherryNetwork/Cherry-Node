@@ -142,7 +142,7 @@ pub mod time_prod {
 	//       Attempting to do so will brick block production.
 	pub const SESSIONS_PER_ERA: sp_staking::SessionIndex = 6;
 	pub const BONDING_DURATION: pallet_staking::EraIndex = 24 * 28;
-	pub const SLASH_DEFER_DURATION: pallet_staking::EraIndex = 24 * 7;
+	pub const SLASH_DEFER_DURATION: pallet_staking::EraIndex = 24 * 27;
 	pub const REPORT_LONGEVITY: u64 =
 		BONDING_DURATION as u64 * SESSIONS_PER_ERA as u64 * EPOCH_DURATION_IN_SLOTS as u64;
 
@@ -155,7 +155,7 @@ pub mod time_prod {
 	pub const FAST_TRACK_VOTING_PERIOD: BlockNumber = 3 * 24 * 60 * MINUTES;
 	pub const COOLOFF_PERIOD: BlockNumber = 28 * 24 * 60 * MINUTES;
 
-	pub const SPEND_PERIOD: BlockNumber = 1 * DAYS;
+	pub const SPEND_PERIOD: BlockNumber = 28 * DAYS;
 	pub const BOUNTY_DEPOSIT_PAYOUT_DELAY: BlockNumber = 1 * DAYS;
 	pub const TIP_COUNTDOWN: BlockNumber = 1 * DAYS;
 	pub const BOUNTY_UPDATE_PERIOD: BlockNumber = 14 * DAYS;
