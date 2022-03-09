@@ -38,7 +38,6 @@ RUN mv /usr/share/ca* /tmp && \
 COPY --from=builder /substrate/target/$PROFILE/cherry /usr/local/bin
 COPY --from=builder /substrate/target/$PROFILE/subkey /usr/local/bin
 COPY --from=builder /substrate/target/$PROFILE/node-rpc-client /usr/local/bin
-COPY --from=builder /substrate/target/$PROFILE/node-template /usr/local/bin
 COPY --from=builder /substrate/target/$PROFILE/chain-spec-builder /usr/local/bin
 
 # checks
