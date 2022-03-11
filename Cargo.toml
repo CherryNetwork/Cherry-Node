@@ -2,10 +2,7 @@
 resolver = "2"
 
 members = [
-	"bin/node-template/node",
-	"bin/node-template/pallets/pallet-ipfs",
-	"bin/node-template/pallets/template",
-	"bin/node-template/runtime",
+	"bin/node/pallets/pallet-ipfs",
 	"bin/node/bench",
 	"bin/node/cli",
 	"bin/node/test-runner-example",

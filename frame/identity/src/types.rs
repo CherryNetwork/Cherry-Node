@@ -236,7 +236,7 @@ pub enum IdentityField {
 	Display = 0b0000000000000000000000000000000000000000000000000000000000000001,
 	Legal = 0b0000000000000000000000000000000000000000000000000000000000000010,
 	Web = 0b0000000000000000000000000000000000000000000000000000000000000100,
-	Riot = 0b0000000000000000000000000000000000000000000000000000000000001000,
+	Discord = 0b0000000000000000000000000000000000000000000000000000000000001000,
 	Email = 0b0000000000000000000000000000000000000000000000000000000000010000,
 	PgpFingerprint = 0b0000000000000000000000000000000000000000000000000000000000100000,
 	Image = 0b0000000000000000000000000000000000000000000000000000000001000000,
@@ -311,10 +311,10 @@ pub struct IdentityInfo<FieldLimit: Get<u32>> {
 	/// Stored as UTF-8.
 	pub web: Data,
 
-	/// The Riot/Matrix handle held by the controller of the account.
+	/// The Discord handle held by the controller of the account.
 	///
 	/// Stored as UTF-8.
-	pub riot: Data,
+	pub discord: Data,
 
 	/// The email address of the controller of the account.
 	///
@@ -368,8 +368,9 @@ impl<
 	> Registration<Balance, MaxJudgements, MaxAdditionalFields>
 {
 	pub(crate) fn total_deposit(&self) -> Balance {
-		self.deposit +
-			self.judgements
+		self.deposit
+			+ self
+				.judgements
 				.iter()
 				.map(|(_, ref j)| if let Judgement::FeePaid(fee) = j { *fee } else { Zero::zero() })
 				.fold(Zero::zero(), |a, i| a + i)

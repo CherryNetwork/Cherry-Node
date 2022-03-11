@@ -1,16 +1,10 @@
 #![cfg(test)]
 use crate::{self as pallet_cherry, Config};
 use frame_support::{construct_runtime, parameter_types};
-use sp_core::{
-	Pair,
-	H256,
-	sr25519::{
-		Signature,
-	},
-};
+use sp_core::{sr25519::Signature, Pair, H256};
 use sp_runtime::{
 	testing::{Header, TestXt},
-	traits::{BlakeTwo256, Extrinsic as ExtrinsicT, IdentityLookup, IdentifyAccount, Verify},
+	traits::{BlakeTwo256, Extrinsic as ExtrinsicT, IdentifyAccount, IdentityLookup, Verify},
 };
 // use pallet_balances::Call as BalancesCall;
 // use pallet_assets;
@@ -28,7 +22,7 @@ construct_runtime!(
 		System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
 		Assets: pallet_assets::{Pallet, Storage, Event<T>},
-		Cherry: pallet_cherry::{Pallet, Call, Storage, Event<T>, ValidateUnsigned},
+		Ipfs: pallet_cherry::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
@@ -85,6 +79,7 @@ parameter_types! {
 	pub const StringLimit: u32 = 50;
 	pub const MetadataDepositBase: u64 = 1;
 	pub const MetadataDepositPerByte: u64 = 1;
+	pub const MaxIpfsOwned: u32 = 5;
 }
 
 impl pallet_assets::Config for Test {
@@ -119,7 +114,6 @@ where
 	type Extrinsic = Extrinsic;
 }
 
-
 impl<LocalCall> frame_system::offchain::CreateSignedTransaction<LocalCall> for Test
 where
 	Call: From<LocalCall>,
@@ -138,7 +132,9 @@ impl Config for Test {
 	type Currency = Balances;
 	type Call = Call;
 	type Event = Event;
-	type AuthorityId = pallet_cherry::crypto::TestAuthId;
+	type AuthorityId = pallet_cherry::crypto::AuthorityId;
+	type MaxIpfsOwned = MaxIpfsOwned;
+	type WeightInfo = pallet_cherry::weights::SubstrateWeight<Test>;
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
@@ -154,7 +150,6 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	t.into()
 }
 
-
 // Build genesis storage according to the mock runtime.
 pub fn new_test_ext_funded(pair1_funded: sp_core::sr25519::Pair) -> sp_io::TestExternalities {
 	let mut t = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
@@ -162,7 +157,11 @@ pub fn new_test_ext_funded(pair1_funded: sp_core::sr25519::Pair) -> sp_io::TestE
 	let (pair2, _) = sp_core::sr25519::Pair::generate();
 	let (pair3, _) = sp_core::sr25519::Pair::generate();
 	pallet_balances::GenesisConfig::<Test> {
-		balances: vec![(pair1_funded.clone().public(), 10), (pair2.public(), 20), (pair3.public(), 30)],
+		balances: vec![
+			(pair1_funded.clone().public(), 10),
+			(pair2.public(), 20),
+			(pair3.public(), 30),
+		],
 	}
 	.assimilate_storage(&mut t)
 	.unwrap();

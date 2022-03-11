@@ -104,6 +104,7 @@ substrate-wasm-builder = { version = "5.0.0-dev", path = "../../../utils/wasm-bu
 [features]
 default = ["std"]
 with-tracing = ["frame-executive/with-tracing"]
+dev = []
 std = [
 	"sp-authority-discovery/std",
 	"pallet-assets/std",

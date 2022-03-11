@@ -363,7 +363,7 @@ pub enum IpfsResponse {
 }
 
 /// Opaque type for offchain IPFS requests.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, RuntimeDebug, Encode, Decode, PassByInner)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, RuntimeDebug, Encode, Decode, PassByInner, Default)]
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct IpfsRequestId(pub u16);
 
