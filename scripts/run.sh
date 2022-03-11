@@ -15,4 +15,4 @@ fi
 rustup target add wasm32-unknown-unknown --toolchain nightly
 
 
-cargo b --release && ./target/release/cherry purge-chain --chain cherry-testnet -y && ./target/release/cherry --chain cherry-testnet --bootnodes /ip4/13.38.120.202/tcp/30333/p2p/12D3KooWHETE6VGEBTyFjbrm6yYmKdPYSw26rsT1Wz1Qi3P6HrJZ --telemetry-url "wss://telemetry.polkadot.io/submit/ 0"
+cargo b --release && ./target/release/cherry purge-chain --chain cherry-testnet -y && ./target/release/cherry --chain cherry-testnet --bootnodes /ip4/13.38.120.202/tcp/30333/p2p/12D3KooWLPZqAGQ81UFuXWxLCVMBsZ58MWNp19LZSJEpkrWfktkn --telemetry-url "wss://telemetry.polkadot.io/submit/ 0"
