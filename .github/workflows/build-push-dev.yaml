@@ -27,4 +27,4 @@ jobs:
           context: .
           file: ./docker/Dockerfile
           push: true
-          tags: cherrylabsorg/cherry-node:latest
+          tags: cherrylabsorg/cherry-node:dev
