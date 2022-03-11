@@ -1,6 +1,6 @@
 // This file is part of Substrate.
 
-// Copyright (C) 2021 Parity Technologies (UK) Ltd.
+// Copyright (C) 2021-2022 Parity Technologies (UK) Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,6 +27,7 @@ use scale_info::{
 	meta_type, Path, Type, TypeInfo, TypeParameter,
 };
 use sp_runtime::{traits::Zero, RuntimeDebug};
+use sp_std::convert::TryInto;
 use sp_std::{fmt::Debug, iter::once, ops::Add, prelude::*};
 
 /// Either underlying data blob if it is at most 32 bytes, or a hash of it. If the data is greater
@@ -236,7 +237,7 @@ pub enum IdentityField {
 	Display = 0b0000000000000000000000000000000000000000000000000000000000000001,
 	Legal = 0b0000000000000000000000000000000000000000000000000000000000000010,
 	Web = 0b0000000000000000000000000000000000000000000000000000000000000100,
-	Discord = 0b0000000000000000000000000000000000000000000000000000000000001000,
+	Riot = 0b0000000000000000000000000000000000000000000000000000000000001000,
 	Email = 0b0000000000000000000000000000000000000000000000000000000000010000,
 	PgpFingerprint = 0b0000000000000000000000000000000000000000000000000000000000100000,
 	Image = 0b0000000000000000000000000000000000000000000000000000000001000000,
@@ -245,7 +246,7 @@ pub enum IdentityField {
 
 /// Wrapper type for `BitFlags<IdentityField>` that implements `Codec`.
 #[derive(Clone, Copy, PartialEq, Default, RuntimeDebug)]
-pub struct IdentityFields(pub(crate) BitFlags<IdentityField>);
+pub struct IdentityFields(pub BitFlags<IdentityField>);
 
 impl MaxEncodedLen for IdentityFields {
 	fn max_encoded_len() -> usize {
@@ -283,7 +284,7 @@ impl TypeInfo for IdentityFields {
 #[derive(
 	CloneNoBound, Encode, Decode, Eq, MaxEncodedLen, PartialEqNoBound, RuntimeDebugNoBound, TypeInfo,
 )]
-#[codec(mel_bound(FieldLimit: Get<u32>))]
+#[codec(mel_bound())]
 #[cfg_attr(test, derive(frame_support::DefaultNoBound))]
 #[scale_info(skip_type_params(FieldLimit))]
 pub struct IdentityInfo<FieldLimit: Get<u32>> {
@@ -311,10 +312,10 @@ pub struct IdentityInfo<FieldLimit: Get<u32>> {
 	/// Stored as UTF-8.
 	pub web: Data,
 
-	/// The Discord handle held by the controller of the account.
+	/// The Riot/Matrix handle held by the controller of the account.
 	///
 	/// Stored as UTF-8.
-	pub discord: Data,
+	pub riot: Data,
 
 	/// The email address of the controller of the account.
 	///
@@ -339,11 +340,7 @@ pub struct IdentityInfo<FieldLimit: Get<u32>> {
 #[derive(
 	CloneNoBound, Encode, Eq, MaxEncodedLen, PartialEqNoBound, RuntimeDebugNoBound, TypeInfo,
 )]
-#[codec(mel_bound(
-	Balance: Encode + Decode + MaxEncodedLen + Copy + Clone + Debug + Eq + PartialEq + Zero + Add,
-	MaxJudgements: Get<u32>,
-	MaxAdditionalFields: Get<u32>,
-))]
+#[codec(mel_bound())]
 #[scale_info(skip_type_params(MaxJudgements, MaxAdditionalFields))]
 pub struct Registration<
 	Balance: Encode + Decode + MaxEncodedLen + Copy + Clone + Debug + Eq + PartialEq,
@@ -368,9 +365,8 @@ impl<
 	> Registration<Balance, MaxJudgements, MaxAdditionalFields>
 {
 	pub(crate) fn total_deposit(&self) -> Balance {
-		self.deposit
-			+ self
-				.judgements
+		self.deposit +
+			self.judgements
 				.iter()
 				.map(|(_, ref j)| if let Judgement::FeePaid(fee) = j { *fee } else { Zero::zero() })
 				.fold(Zero::zero(), |a, i| a + i)
@@ -408,7 +404,9 @@ pub struct RegistrarInfo<
 
 #[cfg(test)]
 mod tests {
-	use super::*;
+	use std::convert::TryInto;
+
+use super::*;
 
 	#[test]
 	fn manual_data_type_info() {
