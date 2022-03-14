@@ -301,7 +301,7 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 			// get GovToken's AssetId && check if balance is non-zero - @charmitro
 			let balance = <assets::Pallet<T>>::balance(<GovTokenId<T>>::get(), who.clone());
-			ensure!(!balance.is_zero(), Error::<T>::InsufficientCandidateFunds);
+			ensure!(balance.is_zero(), Error::<T>::InsufficientCandidateFunds);
 
 			// votes should not be empty and more than `MAXIMUM_VOTE` in any case.
 			ensure!(votes.len() <= MAXIMUM_VOTE, Error::<T>::MaximumVotesExceeded);
@@ -365,7 +365,7 @@ pub mod pallet {
 		pub fn remove_voter(origin: OriginFor<T>) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let balance = <assets::Pallet<T>>::balance(<GovTokenId<T>>::get(), who.clone());
-			ensure!(!balance.is_zero(), Error::<T>::InsufficientCandidateFunds);
+			ensure!(balance.is_zero(), Error::<T>::InsufficientCandidateFunds);
 
 			ensure!(Self::is_voter(&who), Error::<T>::MustBeVoter);
 			Self::do_remove_voter(&who);
@@ -407,7 +407,7 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let balance = <assets::Pallet<T>>::balance(<GovTokenId<T>>::get(), who.clone());
-			ensure!(!balance.is_zero(), Error::<T>::InsufficientCandidateFunds);
+			ensure!(balance.is_zero(), Error::<T>::InsufficientCandidateFunds);
 
 			let actual_count = <Candidates<T>>::decode_len().unwrap_or(0);
 			ensure!(actual_count as u32 <= candidate_count, Error::<T>::InvalidWitnessData);
@@ -453,7 +453,7 @@ pub mod pallet {
 		) -> DispatchResultWithPostInfo {
 			let who = ensure_signed(origin)?;
 			let balance = <assets::Pallet<T>>::balance(<GovTokenId<T>>::get(), who.clone());
-			ensure!(!balance.is_zero(), Error::<T>::InsufficientCandidateFunds);
+			ensure!(balance.is_zero(), Error::<T>::InsufficientCandidateFunds);
 
 			match renouncing {
 				Renouncing::Member => {
