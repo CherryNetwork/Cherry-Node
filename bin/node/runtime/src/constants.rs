@@ -86,6 +86,7 @@ pub mod time_dev {
 	pub const FAST_TRACK_VOTING_PERIOD: BlockNumber = 2 * MINUTES;
 	pub const COOLOFF_PERIOD: BlockNumber = 60 * MINUTES;
 
+	pub const ALLOWED_PROPOSAL_PERIOD: BlockNumber = 14;
 	pub const SPEND_PERIOD: BlockNumber = 2 * MINUTES;
 	pub const BOUNTY_DEPOSIT_PAYOUT_DELAY: BlockNumber = 1 * MINUTES;
 	pub const TIP_COUNTDOWN: BlockNumber = 1 * MINUTES;
@@ -151,6 +152,7 @@ pub mod time_prod {
 	pub const FAST_TRACK_VOTING_PERIOD: BlockNumber = 3 * 24 * 60 * MINUTES;
 	pub const COOLOFF_PERIOD: BlockNumber = 28 * 24 * 60 * MINUTES;
 
+	pub const ALLOWED_PROPOSAL_PERIOD: BlockNumber = 24 * DAYS;
 	pub const SPEND_PERIOD: BlockNumber = 28 * DAYS;
 	pub const BOUNTY_DEPOSIT_PAYOUT_DELAY: BlockNumber = 1 * DAYS;
 	pub const TIP_COUNTDOWN: BlockNumber = 1 * DAYS;
