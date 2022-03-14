@@ -172,6 +172,10 @@ pub mod pallet {
 		#[pallet::constant]
 		type ProposalBondMinimum: Get<BalanceOf<Self, I>>;
 
+		/// Period that proposals will enter, after that they go in WaitingProposals
+		#[pallet::constant]
+		type AllowedProposalPeriod: Get<Self::BlockNumber>;
+
 		/// Period between successive spends.
 		#[pallet::constant]
 		type SpendPeriod: Get<Self::BlockNumber>;
@@ -279,6 +283,8 @@ pub mod pallet {
 		Proposed(ProposalIndex),
 		/// New waiting proposal. \[proposal_index\]
 		WaitingProposed(ProposalIndex),
+		/// Move Proposal from Waiting to Proposed
+		WaitingProposalTransfered(ProposalIndex),
 		/// We have ended a spend period and will now allocate funds. \[budget_remaining\]
 		Spending(BalanceOf<T, I>),
 		/// Some funds have been allocated. \[proposal_index, award, beneficiary\]
@@ -350,9 +356,8 @@ pub mod pallet {
 			let beneficiary = T::Lookup::lookup(beneficiary)?;
 
 			let current_block = <frame_system::Pallet<T>>::block_number();
-			let percent: u32 = 14;
 
-			if (current_block % T::SpendPeriod::get()).lt(&percent.into()) {
+			if (current_block % T::SpendPeriod::get()).lt(&T::AllowedProposalPeriod::get()) {
 				let chunk: <<T as Config<I>>::Currency as Currency<
 					<T as frame_system::Config>::AccountId,
 				>>::Balance;
@@ -557,6 +562,21 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			print("Inconsistent state - couldn't settle imbalance for funds spent by treasury");
 			// Nothing else to do here.
 			drop(problem);
+		}
+
+		let w_proposals = Self::waiting_proposal_count();
+		for i in 0..w_proposals {
+			let c_proposals = Self::proposal_count();
+			if let Some(w) = Self::waiting_proposals(i) {
+				<ProposalCount<T, I>>::put(c_proposals + 1);
+				<Proposals<T, I>>::insert(c_proposals, w.clone());
+			}
+
+			<WaitingProposalCount<T, I>>::put(w_proposals - 1);
+			<WaitingProposals<T, I>>::remove(i);
+
+			Self::deposit_event(Event::WaitingProposalTransfered(w_proposals));
+			Self::deposit_event(Event::Proposed(c_proposals))
 		}
 
 		Self::deposit_event(Event::Rollover(budget_remaining));
