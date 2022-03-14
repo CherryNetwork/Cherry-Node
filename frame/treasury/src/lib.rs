@@ -198,6 +198,22 @@ pub mod pallet {
 		type MaxApprovals: Get<u32>;
 	}
 
+	/// Number of waiting proposals that have been made.
+	#[pallet::storage]
+	#[pallet::getter(fn waiting_proposal_count)]
+	pub(crate) type WaitingProposalCount<T, I = ()> = StorageValue<_, ProposalIndex, ValueQuery>;
+
+	/// Proposals that are waitning to be made.
+	#[pallet::storage]
+	#[pallet::getter(fn waiting_proposals)]
+	pub type WaitingProposals<T: Config<I>, I: 'static = ()> = StorageMap<
+		_,
+		Twox64Concat,
+		ProposalIndex,
+		Proposal<T::AccountId, BalanceOf<T, I>>,
+		OptionQuery,
+	>;
+
 	/// Number of proposals that have been made.
 	#[pallet::storage]
 	#[pallet::getter(fn proposal_count)]
@@ -261,6 +277,8 @@ pub mod pallet {
 	pub enum Event<T: Config<I>, I: 'static = ()> {
 		/// New proposal. \[proposal_index\]
 		Proposed(ProposalIndex),
+		/// New waiting proposal. \[proposal_index\]
+		WaitingProposed(ProposalIndex),
 		/// We have ended a spend period and will now allocate funds. \[budget_remaining\]
 		Spending(BalanceOf<T, I>),
 		/// Some funds have been allocated. \[proposal_index, award, beneficiary\]
@@ -331,27 +349,67 @@ pub mod pallet {
 			let proposer = ensure_signed(origin)?;
 			let beneficiary = T::Lookup::lookup(beneficiary)?;
 
-			let chunk = value / chunks.into();
+			let current_block = <frame_system::Pallet<T>>::block_number();
+			let percent: u32 = 14;
 
-			let bond = Self::calculate_bond(value);
-			T::Currency::reserve(&proposer, bond)
-				.map_err(|_| Error::<T, I>::InsufficientProposersBalance)?;
+			if (current_block % T::SpendPeriod::get()).lt(&percent.into()) {
+				let chunk: <<T as Config<I>>::Currency as Currency<
+					<T as frame_system::Config>::AccountId,
+				>>::Balance;
+				if chunks.gt(&0) {
+					chunk = value / chunks.into();
+				} else {
+					chunk = value;
+				}
 
-			let c_proposals = Self::proposal_count();
-			<ProposalCount<T, I>>::put(c_proposals + 1);
-			<Proposals<T, I>>::insert(
-				c_proposals,
-				Proposal {
-					proposer: proposer.clone(),
-					value: chunk.clone(),
-					beneficiary: beneficiary.clone(),
-					bond,
-					occurs: chunks,
-					remaining_occurs: chunks,
-				},
-			);
+				let bond = Self::calculate_bond(value);
+				T::Currency::reserve(&proposer, bond)
+					.map_err(|_| Error::<T, I>::InsufficientProposersBalance)?;
 
-			Self::deposit_event(Event::Proposed(c_proposals));
+				let c_proposals = Self::proposal_count();
+				<ProposalCount<T, I>>::put(c_proposals + 1);
+				<Proposals<T, I>>::insert(
+					c_proposals,
+					Proposal {
+						proposer: proposer.clone(),
+						value: chunk.clone(),
+						beneficiary: beneficiary.clone(),
+						bond,
+						occurs: chunks,
+						remaining_occurs: chunks,
+					},
+				);
+
+				Self::deposit_event(Event::Proposed(c_proposals));
+			} else {
+				let chunk: <<T as Config<I>>::Currency as Currency<
+					<T as frame_system::Config>::AccountId,
+				>>::Balance;
+				if chunks.gt(&0) {
+					chunk = value / chunks.into();
+				} else {
+					chunk = value;
+				}
+				let bond = Self::calculate_bond(value);
+				T::Currency::reserve(&proposer, bond)
+					.map_err(|_| Error::<T, I>::InsufficientProposersBalance)?;
+
+				let w_proposals = Self::waiting_proposal_count();
+				<WaitingProposalCount<T, I>>::put(w_proposals + 1);
+				<WaitingProposals<T, I>>::insert(
+					w_proposals,
+					Proposal {
+						proposer: proposer.clone(),
+						value: chunk.clone(),
+						beneficiary: beneficiary.clone(),
+						bond,
+						occurs: chunks,
+						remaining_occurs: chunks,
+					},
+				);
+
+				Self::deposit_event(Event::WaitingProposed(w_proposals));
+			}
 			Ok(())
 		}
 
