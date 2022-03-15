@@ -59,9 +59,6 @@ pallet-bags-list = { version = "4.0.0-dev", default-features = false, path = "..
 pallet-balances = { version = "4.0.0-dev", default-features = false, path = "../../../frame/balances" }
 pallet-bounties = { version = "4.0.0-dev", default-features = false, path = "../../../frame/bounties" }
 pallet-collective = { version = "4.0.0-dev", default-features = false, path = "../../../frame/collective" }
-pallet-contracts = { version = "4.0.0-dev", default-features = false, path = "../../../frame/contracts" }
-pallet-contracts-primitives = { version = "4.0.0-dev", default-features = false, path = "../../../frame/contracts/common/" }
-pallet-contracts-rpc-runtime-api = { version = "4.0.0-dev", default-features = false, path = "../../../frame/contracts/rpc/runtime-api/" }
 pallet-democracy = { version = "4.0.0-dev", default-features = false, path = "../../../frame/democracy" }
 pallet-election-provider-multi-phase = { version = "4.0.0-dev", default-features = false, path = "../../../frame/election-provider-multi-phase" }
 pallet-elections-phragmen = { version = "5.0.0-dev", default-features = false, path = "../../../frame/elections-phragmen" }
@@ -119,9 +116,6 @@ std = [
 	"codec/std",
 	"scale-info/std",
 	"pallet-collective/std",
-	"pallet-contracts/std",
-	"pallet-contracts-primitives/std",
-	"pallet-contracts-rpc-runtime-api/std",
 	"pallet-democracy/std",
 	"pallet-elections-phragmen/std",
 	"frame-executive/std",
@@ -186,7 +180,6 @@ runtime-benchmarks = [
 	"pallet-balances/runtime-benchmarks",
 	"pallet-bounties/runtime-benchmarks",
 	"pallet-collective/runtime-benchmarks",
-	"pallet-contracts/runtime-benchmarks",
 	"pallet-democracy/runtime-benchmarks",
 	"pallet-elections-phragmen/runtime-benchmarks",
 	"pallet-gilt/runtime-benchmarks",
@@ -225,7 +218,6 @@ try-runtime = [
 	"pallet-balances/try-runtime",
 	"pallet-bounties/try-runtime",
 	"pallet-collective/try-runtime",
-	"pallet-contracts/try-runtime",
 	"pallet-democracy/try-runtime",
 	"pallet-elections-phragmen/try-runtime",
 	"pallet-grandpa/try-runtime",
@@ -255,6 +247,3 @@ try-runtime = [
 	"pallet-vesting/try-runtime",
 	"pallet-gilt/try-runtime",
 ]
-# Make contract callable functions marked as __unstable__ available. Do not enable
-# on live chains as those are subject to change.
-contracts-unstable-interface = ["pallet-contracts/unstable-interface"]
