@@ -110,6 +110,7 @@ parameter_types! {
 	pub const DataDepositPerByte: u64 = 1;
 	pub const TreasuryPalletId: PalletId = PalletId(*b"py/trsry");
 	pub const MaxApprovals: u32 = 100;
+	pub const AllowedProposalPeriod: u64 = 2;
 }
 // impl pallet_treasury::Config for Test {
 impl pallet_treasury::Config for Test {
@@ -117,6 +118,7 @@ impl pallet_treasury::Config for Test {
 	type Currency = pallet_balances::Pallet<Test>;
 	type ApproveOrigin = frame_system::EnsureRoot<u128>;
 	type RejectOrigin = frame_system::EnsureRoot<u128>;
+	type AllowedProposalPeriod = AllowedProposalPeriod;
 	type Event = Event;
 	type OnSlash = ();
 	type ProposalBond = ProposalBond;
@@ -191,7 +193,7 @@ fn minting_works() {
 #[test]
 fn spend_proposal_takes_min_deposit() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Treasury::propose_spend(Origin::signed(0), 1, 3));
+		assert_ok!(Treasury::propose_spend(Origin::signed(0), 10, 3, 1));
 		assert_eq!(Balances::free_balance(0), 99);
 		assert_eq!(Balances::reserved_balance(0), 1);
 	});
@@ -200,7 +202,7 @@ fn spend_proposal_takes_min_deposit() {
 #[test]
 fn spend_proposal_takes_proportional_deposit() {
 	new_test_ext().execute_with(|| {
-		assert_ok!(Treasury::propose_spend(Origin::signed(0), 100, 3));
+		assert_ok!(Treasury::propose_spend(Origin::signed(0), 100, 3, 1));
 		assert_eq!(Balances::free_balance(0), 95);
 		assert_eq!(Balances::reserved_balance(0), 5);
 	});
@@ -210,7 +212,7 @@ fn spend_proposal_takes_proportional_deposit() {
 fn spend_proposal_fails_when_proposer_poor() {
 	new_test_ext().execute_with(|| {
 		assert_noop!(
-			Treasury::propose_spend(Origin::signed(2), 100, 3),
+			Treasury::propose_spend(Origin::signed(2), 100, 3, 1),
 			TreasuryError::InsufficientProposersBalance,
 		);
 	});
@@ -221,7 +223,7 @@ fn accepted_spend_proposal_ignored_outside_spend_period() {
 	new_test_ext().execute_with(|| {
 		Balances::make_free_balance_be(&Treasury::account_id(), 101);
 
-		assert_ok!(Treasury::propose_spend(Origin::signed(0), 100, 3));
+		assert_ok!(Treasury::propose_spend(Origin::signed(0), 100, 3, 1));
 		assert_ok!(Treasury::approve_proposal(Origin::root(), 0));
 
 		<Treasury as OnInitialize<u64>>::on_initialize(1);
@@ -248,7 +250,7 @@ fn rejected_spend_proposal_ignored_on_spend_period() {
 	new_test_ext().execute_with(|| {
 		Balances::make_free_balance_be(&Treasury::account_id(), 101);
 
-		assert_ok!(Treasury::propose_spend(Origin::signed(0), 100, 3));
+		assert_ok!(Treasury::propose_spend(Origin::signed(0), 100, 3, 1));
 		assert_ok!(Treasury::reject_proposal(Origin::root(), 0));
 
 		<Treasury as OnInitialize<u64>>::on_initialize(2);
@@ -262,7 +264,7 @@ fn reject_already_rejected_spend_proposal_fails() {
 	new_test_ext().execute_with(|| {
 		Balances::make_free_balance_be(&Treasury::account_id(), 101);
 
-		assert_ok!(Treasury::propose_spend(Origin::signed(0), 100, 3));
+		assert_ok!(Treasury::propose_spend(Origin::signed(0), 100, 3, 1));
 		assert_ok!(Treasury::reject_proposal(Origin::root(), 0));
 		assert_noop!(Treasury::reject_proposal(Origin::root(), 0), TreasuryError::InvalidIndex);
 	});
@@ -290,7 +292,7 @@ fn accept_already_rejected_spend_proposal_fails() {
 	new_test_ext().execute_with(|| {
 		Balances::make_free_balance_be(&Treasury::account_id(), 101);
 
-		assert_ok!(Treasury::propose_spend(Origin::signed(0), 100, 3));
+		assert_ok!(Treasury::propose_spend(Origin::signed(0), 100, 3, 1));
 		assert_ok!(Treasury::reject_proposal(Origin::root(), 0));
 		assert_noop!(Treasury::approve_proposal(Origin::root(), 0), TreasuryError::InvalidIndex);
 	});
@@ -302,7 +304,7 @@ fn accepted_spend_proposal_enacted_on_spend_period() {
 		Balances::make_free_balance_be(&Treasury::account_id(), 101);
 		assert_eq!(Treasury::pot(), 100);
 
-		assert_ok!(Treasury::propose_spend(Origin::signed(0), 100, 3));
+		assert_ok!(Treasury::propose_spend(Origin::signed(0), 100, 3, 1));
 		assert_ok!(Treasury::approve_proposal(Origin::root(), 0));
 
 		<Treasury as OnInitialize<u64>>::on_initialize(2);
@@ -317,7 +319,7 @@ fn pot_underflow_should_not_diminish() {
 		Balances::make_free_balance_be(&Treasury::account_id(), 101);
 		assert_eq!(Treasury::pot(), 100);
 
-		assert_ok!(Treasury::propose_spend(Origin::signed(0), 150, 3));
+		assert_ok!(Treasury::propose_spend(Origin::signed(0), 150, 3, 1));
 		assert_ok!(Treasury::approve_proposal(Origin::root(), 0));
 
 		<Treasury as OnInitialize<u64>>::on_initialize(2);
@@ -339,13 +341,13 @@ fn treasury_account_doesnt_get_deleted() {
 		assert_eq!(Treasury::pot(), 100);
 		let treasury_balance = Balances::free_balance(&Treasury::account_id());
 
-		assert_ok!(Treasury::propose_spend(Origin::signed(0), treasury_balance, 3));
+		assert_ok!(Treasury::propose_spend(Origin::signed(0), treasury_balance, 3, 1));
 		assert_ok!(Treasury::approve_proposal(Origin::root(), 0));
 
 		<Treasury as OnInitialize<u64>>::on_initialize(2);
 		assert_eq!(Treasury::pot(), 100); // Pot hasn't changed
 
-		assert_ok!(Treasury::propose_spend(Origin::signed(0), Treasury::pot(), 3));
+		assert_ok!(Treasury::propose_spend(Origin::signed(0), Treasury::pot(), 3, 1));
 		assert_ok!(Treasury::approve_proposal(Origin::root(), 1));
 
 		<Treasury as OnInitialize<u64>>::on_initialize(4);
@@ -369,9 +371,9 @@ fn inexistent_account_works() {
 		assert_eq!(Balances::free_balance(Treasury::account_id()), 0); // Account does not exist
 		assert_eq!(Treasury::pot(), 0); // Pot is empty
 
-		assert_ok!(Treasury::propose_spend(Origin::signed(0), 99, 3));
+		assert_ok!(Treasury::propose_spend(Origin::signed(0), 99, 3, 1));
 		assert_ok!(Treasury::approve_proposal(Origin::root(), 0));
-		assert_ok!(Treasury::propose_spend(Origin::signed(0), 1, 3));
+		assert_ok!(Treasury::propose_spend(Origin::signed(0), 1, 3, 1));
 		assert_ok!(Treasury::approve_proposal(Origin::root(), 1));
 		<Treasury as OnInitialize<u64>>::on_initialize(2);
 		assert_eq!(Treasury::pot(), 0); // Pot hasn't changed
