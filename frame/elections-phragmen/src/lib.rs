@@ -739,7 +739,7 @@ pub mod pallet {
 					member.clone()
 				})
 				.collect::<Vec<T::AccountId>>();
-
+			
 			// report genesis members to upstream, if any.
 			T::InitializeMembers::initialize_members(&members);
 		}
@@ -1317,7 +1317,7 @@ mod tests {
 		{
 			System: frame_system::{Pallet, Call, Event<T>},
 			Balances: pallet_balances::{Pallet, Call, Event<T>, Config<T>},
-			Assets: pallet_assets::{Pallet, Call, Storage, Event<T>},
+			Assets: pallet_assets::{Pallet, Call, Storage, Event<T>, Config<T>},
 			Elections: elections_phragmen::{Pallet, Call, Event<T>, Config<T>},
 		}
 	);
@@ -1365,6 +1365,7 @@ mod tests {
 			self.balance_factor = factor;
 			self
 		}
+
 		pub fn build_and_execute(self, test: impl FnOnce() -> ()) {
 			MEMBERS.with(|m| {
 				*m.borrow_mut() =
@@ -1383,6 +1384,25 @@ mod tests {
 				},
 				elections: elections_phragmen::GenesisConfig::<Test> {
 					members: self.genesis_members,
+				},
+				assets: pallet_assets::GenesisConfig::<Test> {
+					assets: vec![
+						// id, owner, is_sufficient, min_balance
+						(999, 0, true, 1),
+					],
+					metadata: vec![
+						// id, name, symbol, decimals
+						(999, "Token Name".into(), "TOKEN".into(), 10),
+					],
+					accounts: vec![
+						// id, account_id, balance
+						(999, 1, 100),
+						(999, 2, 100),
+						(999, 3, 100),
+						(999, 4, 100),
+						(999, 5, 100),
+						(999, 6, 100),
+					],
 				},
 			}
 			.build_storage()
@@ -1578,6 +1598,7 @@ mod tests {
 			.build_and_execute(|| {
 				System::set_block_number(1);
 
+				assert_ok!(set_gov_token_id(Origin::root()));
 				assert_eq!(
 					Elections::voting(1),
 					Voter { stake: 10u64, votes: vec![1], deposit: 0 }
@@ -1676,6 +1697,7 @@ mod tests {
 	#[test]
 	fn simple_candidate_submission_should_work() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_eq!(candidate_ids(), Vec::<u64>::new());
 			assert!(Elections::is_candidate(&1).is_err());
 			assert!(Elections::is_candidate(&2).is_err());
@@ -1707,6 +1729,7 @@ mod tests {
 	#[test]
 	fn updating_candidacy_bond_works() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(vote(Origin::signed(5), vec![5], 50));
 			assert_eq!(Elections::candidates(), vec![(5, 3)]);
@@ -1735,6 +1758,7 @@ mod tests {
 	#[test]
 	fn candidates_are_always_sorted() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_eq!(candidate_ids(), Vec::<u64>::new());
 
 			assert_ok!(submit_candidacy(Origin::signed(3)));
@@ -1751,6 +1775,7 @@ mod tests {
 	#[test]
 	fn dupe_candidate_submission_should_not_work() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_eq!(candidate_ids(), Vec::<u64>::new());
 			assert_ok!(submit_candidacy(Origin::signed(1)));
 			assert_eq!(candidate_ids(), vec![1]);
@@ -1762,6 +1787,7 @@ mod tests {
 	fn member_candidacy_submission_should_not_work() {
 		// critically important to make sure that outgoing candidates and losers are not mixed up.
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(vote(Origin::signed(2), vec![5], 20));
 
@@ -1779,6 +1805,7 @@ mod tests {
 	#[test]
 	fn runner_candidate_submission_should_not_work() {
 		ExtBuilder::default().desired_runners_up(2).build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 			assert_ok!(submit_candidacy(Origin::signed(3)));
@@ -1810,6 +1837,7 @@ mod tests {
 	#[test]
 	fn simple_voting_should_work() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_eq!(candidate_ids(), Vec::<u64>::new());
 			assert_eq!(balances(&2), (20, 0));
 
@@ -1824,6 +1852,7 @@ mod tests {
 	#[test]
 	fn can_vote_with_custom_stake() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_eq!(candidate_ids(), Vec::<u64>::new());
 			assert_eq!(balances(&2), (20, 0));
 
@@ -1838,6 +1867,7 @@ mod tests {
 	#[test]
 	fn can_update_votes_and_stake() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_eq!(balances(&2), (20, 0));
 
 			assert_ok!(submit_candidacy(Origin::signed(5)));
@@ -1859,6 +1889,7 @@ mod tests {
 	#[test]
 	fn updated_voting_bond_works() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 
 			assert_eq!(balances(&2), (20, 0));
@@ -1884,6 +1915,7 @@ mod tests {
 	#[test]
 	fn voting_reserves_bond_per_vote() {
 		ExtBuilder::default().voter_bond_factor(1).build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_eq!(balances(&2), (20, 0));
 
 			assert_ok!(submit_candidacy(Origin::signed(5)));
@@ -1927,6 +1959,7 @@ mod tests {
 	#[test]
 	fn cannot_vote_for_no_candidate() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_noop!(vote(Origin::signed(2), vec![], 20), Error::<Test>::NoVotes);
 		});
 	}
@@ -1934,6 +1967,7 @@ mod tests {
 	#[test]
 	fn can_vote_for_old_members_even_when_no_new_candidates() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 
@@ -1952,6 +1986,7 @@ mod tests {
 	#[test]
 	fn prime_works() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(3)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
@@ -1976,6 +2011,7 @@ mod tests {
 	#[test]
 	fn prime_votes_for_exiting_members_are_removed() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(3)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
@@ -2001,6 +2037,7 @@ mod tests {
 	#[test]
 	fn prime_is_kept_if_other_members_leave() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 
@@ -2022,6 +2059,7 @@ mod tests {
 	#[test]
 	fn prime_is_gone_if_renouncing() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 
@@ -2047,6 +2085,7 @@ mod tests {
 			.balance_factor(10)
 			.build_and_execute(|| {
 				// when we have only candidates
+				assert_ok!(set_gov_token_id(Origin::root()));
 				assert_ok!(submit_candidacy(Origin::signed(5)));
 				assert_ok!(submit_candidacy(Origin::signed(4)));
 				assert_ok!(submit_candidacy(Origin::signed(3)));
@@ -2078,6 +2117,7 @@ mod tests {
 	#[test]
 	fn cannot_vote_for_less_than_ed() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 
@@ -2088,6 +2128,7 @@ mod tests {
 	#[test]
 	fn can_vote_for_more_than_total_balance_but_moot() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 
@@ -2101,6 +2142,7 @@ mod tests {
 	#[test]
 	fn remove_voter_should_work() {
 		ExtBuilder::default().voter_bond(8).build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 
 			assert_ok!(vote(Origin::signed(2), vec![5], 20));
@@ -2126,6 +2168,7 @@ mod tests {
 	#[test]
 	fn non_voter_remove_should_not_work() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_noop!(Elections::remove_voter(Origin::signed(3)), Error::<Test>::MustBeVoter);
 		});
 	}
@@ -2133,6 +2176,7 @@ mod tests {
 	#[test]
 	fn dupe_remove_should_fail() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(vote(Origin::signed(2), vec![5], 20));
 
@@ -2146,6 +2190,7 @@ mod tests {
 	#[test]
 	fn removed_voter_should_not_be_counted() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 			assert_ok!(submit_candidacy(Origin::signed(3)));
@@ -2166,6 +2211,7 @@ mod tests {
 	#[test]
 	fn simple_voting_rounds_should_work() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 			assert_ok!(submit_candidacy(Origin::signed(3)));
@@ -2248,6 +2294,7 @@ mod tests {
 	#[test]
 	fn defunct_voter_will_be_counted() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 
 			// This guy's vote is pointless for this round.
@@ -2276,6 +2323,7 @@ mod tests {
 	#[test]
 	fn only_desired_seats_are_chosen() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 			assert_ok!(submit_candidacy(Origin::signed(3)));
@@ -2297,6 +2345,7 @@ mod tests {
 	#[test]
 	fn phragmen_should_not_self_vote() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 
@@ -2314,6 +2363,7 @@ mod tests {
 	#[test]
 	fn runners_up_should_be_kept() {
 		ExtBuilder::default().desired_runners_up(2).build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 			assert_ok!(submit_candidacy(Origin::signed(3)));
@@ -2341,6 +2391,7 @@ mod tests {
 	#[test]
 	fn runners_up_should_be_next_candidates() {
 		ExtBuilder::default().desired_runners_up(2).build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 			assert_ok!(submit_candidacy(Origin::signed(3)));
@@ -2369,6 +2420,7 @@ mod tests {
 	#[test]
 	fn runners_up_lose_bond_once_outgoing() {
 		ExtBuilder::default().desired_runners_up(1).build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 			assert_ok!(submit_candidacy(Origin::signed(2)));
@@ -2397,6 +2449,7 @@ mod tests {
 	#[test]
 	fn members_lose_bond_once_outgoing() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_eq!(balances(&5), (50, 0));
 
 			assert_ok!(submit_candidacy(Origin::signed(5)));
@@ -2423,6 +2476,7 @@ mod tests {
 	#[test]
 	fn candidates_lose_the_bond_when_outgoing() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(3)));
 
@@ -2446,6 +2500,7 @@ mod tests {
 	#[test]
 	fn current_members_are_always_next_candidate() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 
@@ -2482,6 +2537,7 @@ mod tests {
 		// what I mean by uninterrupted:
 		// given no input or stimulants the same members are re-elected.
 		ExtBuilder::default().desired_runners_up(2).build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 			assert_ok!(submit_candidacy(Origin::signed(3)));
@@ -2515,6 +2571,7 @@ mod tests {
 	#[test]
 	fn remove_members_triggers_election() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 
@@ -2541,6 +2598,7 @@ mod tests {
 	#[test]
 	fn remove_member_should_indicate_replacement() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 
@@ -2561,6 +2619,7 @@ mod tests {
 		});
 
 		ExtBuilder::default().desired_runners_up(1).build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 			assert_ok!(submit_candidacy(Origin::signed(3)));
@@ -2587,6 +2646,7 @@ mod tests {
 	#[test]
 	fn seats_should_be_released_when_no_vote() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 			assert_ok!(submit_candidacy(Origin::signed(3)));
@@ -2621,6 +2681,7 @@ mod tests {
 	#[test]
 	fn incoming_outgoing_are_reported() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 
@@ -2669,6 +2730,7 @@ mod tests {
 	#[test]
 	fn invalid_votes_are_moot() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 			assert_ok!(submit_candidacy(Origin::signed(3)));
 
@@ -2687,6 +2749,7 @@ mod tests {
 	#[test]
 	fn members_are_sorted_based_on_id_runners_on_merit() {
 		ExtBuilder::default().desired_runners_up(2).build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 			assert_ok!(submit_candidacy(Origin::signed(3)));
@@ -2709,6 +2772,7 @@ mod tests {
 	#[test]
 	fn runner_up_replacement_maintains_members_order() {
 		ExtBuilder::default().desired_runners_up(2).build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 			assert_ok!(submit_candidacy(Origin::signed(2)));
@@ -2729,6 +2793,7 @@ mod tests {
 	#[test]
 	fn can_renounce_candidacy_member_with_runners_bond_is_refunded() {
 		ExtBuilder::default().desired_runners_up(2).build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 			assert_ok!(submit_candidacy(Origin::signed(3)));
@@ -2756,6 +2821,7 @@ mod tests {
 	#[test]
 	fn can_renounce_candidacy_member_without_runners_bond_is_refunded() {
 		ExtBuilder::default().desired_runners_up(2).build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 
@@ -2780,6 +2846,7 @@ mod tests {
 	#[test]
 	fn can_renounce_candidacy_runner_up() {
 		ExtBuilder::default().desired_runners_up(2).build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 			assert_ok!(submit_candidacy(Origin::signed(3)));
@@ -2807,6 +2874,7 @@ mod tests {
 	#[test]
 	fn runner_up_replacement_works_when_out_of_order() {
 		ExtBuilder::default().desired_runners_up(2).build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 			assert_ok!(submit_candidacy(Origin::signed(3)));
@@ -2831,6 +2899,7 @@ mod tests {
 	#[test]
 	fn can_renounce_candidacy_candidate() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_eq!(balances(&5), (47, 3));
 			assert_eq!(candidate_ids(), vec![5]);
@@ -2844,6 +2913,7 @@ mod tests {
 	#[test]
 	fn wrong_renounce_candidacy_should_fail() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_noop!(
 				Elections::renounce_candidacy(Origin::signed(5), Renouncing::Candidate(0)),
 				Error::<Test>::InvalidRenouncing,
@@ -2862,6 +2932,7 @@ mod tests {
 	#[test]
 	fn non_member_renounce_member_should_fail() {
 		ExtBuilder::default().desired_runners_up(1).build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 			assert_ok!(submit_candidacy(Origin::signed(3)));
@@ -2886,6 +2957,7 @@ mod tests {
 	#[test]
 	fn non_runner_up_renounce_runner_up_should_fail() {
 		ExtBuilder::default().desired_runners_up(1).build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 			assert_ok!(submit_candidacy(Origin::signed(3)));
@@ -2910,6 +2982,7 @@ mod tests {
 	#[test]
 	fn wrong_candidate_count_renounce_should_fail() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 			assert_ok!(submit_candidacy(Origin::signed(3)));
@@ -2926,6 +2999,7 @@ mod tests {
 	#[test]
 	fn renounce_candidacy_count_can_overestimate() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 			assert_ok!(submit_candidacy(Origin::signed(3)));
@@ -2940,6 +3014,7 @@ mod tests {
 			.desired_runners_up(2)
 			.desired_members(1)
 			.build_and_execute(|| {
+				assert_ok!(set_gov_token_id(Origin::root()));
 				assert_ok!(submit_candidacy(Origin::signed(5)));
 				assert_ok!(submit_candidacy(Origin::signed(4)));
 				assert_ok!(submit_candidacy(Origin::signed(3)));
@@ -2976,6 +3051,7 @@ mod tests {
 			.desired_runners_up(2)
 			.desired_members(1)
 			.build_and_execute(|| {
+				assert_ok!(set_gov_token_id(Origin::root()));
 				assert_ok!(submit_candidacy(Origin::signed(4)));
 				assert_ok!(submit_candidacy(Origin::signed(3)));
 				assert_ok!(submit_candidacy(Origin::signed(2)));
@@ -3019,6 +3095,7 @@ mod tests {
 			.desired_runners_up(2)
 			.desired_members(1)
 			.build_and_execute(|| {
+				assert_ok!(set_gov_token_id(Origin::root()));
 				assert_ok!(submit_candidacy(Origin::signed(4)));
 				assert_ok!(submit_candidacy(Origin::signed(3)));
 				assert_ok!(submit_candidacy(Origin::signed(2)));
@@ -3059,6 +3136,7 @@ mod tests {
 	#[test]
 	fn remove_and_replace_member_works() {
 		let setup = || {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 			assert_ok!(submit_candidacy(Origin::signed(3)));
@@ -3077,6 +3155,7 @@ mod tests {
 		// member removed, replacement found.
 		ExtBuilder::default().desired_runners_up(1).build_and_execute(|| {
 			setup();
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_eq!(Elections::remove_and_replace_member(&4, false), Ok(true));
 
 			assert_eq!(members_ids(), vec![3, 5]);
@@ -3086,6 +3165,7 @@ mod tests {
 		// member removed, no replacement found.
 		ExtBuilder::default().desired_runners_up(1).build_and_execute(|| {
 			setup();
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(Elections::renounce_candidacy(Origin::signed(3), Renouncing::RunnerUp));
 			assert_eq!(Elections::remove_and_replace_member(&4, false), Ok(false));
 
@@ -3096,6 +3176,7 @@ mod tests {
 		// wrong member to remove.
 		ExtBuilder::default().desired_runners_up(1).build_and_execute(|| {
 			setup();
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert!(matches!(Elections::remove_and_replace_member(&2, false), Err(_)));
 		});
 	}
@@ -3107,6 +3188,7 @@ mod tests {
 			.desired_members(0)
 			.desired_runners_up(0)
 			.build_and_execute(|| {
+				assert_ok!(set_gov_token_id(Origin::root()));
 				assert_eq!(Elections::candidates().len(), 0);
 
 				assert_ok!(submit_candidacy(Origin::signed(4)));
@@ -3133,6 +3215,7 @@ mod tests {
 			.desired_members(0)
 			.desired_runners_up(2)
 			.build_and_execute(|| {
+				assert_ok!(set_gov_token_id(Origin::root()));
 				assert_eq!(Elections::candidates().len(), 0);
 
 				assert_ok!(submit_candidacy(Origin::signed(4)));
@@ -3159,6 +3242,7 @@ mod tests {
 			.desired_members(2)
 			.desired_runners_up(0)
 			.build_and_execute(|| {
+				assert_ok!(set_gov_token_id(Origin::root()));
 				assert_eq!(Elections::candidates().len(), 0);
 
 				assert_ok!(submit_candidacy(Origin::signed(4)));
@@ -3184,6 +3268,7 @@ mod tests {
 	#[test]
 	fn dupe_vote_is_moot() {
 		ExtBuilder::default().desired_members(1).build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 			assert_ok!(submit_candidacy(Origin::signed(3)));
@@ -3206,6 +3291,7 @@ mod tests {
 	#[test]
 	fn remove_defunct_voter_works() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 			assert_ok!(submit_candidacy(Origin::signed(3)));
