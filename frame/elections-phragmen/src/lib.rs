@@ -377,12 +377,12 @@ pub mod pallet {
 		pub fn set_gov_token_id(
 			origin: OriginFor<T>,
 			token_id: <T as assets::Config>::AssetId,
-		) -> DispatchResult {
+		) -> DispatchResultWithPostInfo {
 			let _who = ensure_root(origin)?;
 
 			<GovTokenId<T>>::put(token_id);
 
-			Ok(())
+			Ok(None.into())
 		}
 
 		/// Submit oneself for candidacy. A fixed amount of deposit is recorded.
@@ -1501,6 +1501,10 @@ mod tests {
 		Elections::submit_candidacy(origin, Elections::candidates().len() as u32)
 	}
 
+	fn set_gov_token_id(origin: Origin) -> DispatchResultWithPostInfo {
+		Elections::set_gov_token_id(origin, 999)
+	}
+
 	fn vote(origin: Origin, votes: Vec<u64>, stake: u64) -> DispatchResultWithPostInfo {
 		// historical note: helper function was created in a period of time in which the API of vote
 		// call was changing. Currently it is a wrapper for the original call and does not do much.
@@ -2209,6 +2213,7 @@ mod tests {
 	#[test]
 	fn all_outgoing() {
 		ExtBuilder::default().build_and_execute(|| {
+			assert_ok!(set_gov_token_id(Origin::root()));
 			assert_ok!(submit_candidacy(Origin::signed(5)));
 			assert_ok!(submit_candidacy(Origin::signed(4)));
 
