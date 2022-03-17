@@ -1205,6 +1205,30 @@ mod tests {
 		type WeightInfo = ();
 	}
 
+	parameter_types! {
+		pub const AssetDeposit: u64 = 1;
+		pub const ApprovalDeposit: u64 = 1;
+		pub const StringLimit: u32 = 50;
+		pub const MetadataDepositBase: u64 = 1;
+		pub const MetadataDepositPerByte: u64 = 1;
+	}
+
+	impl pallet_assets::Config for Test {
+		type Event = Event;
+		type Balance = u64;
+		type AssetId = u32;
+		type Currency = Balances;
+		type ForceOrigin = frame_system::EnsureRoot<u64>;
+		type AssetDeposit = AssetDeposit;
+		type MetadataDepositBase = MetadataDepositBase;
+		type MetadataDepositPerByte = MetadataDepositPerByte;
+		type ApprovalDeposit = ApprovalDeposit;
+		type StringLimit = StringLimit;
+		type Freezer = ();
+		type WeightInfo = ();
+		type Extra = ();
+	}
+
 	frame_support::parameter_types! {
 		pub static VotingBondBase: u64 = 2;
 		pub static VotingBondFactor: u64 = 0;
@@ -1293,6 +1317,7 @@ mod tests {
 		{
 			System: frame_system::{Pallet, Call, Event<T>},
 			Balances: pallet_balances::{Pallet, Call, Event<T>, Config<T>},
+			Assets: pallet_assets::{Pallet, Call, Storage, Event<T>},
 			Elections: elections_phragmen::{Pallet, Call, Event<T>, Config<T>},
 		}
 	);
