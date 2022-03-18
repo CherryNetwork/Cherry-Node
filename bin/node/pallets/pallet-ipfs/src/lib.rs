@@ -131,6 +131,10 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxIpfsOwned: Get<u32>;
 
+		/// Default time that an IPFS asset will be stored online.
+		#[pallet::constant]
+		type DefaultAssetLifetime: Get<Self::BlockNumber>;
+
 		type Call: From<Call<Self>>;
 
 		type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
@@ -446,6 +450,7 @@ pub mod pallet {
 			<DataQueue<T>>::take();
 
 			let current_block = <frame_system::Pallet<T>>::block_number();
+			let asset_lifetime = current_block + T::DefaultAssetLifetime::get();
 			let mut gateway_url = "http://15.188.14.75:8080/ipfs/".as_bytes().to_vec();
 			gateway_url.append(&mut cid.clone());
 
@@ -455,7 +460,7 @@ pub mod pallet {
 				gateway_url,
 				owners: BTreeMap::<AccountOf<T>, OwnershipLayer>::new(),
 				created_at: current_block,
-				deleting_at: current_block,
+				deleting_at: asset_lifetime,
 				pinned: true, // true by default.
 			};
 

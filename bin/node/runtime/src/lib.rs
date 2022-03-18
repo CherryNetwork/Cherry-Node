@@ -1251,6 +1251,7 @@ impl pallet_transaction_storage::Config for Runtime {
 
 parameter_types! {
 	pub const MaxIpfsOwned: u32 = 5;
+	pub const DefaultAssetLifetime: BlockNumber = DEFAULT_ASSET_LIFETIME;
 }
 
 impl pallet_ipfs::Config for Runtime {
@@ -1259,6 +1260,7 @@ impl pallet_ipfs::Config for Runtime {
 	type AuthorityId = pallet_ipfs::crypto::AuthorityId;
 	type Call = Call;
 	type MaxIpfsOwned = MaxIpfsOwned;
+	type DefaultAssetLifetime = DefaultAssetLifetime;
 	type WeightInfo = pallet_ipfs::weights::SubstrateWeight<Runtime>;
 }
 
