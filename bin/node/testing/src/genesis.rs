@@ -89,7 +89,6 @@ pub fn config_endowed(
 		grandpa: GrandpaConfig { authorities: vec![] },
 		im_online: Default::default(),
 		authority_discovery: Default::default(),
-		democracy: Default::default(),
 		council: Default::default(),
 		technical_committee: Default::default(),
 		technical_membership: Default::default(),
