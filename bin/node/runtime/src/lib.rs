@@ -126,7 +126,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 272,
+	spec_version: 273,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 2,
@@ -987,59 +987,6 @@ impl pallet_assets::Config for Runtime {
 	type WeightInfo = pallet_assets::weights::SubstrateWeight<Runtime>;
 }
 
-parameter_types! {
-	pub IgnoredIssuance: Balance = Treasury::pot();
-	pub const QueueCount: u32 = 300;
-	pub const MaxQueueLen: u32 = 1000;
-	pub const FifoQueueLen: u32 = 500;
-	pub const Period: BlockNumber = 30 * DAYS;
-	pub const MinFreeze: Balance = 100 * DOLLARS;
-	pub const IntakePeriod: BlockNumber = 10;
-	pub const MaxIntakeBids: u32 = 10;
-}
-
-impl pallet_gilt::Config for Runtime {
-	type Event = Event;
-	type Currency = Balances;
-	type CurrencyBalance = Balance;
-	type AdminOrigin = frame_system::EnsureRoot<AccountId>;
-	type Deficit = ();
-	type Surplus = ();
-	type IgnoredIssuance = IgnoredIssuance;
-	type QueueCount = QueueCount;
-	type MaxQueueLen = MaxQueueLen;
-	type FifoQueueLen = FifoQueueLen;
-	type Period = Period;
-	type MinFreeze = MinFreeze;
-	type IntakePeriod = IntakePeriod;
-	type MaxIntakeBids = MaxIntakeBids;
-	type WeightInfo = pallet_gilt::weights::SubstrateWeight<Runtime>;
-}
-
-parameter_types! {
-	pub const ClassDeposit: Balance = 100 * DOLLARS;
-	pub const InstanceDeposit: Balance = 1 * DOLLARS;
-	pub const KeyLimit: u32 = 32;
-	pub const ValueLimit: u32 = 256;
-}
-
-impl pallet_uniques::Config for Runtime {
-	type Event = Event;
-	type ClassId = u32;
-	type InstanceId = u32;
-	type Currency = Balances;
-	type ForceOrigin = frame_system::EnsureRoot<AccountId>;
-	type ClassDeposit = ClassDeposit;
-	type InstanceDeposit = InstanceDeposit;
-	type MetadataDepositBase = MetadataDepositBase;
-	type AttributeDepositBase = MetadataDepositBase;
-	type DepositPerByte = MetadataDepositPerByte;
-	type StringLimit = StringLimit;
-	type KeyLimit = KeyLimit;
-	type ValueLimit = ValueLimit;
-	type WeightInfo = pallet_uniques::weights::SubstrateWeight<Runtime>;
-}
-
 impl pallet_transaction_storage::Config for Runtime {
 	type Event = Event;
 	type Currency = Balances;
@@ -1087,8 +1034,6 @@ construct_runtime!(
 		Assets: pallet_assets::{Pallet, Call, Storage, Event<T>, Config<T>},
 		Mmr: pallet_mmr::{Pallet, Storage},
 		Lottery: pallet_lottery::{Pallet, Call, Storage, Event<T>},
-		Gilt: pallet_gilt::{Pallet, Call, Storage, Event<T>, Config},
-		Uniques: pallet_uniques::{Pallet, Call, Storage, Event<T>},
 		TransactionStorage: pallet_transaction_storage::{Pallet, Call, Storage, Inherent, Config<T>, Event<T>},
 		BagsList: pallet_bags_list::{Pallet, Call, Storage, Event<T>},
 	}
@@ -1405,7 +1350,6 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_collective, Council);
 			list_benchmark!(list, extra, pallet_election_provider_multi_phase, ElectionProviderMultiPhase);
 			list_benchmark!(list, extra, pallet_elections_phragmen, Elections);
-			list_benchmark!(list, extra, pallet_gilt, Gilt);
 			list_benchmark!(list, extra, pallet_grandpa, Grandpa);
 			list_benchmark!(list, extra, pallet_identity, Identity);
 			list_benchmark!(list, extra, pallet_im_online, ImOnline);
@@ -1420,9 +1364,8 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_staking, Staking);
 			list_benchmark!(list, extra, frame_system, SystemBench::<Runtime>);
 			list_benchmark!(list, extra, pallet_timestamp, Timestamp);
-		        list_benchmark!(list, extra, pallet_transaction_storage, TransactionStorage);
+			list_benchmark!(list, extra, pallet_transaction_storage, TransactionStorage);
 			list_benchmark!(list, extra, pallet_treasury, Treasury);
-			list_benchmark!(list, extra, pallet_uniques, Uniques);
 			list_benchmark!(list, extra, pallet_utility, Utility);
 			list_benchmark!(list, extra, pallet_vesting, Vesting);
 
@@ -1475,7 +1418,6 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_collective, Council);
 			add_benchmark!(params, batches, pallet_election_provider_multi_phase, ElectionProviderMultiPhase);
 			add_benchmark!(params, batches, pallet_elections_phragmen, Elections);
-			add_benchmark!(params, batches, pallet_gilt, Gilt);
 			add_benchmark!(params, batches, pallet_grandpa, Grandpa);
 			add_benchmark!(params, batches, pallet_identity, Identity);
 			add_benchmark!(params, batches, pallet_im_online, ImOnline);
@@ -1492,7 +1434,6 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_timestamp, Timestamp);
 			add_benchmark!(params, batches, pallet_transaction_storage, TransactionStorage);
 			add_benchmark!(params, batches, pallet_treasury, Treasury);
-			add_benchmark!(params, batches, pallet_uniques, Uniques);
 			add_benchmark!(params, batches, pallet_utility, Utility);
 			add_benchmark!(params, batches, pallet_vesting, Vesting);
 
