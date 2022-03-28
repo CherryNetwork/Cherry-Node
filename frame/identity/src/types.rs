@@ -337,7 +337,7 @@ pub struct IdentityInfo<FieldLimit: Get<u32>> {
 	/// The Discord identity.
 	pub discord: Data,
 
-	/// The telegram identity.
+	/// The telegram identity. The leading `@` character may be elided.
 	pub telegram: Data,
 }
 
