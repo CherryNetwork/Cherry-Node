@@ -370,7 +370,6 @@ pub fn testnet_genesis(
 			metadata: vec![(999, "Governance Token".into(), "tGov".into(), 8)],
 			accounts: vec![(999, root_key.clone(), 1_000_000_000)],
 		},
-		gilt: Default::default(),
 		transaction_storage: Default::default(),
 	}
 }
