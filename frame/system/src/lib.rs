@@ -802,10 +802,6 @@ pub enum RawOrigin<AccountId> {
 	Gover(AccountId),
 	/// Sudo Update layer.
 	Updater,
-	/// Sudo Calls layer.
-	Sudoer,
-	/// Sudo Pause Transactions layer.
-	Pauser,
 	/// It is signed by some public key and we provide the `AccountId`.
 	Signed(AccountId),
 	/// It is signed by nobody, can be either:
@@ -934,42 +930,6 @@ impl<O: Into<Result<RawOrigin<AccountId>, O>> + From<RawOrigin<AccountId>>, Acco
 	// #[cfg(feature = "runtime-benchmarks")]
 	// fn successful_origin() -> O {
 	// 	O::from(RawOrigin::Updater)
-	// }
-}
-
-pub struct EnsureSudoer<AccountId>(sp_std::marker::PhantomData<AccountId>);
-impl<O: Into<Result<RawOrigin<AccountId>, O>> + From<RawOrigin<AccountId>>, AccountId>
-	EnsureOrigin<O> for EnsureSudoer<AccountId>
-{
-	type Success = ();
-	fn try_origin(o: O) -> Result<Self::Success, O> {
-		o.into().and_then(|o| match o {
-			RawOrigin::Sudoer => Ok(()),
-			r => Err(O::from(r)),
-		})
-	}
-
-	// #[cfg(feature = "runtime-benchmarks")]
-	// fn successful_origin() -> O {
-	// 	O::from(RawOrigin::Sudoer)
-	// }
-}
-
-pub struct EnsurePauser<AccountId>(sp_std::marker::PhantomData<AccountId>);
-impl<O: Into<Result<RawOrigin<AccountId>, O>> + From<RawOrigin<AccountId>>, AccountId>
-	EnsureOrigin<O> for EnsurePauser<AccountId>
-{
-	type Success = ();
-	fn try_origin(o: O) -> Result<Self::Success, O> {
-		o.into().and_then(|o| match o {
-			RawOrigin::Pauser => Ok(()),
-			r => Err(O::from(r)),
-		})
-	}
-
-	// #[cfg(feature = "runtime-benchmarks")]
-	// fn successful_origin() -> O {
-	// 	O::from(RawOrigin::Pauser)
 	// }
 }
 
