@@ -799,7 +799,7 @@ pub enum RawOrigin<AccountId> {
 	/// The system itself ordained this dispatch to happen: this is the highest privilege level.
 	Root,
 	/// Sudo Governance Token layer.
-	Gover,
+	Gover(AccountId),
 	/// Sudo Update layer.
 	Updater,
 	/// Sudo Calls layer.
@@ -901,23 +901,22 @@ impl<O: Into<Result<RawOrigin<AccountId>, O>> + From<RawOrigin<AccountId>>, Acco
 		O::from(RawOrigin::Root)
 	}
 }
-
 pub struct EnsureGover<AccountId>(sp_std::marker::PhantomData<AccountId>);
-impl<O: Into<Result<RawOrigin<AccountId>, O>> + From<RawOrigin<AccountId>>, AccountId>
+impl<O: Into<Result<RawOrigin<AccountId>, O>> + From<RawOrigin<AccountId>>, AccountId: Default>
 	EnsureOrigin<O> for EnsureGover<AccountId>
 {
-	type Success = ();
+	type Success = AccountId;
 	fn try_origin(o: O) -> Result<Self::Success, O> {
 		o.into().and_then(|o| match o {
-			RawOrigin::Gover => Ok(()),
+			RawOrigin::Gover(who) => Ok(who),
 			r => Err(O::from(r)),
 		})
 	}
 
-	// #[cfg(feature = "runtime-benchmarks")]
-	// fn successful_origin() -> O {
-	// 	O::from(RawOrigin::Gover)
-	// }
+	#[cfg(feature = "runtime-benchmarks")]
+	fn successful_origin() -> O {
+		O::from(RawOrigin::Signed(Default::default()))
+	}
 }
 
 pub struct EnsureUpdater<AccountId>(sp_std::marker::PhantomData<AccountId>);
@@ -1102,6 +1101,16 @@ where
 {
 	match o.into() {
 		Ok(RawOrigin::None) => Ok(()),
+		_ => Err(BadOrigin),
+	}
+}
+
+pub fn ensure_gover<OuterOrigin, AccountId>(o: OuterOrigin) -> Result<AccountId, BadOrigin>
+where
+	OuterOrigin: Into<Result<RawOrigin<AccountId>, OuterOrigin>>,
+{
+	match o.into() {
+		Ok(RawOrigin::Gover(t)) => Ok(t),
 		_ => Err(BadOrigin),
 	}
 }
@@ -1381,7 +1390,7 @@ impl<T: Config> Pallet<T> {
 		let block_number = Self::block_number();
 		// Don't populate events on genesis.
 		if block_number.is_zero() {
-			return
+			return;
 		}
 
 		let phase = ExecutionPhase::<T>::get().unwrap_or_default();
@@ -1790,7 +1799,7 @@ impl<T: Config> StoredMap<T::AccountId, T::AccountData> for Pallet<T> {
 				},
 			}
 		} else if !was_providing && !is_providing {
-			return Ok(result)
+			return Ok(result);
 		}
 		Account::<T>::mutate(k, |a| a.data = some_data.unwrap_or_default());
 		Ok(result)
