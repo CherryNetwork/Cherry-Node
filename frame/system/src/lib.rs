@@ -798,6 +798,14 @@ pub struct EventRecord<E: Parameter + Member, T> {
 pub enum RawOrigin<AccountId> {
 	/// The system itself ordained this dispatch to happen: this is the highest privilege level.
 	Root,
+	/// Sudo Governance Token layer.
+	Gover,
+	/// Sudo Update layer.
+	Updater,
+	/// Sudo Calls layer.
+	Sudoer,
+	/// Sudo Pause Transactions layer.
+	Pauser,
 	/// It is signed by some public key and we provide the `AccountId`.
 	Signed(AccountId),
 	/// It is signed by nobody, can be either:
@@ -892,6 +900,78 @@ impl<O: Into<Result<RawOrigin<AccountId>, O>> + From<RawOrigin<AccountId>>, Acco
 	fn successful_origin() -> O {
 		O::from(RawOrigin::Root)
 	}
+}
+
+pub struct EnsureGover<AccountId>(sp_std::marker::PhantomData<AccountId>);
+impl<O: Into<Result<RawOrigin<AccountId>, O>> + From<RawOrigin<AccountId>>, AccountId>
+	EnsureOrigin<O> for EnsureGover<AccountId>
+{
+	type Success = ();
+	fn try_origin(o: O) -> Result<Self::Success, O> {
+		o.into().and_then(|o| match o {
+			RawOrigin::Gover => Ok(()),
+			r => Err(O::from(r)),
+		})
+	}
+
+	// #[cfg(feature = "runtime-benchmarks")]
+	// fn successful_origin() -> O {
+	// 	O::from(RawOrigin::Gover)
+	// }
+}
+
+pub struct EnsureUpdater<AccountId>(sp_std::marker::PhantomData<AccountId>);
+impl<O: Into<Result<RawOrigin<AccountId>, O>> + From<RawOrigin<AccountId>>, AccountId>
+	EnsureOrigin<O> for EnsureUpdater<AccountId>
+{
+	type Success = ();
+	fn try_origin(o: O) -> Result<Self::Success, O> {
+		o.into().and_then(|o| match o {
+			RawOrigin::Updater => Ok(()),
+			r => Err(O::from(r)),
+		})
+	}
+
+	// #[cfg(feature = "runtime-benchmarks")]
+	// fn successful_origin() -> O {
+	// 	O::from(RawOrigin::Updater)
+	// }
+}
+
+pub struct EnsureSudoer<AccountId>(sp_std::marker::PhantomData<AccountId>);
+impl<O: Into<Result<RawOrigin<AccountId>, O>> + From<RawOrigin<AccountId>>, AccountId>
+	EnsureOrigin<O> for EnsureSudoer<AccountId>
+{
+	type Success = ();
+	fn try_origin(o: O) -> Result<Self::Success, O> {
+		o.into().and_then(|o| match o {
+			RawOrigin::Sudoer => Ok(()),
+			r => Err(O::from(r)),
+		})
+	}
+
+	// #[cfg(feature = "runtime-benchmarks")]
+	// fn successful_origin() -> O {
+	// 	O::from(RawOrigin::Sudoer)
+	// }
+}
+
+pub struct EnsurePauser<AccountId>(sp_std::marker::PhantomData<AccountId>);
+impl<O: Into<Result<RawOrigin<AccountId>, O>> + From<RawOrigin<AccountId>>, AccountId>
+	EnsureOrigin<O> for EnsurePauser<AccountId>
+{
+	type Success = ();
+	fn try_origin(o: O) -> Result<Self::Success, O> {
+		o.into().and_then(|o| match o {
+			RawOrigin::Pauser => Ok(()),
+			r => Err(O::from(r)),
+		})
+	}
+
+	// #[cfg(feature = "runtime-benchmarks")]
+	// fn successful_origin() -> O {
+	// 	O::from(RawOrigin::Pauser)
+	// }
 }
 
 pub struct EnsureSigned<AccountId>(sp_std::marker::PhantomData<AccountId>);
