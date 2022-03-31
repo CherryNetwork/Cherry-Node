@@ -801,7 +801,7 @@ pub enum RawOrigin<AccountId> {
 	/// Sudo Governance Token layer.
 	Gover(AccountId),
 	/// Sudo Update layer.
-	Updater,
+	Updater(AccountId),
 	/// It is signed by some public key and we provide the `AccountId`.
 	Signed(AccountId),
 	/// It is signed by nobody, can be either:
@@ -916,21 +916,21 @@ impl<O: Into<Result<RawOrigin<AccountId>, O>> + From<RawOrigin<AccountId>>, Acco
 }
 
 pub struct EnsureUpdater<AccountId>(sp_std::marker::PhantomData<AccountId>);
-impl<O: Into<Result<RawOrigin<AccountId>, O>> + From<RawOrigin<AccountId>>, AccountId>
+impl<O: Into<Result<RawOrigin<AccountId>, O>> + From<RawOrigin<AccountId>>, AccountId: Default>
 	EnsureOrigin<O> for EnsureUpdater<AccountId>
 {
-	type Success = ();
+	type Success = AccountId;
 	fn try_origin(o: O) -> Result<Self::Success, O> {
 		o.into().and_then(|o| match o {
-			RawOrigin::Updater => Ok(()),
+			RawOrigin::Updater(who) => Ok(who),
 			r => Err(O::from(r)),
 		})
 	}
 
-	// #[cfg(feature = "runtime-benchmarks")]
-	// fn successful_origin() -> O {
-	// 	O::from(RawOrigin::Updater)
-	// }
+	#[cfg(feature = "runtime-benchmarks")]
+	fn successful_origin() -> O {
+		O::from(RawOrigin::Updater)
+	}
 }
 
 pub struct EnsureSigned<AccountId>(sp_std::marker::PhantomData<AccountId>);
@@ -1065,12 +1065,24 @@ where
 	}
 }
 
+/// Ensure that the origin `o` represents a gover. Returns `Ok` or an `Err` otherwise.
 pub fn ensure_gover<OuterOrigin, AccountId>(o: OuterOrigin) -> Result<AccountId, BadOrigin>
 where
 	OuterOrigin: Into<Result<RawOrigin<AccountId>, OuterOrigin>>,
 {
 	match o.into() {
 		Ok(RawOrigin::Gover(t)) => Ok(t),
+		_ => Err(BadOrigin),
+	}
+}
+
+/// Ensure that the origin `o` represents a updater. Returns `Ok` or an `Err` otherwise.
+pub fn ensure_updater<OuterOrigin, AccountId>(o: OuterOrigin) -> Result<AccountId, BadOrigin>
+where
+	OuterOrigin: Into<Result<RawOrigin<AccountId>, OuterOrigin>>,
+{
+	match o.into() {
+		Ok(RawOrigin::Updater(t)) => Ok(t),
 		_ => Err(BadOrigin),
 	}
 }
