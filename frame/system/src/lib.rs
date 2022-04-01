@@ -800,6 +800,8 @@ pub enum RawOrigin<AccountId> {
 	Root,
 	/// It is signed by some public key and we provide the `AccountId`.
 	Signed(AccountId),
+	/// It is signed by an Updater key and we provide the `AccountId`.
+	Updater(AccountId),
 	/// It is signed by nobody, can be either:
 	/// * included and agreed upon by the validators anyway,
 	/// * or unsigned transaction validated by a pallet.
@@ -891,6 +893,24 @@ impl<O: Into<Result<RawOrigin<AccountId>, O>> + From<RawOrigin<AccountId>>, Acco
 	#[cfg(feature = "runtime-benchmarks")]
 	fn successful_origin() -> O {
 		O::from(RawOrigin::Root)
+	}
+}
+
+pub struct EnsureUpdater<AccountId>(sp_std::marker::PhantomData<AccountId>);
+impl<O: Into<Result<RawOrigin<AccountId>, O>> + From<RawOrigin<AccountId>>, AccountId: Default>
+	EnsureOrigin<O> for EnsureUpdater<AccountId>
+{
+	type Success = AccountId;
+	fn try_origin(o: O) -> Result<Self::Success, O> {
+		o.into().and_then(|o| match o {
+			RawOrigin::Updater(who) => Ok(who),
+			r => Err(O::from(r)),
+		})
+	}
+
+	#[cfg(feature = "runtime-benchmarks")]
+	fn successful_origin() -> O {
+		O::from(RawOrigin::Updater(Default::default()))
 	}
 }
 
@@ -1011,6 +1031,18 @@ where
 {
 	match o.into() {
 		Ok(RawOrigin::Root) => Ok(()),
+		_ => Err(BadOrigin),
+	}
+}
+
+/// Ensure that the origin `o` represents an Updater extrinsic (i.e. transaction).
+/// Returns `Ok` with the account that signed the extrinsic or an `Err` otherwise.
+pub fn ensure_updater<OuterOrigin, AccountId>(o: OuterOrigin) -> Result<AccountId, BadOrigin>
+where
+	OuterOrigin: Into<Result<RawOrigin<AccountId>, OuterOrigin>>,
+{
+	match o.into() {
+		Ok(RawOrigin::Updater(t)) => Ok(t),
 		_ => Err(BadOrigin),
 	}
 }

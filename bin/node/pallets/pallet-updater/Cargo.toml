@@ -14,9 +14,9 @@ frame-system = { version = "4.0.0-dev", default-features = false, path = "../../
 frame-benchmarking = { version = "4.0.0-dev", default-features = false, path = "../../../../frame/benchmarking", optional = true }
 
 [dev-dependencies]
-sp-core =  { version = "4.0.0-dev", path = "../../../../primitives/core", default-features = false }
-sp-io =   { version = "4.0.0-dev", path = "../../../../primitives/io", default-features = false }
-sp-runtime =  { version = "4.0.0-dev", path = "../../../../primitives/runtime", default-features = false }
+sp-core = { version = "4.0.0-dev", path = "../../../../primitives/core", default-features = false }
+sp-io = { version = "4.0.0-dev", path = "../../../../primitives/io", default-features = false }
+sp-runtime = { version = "4.0.0-dev", path = "../../../../primitives/runtime", default-features = false }
 
 [features]
 default = ["std"]
