@@ -82,7 +82,6 @@ pub use pallet_staking::StakerStatus;
 #[cfg(any(feature = "std", test))]
 pub use sp_runtime::BuildStorage;
 
-
 /// Implementations of some helper traits passed into runtime modules as associated types.
 pub mod impls;
 use impls::Author;
@@ -99,7 +98,6 @@ use constants::time_prod::*;
 use constants::time_dev::*;
 
 use sp_runtime::generic::Era;
-
 
 pub use pallet_updater;
 
@@ -232,9 +230,15 @@ impl frame_system::Config for Runtime {
 
 impl pallet_randomness_collective_flip::Config for Runtime {}
 
+parameter_types! {
+	/// Number of maximum members.
+	pub const MaxMemberCnt: u32 = 3;
+}
+
 impl pallet_updater::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
+	type MaxMembers = MaxMemberCnt;
 }
 
 impl pallet_utility::Config for Runtime {
@@ -1045,8 +1049,7 @@ construct_runtime!(
 		Lottery: pallet_lottery::{Pallet, Call, Storage, Event<T>},
 		TransactionStorage: pallet_transaction_storage::{Pallet, Call, Storage, Inherent, Config<T>, Event<T>},
 		BagsList: pallet_bags_list::{Pallet, Call, Storage, Event<T>},
-		Updater: pallet_updater::{Pallet, Call, Config<T>, Storage, Event<T>},
-
+		Updater: pallet_updater::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
@@ -1379,7 +1382,6 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_treasury, Treasury);
 			list_benchmark!(list, extra, pallet_utility, Utility);
 			list_benchmark!(list, extra, pallet_vesting, Vesting);
-			
 
 			let storage_info = AllPalletsWithSystem::storage_info();
 

@@ -25,6 +25,7 @@ pub use pallet::*;
 pub mod pallet {
 	use frame_support::pallet_prelude::*;
 	use frame_system::pallet_prelude::*;
+	use sp_std::vec::Vec;
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
 	pub trait Config: frame_system::Config {
@@ -34,7 +35,7 @@ pub mod pallet {
 		type Call: From<Call<Self>>;
 
 		#[pallet::constant]
-		type MaxUpdatersCnt: Get<u32>;
+		type MaxMembers: Get<u32>;
 	}
 
 	#[pallet::pallet]
@@ -103,7 +104,7 @@ pub mod pallet {
 			ensure!(updaters.contains(&remove_acct), <Error<T>>::AccNotExist);
 
 			// https://docs.substrate.io/rustdocs/latest/sp_std/vec/struct.Vec.html#method.retain
-			<Members<T>>::mutate(|v| v.retain(|x| *x != remove_acct));
+			<Members<T>>::mutate(|v| v.retain(|x| x != &remove_acct));
 
 			Self::deposit_event(Event::RemovedUpdaters(remove_acct));
 
