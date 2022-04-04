@@ -22,7 +22,7 @@ use grandpa_primitives::AuthorityId as GrandpaId;
 use hex_literal::hex;
 use node_runtime::{
 	constants::currency::*, wasm_binary_unwrap, AssetsConfig, AuthorityDiscoveryConfig, BabeConfig,
-	BalancesConfig, Block, CouncilConfig, ElectionsConfig, GrandpaConfig, PalletUpdaterConfig,
+	BalancesConfig, Block, CouncilConfig, ElectionsConfig, GrandpaConfig, UpdaterConfig,
 	ImOnlineConfig, IndicesConfig, SessionConfig, SessionKeys, SocietyConfig, StakerStatus,
 	StakingConfig, SudoConfig, SystemConfig, TechnicalCommitteeConfig, MAX_NOMINATIONS,
 };
@@ -67,7 +67,6 @@ pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig, Extensions>;
 pub fn flaming_fir_config() -> Result<ChainSpec, String> {
 	ChainSpec::from_json_bytes(&include_bytes!("../res/flaming-fir.json")[..])
 }
-
 fn session_keys(
 	grandpa: GrandpaId,
 	babe: BabeId,
@@ -355,8 +354,9 @@ pub fn testnet_genesis(
 		grandpa: GrandpaConfig { authorities: vec![] },
 		technical_membership: Default::default(),
 		treasury: Default::default(),
-		pallet_updater: PalletUpdaterConfig {
-			members: vec![]
+		updater: UpdaterConfig {
+			phantom: Default::default(),
+			members: vec![],
 		},
 		society: SocietyConfig {
 			members: endowed_accounts
