@@ -233,11 +233,12 @@ impl pallet_randomness_collective_flip::Config for Runtime {}
 parameter_types! {
 	/// Number of maximum members.
 	pub const MaxMemberCnt: u32 = 3;
+	pub const MaxProposalCnt: u32 = 5;
 }
 
 impl pallet_updater::Config for Runtime {
 	type Event = Event;
-	type Call = Call;
+	type MaxProposals = MaxProposalCnt;
 	type MaxMembers = MaxMemberCnt;
 }
 
