@@ -10,7 +10,7 @@ use sp_std::collections::btree_map::BTreeMap;
 use std::sync::Arc;
 
 #[test]
-fn test_created_at_deleting_at() {
+fn cherry_test_created_at_deleting_at() {
 	let (p, _) = sp_core::sr25519::Pair::generate();
 	let (offchain, state) = testing::TestOffchainExt::new();
 	let (pool, _) = testing::TestTransactionPoolExt::new();
@@ -29,10 +29,6 @@ fn test_created_at_deleting_at() {
 	t.register_extension(TransactionPoolExt::new(pool));
 	t.register_extension(KeystoreExt(Arc::new(keystore)));
 
-	let multiaddr_vec =
-		"/ip4/127.0.0.1/tcp/4001/p2p/12D3KooWJdTrFkpPFMi4112oJUKeNvU4Haskg2rqNRCjdgc1yyVH"
-			.as_bytes()
-			.to_vec();
 	let cid_vec = "QmPZv7P8nQUSh2CpqTvUeYemFyjvMjgWEs8H1Tm8b3zAm9".as_bytes().to_vec();
 	let size = 1024;
 	let bytes = "sjdasdadasdjasdlasd".as_bytes().to_vec();
@@ -88,12 +84,6 @@ fn test_created_at_deleting_at() {
 	};
 
 	t.execute_with(|| {
-		assert_ok!(mock::Ipfs::create_ipfs_asset(
-			Origin::signed(p.clone().public()),
-			multiaddr_vec.clone(),
-			cid_vec.clone(),
-			size.clone(),
-		));
 		// ensure that the block_number is zero
 		System::set_block_number(0);
 		assert_ok!(mock::Ipfs::submit_ipfs_add_results(
