@@ -224,7 +224,6 @@ pub mod pallet {
 
 			Voting::<T>::insert(&proposal, voting);
 
-
 			Ok(())
 		}
 	}
