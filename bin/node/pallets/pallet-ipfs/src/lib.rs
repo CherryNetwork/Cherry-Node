@@ -79,7 +79,7 @@ pub mod pallet {
 	use sp_core::offchain::OpaqueMultiaddr;
 	use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
-	type AccountOf<T> = <T as frame_system::Config>::AccountId;
+	pub type AccountOf<T> = <T as frame_system::Config>::AccountId;
 	type BalanceOf<T> =
 		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
