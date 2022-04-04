@@ -27,6 +27,7 @@ pub mod pallet {
 		dispatch::{GetDispatchInfo, UnfilteredDispatchable},
 		pallet_prelude::*,
 		Parameter,
+		traits::InitializeMembers,
 	};
 	use frame_system::pallet_prelude::{OriginFor, *};
 	use sp_std::boxed::Box;
@@ -41,6 +42,35 @@ pub mod pallet {
 
 		#[pallet::constant]
 		type MaxMembers: Get<u32>;
+	}
+
+	#[pallet::genesis_config]
+	pub struct GenesisConfig<T: Config<I>, I: 'static = ()> {
+		pub phantom: PhantomData<I>,
+		pub members: Vec<T::AccountId>,
+	}
+
+	#[cfg(feature = "std")]
+	impl<T: Config<I>, I: 'static> Default for GenesisConfig<T, I> {
+		fn default() -> Self {
+			Self {phantom: Default::default(), members: Default::default()}
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config<I>, I: 'static> GenesisBuild<T, I> for GenesisConfig<T, I> {
+		fn build(&self) {
+			use sp_std::collections::btree_set::BTreeSet;
+			let members_set: BTreeSet<_> = self.members.iter().collect();
+
+			assert_eq!(
+				members_set.len(),
+				self.members.len(),
+				"Members must be unique"
+			);
+
+			Pallet::<T, I>::initialize_members(&self.members)
+		}
 	}
 
 	#[pallet::pallet]
@@ -125,6 +155,15 @@ pub mod pallet {
 			log::info!("\n\n\n test call \n\n\n");
 
 			Ok(Pays::Yes.into())
+		}
+	}
+
+	impl<T: Config<I>, I: 'static> InitializeMembers<T::AccountId> for Pallet<T, I> {
+		fn initialize_members(members: &[T::AccountId]) {
+			if !members.is_empty() {
+				assert!(<Members<T, I>>::get().is_empty(), "Members already initialized");
+				<Members<T, I>>::put(members);
+			}
 		}
 	}
 }
