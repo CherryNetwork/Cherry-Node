@@ -22,7 +22,7 @@ use grandpa_primitives::AuthorityId as GrandpaId;
 use hex_literal::hex;
 use node_runtime::{
 	constants::currency::*, wasm_binary_unwrap, AssetsConfig, AuthorityDiscoveryConfig, BabeConfig,
-	BalancesConfig, Block, CouncilConfig, ElectionsConfig, GrandpaConfig,
+	BalancesConfig, Block, CouncilConfig, ElectionsConfig, GrandpaConfig, PalletUpdaterConfig,
 	ImOnlineConfig, IndicesConfig, SessionConfig, SessionKeys, SocietyConfig, StakerStatus,
 	StakingConfig, SudoConfig, SystemConfig, TechnicalCommitteeConfig, MAX_NOMINATIONS,
 };
@@ -355,6 +355,9 @@ pub fn testnet_genesis(
 		grandpa: GrandpaConfig { authorities: vec![] },
 		technical_membership: Default::default(),
 		treasury: Default::default(),
+		pallet_updater: PalletUpdaterConfig {
+			members: vec![]
+		},
 		society: SocietyConfig {
 			members: endowed_accounts
 				.iter()
