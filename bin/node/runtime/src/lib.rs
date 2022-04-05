@@ -233,7 +233,7 @@ impl pallet_randomness_collective_flip::Config for Runtime {}
 parameter_types! {
 	/// Number of maximum members.
 	pub const MaxMemberCnt: u32 = 3;
-	pub const MaxProposalCnt: u32 = 5;
+	pub const MaxProposalCnt: u32 = 1;
 }
 
 impl pallet_updater::Config for Runtime {
