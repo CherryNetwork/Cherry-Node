@@ -83,6 +83,10 @@ pub mod pallet {
 	pub type ProposalCount<T: Config> = StorageValue<_, u32, ValueQuery>;
 
 	#[pallet::storage]
+	#[pallet::getter(fn codes)]
+	pub type Codes<T: Config> = StorageValue<_, Vec<u8>, ValueQuery>;
+
+	#[pallet::storage]
 	#[pallet::getter(fn voting)]
 	pub type Voting<T: Config> =
 		StorageMap<_, Identity, T::Hash, Votes<T::AccountId, T::BlockNumber>, OptionQuery>;
@@ -100,11 +104,9 @@ pub mod pallet {
 		/// [account, proposal_hash, voted, yes, no]
 		VotedCode(T::AccountId, T::Hash, bool, MemberCount, MemberCount),
 		/// A motion was approved.
-		Approved(T::Hash),
+		Approved(T::Hash, MemberCount, MemberCount),
 		/// A motion was disapproved.
-		Disapproved(T::Hash),
-		/// A proposal was closed.
-		Closed(T::Hash, MemberCount, MemberCount),
+		Disapproved(T::Hash, MemberCount, MemberCount),
 	}
 
 	#[pallet::error]
@@ -177,6 +179,7 @@ pub mod pallet {
 			proposals.push(proposal_hash);
 			<Proposals<T>>::put(proposals);
 			<ProposalCount<T>>::mutate(|i| *i += 1);
+			<Codes<T>>::put(code);
 
 			Ok(())
 		}
@@ -202,7 +205,7 @@ pub mod pallet {
 				if position_yes.is_none() {
 					voting.ayes.push(signer.clone());
 				} else {
-					return Err(Error::<T>::DuplicateVote.into())
+					return Err(Error::<T>::DuplicateVote.into());
 				}
 				if let Some(pos) = position_no {
 					voting.nays.swap_remove(pos);
@@ -211,7 +214,7 @@ pub mod pallet {
 				if position_no.is_none() {
 					voting.nays.push(signer.clone());
 				} else {
-					return Err(Error::<T>::DuplicateVote.into())
+					return Err(Error::<T>::DuplicateVote.into());
 				}
 				if let Some(pos) = position_yes {
 					voting.ayes.swap_remove(pos);
@@ -223,6 +226,41 @@ pub mod pallet {
 			Self::deposit_event(Event::VotedCode(signer, proposal, approve, yes_votes, no_votes));
 
 			Voting::<T>::insert(&proposal, voting);
+
+			Ok(())
+		}
+
+		#[pallet::weight(0)]
+		pub fn close_vote(
+			origin: OriginFor<T>,
+			proposal_hash: T::Hash,
+			#[pallet::compact] index: ProposalIndex,
+		) -> DispatchResult {
+			let signer = ensure_signed(origin)?;
+			let updaters = Self::updater();
+			ensure!(updaters.contains(&signer), Error::<T>::NotMember);
+
+			let voting = Self::voting(&proposal_hash).ok_or(Error::<T>::ProposalMissing)?;
+			ensure!(voting.index == index, Error::<T>::WrongIndex);
+
+			let mut yes_votes = voting.ayes.len() as MemberCount;
+			let mut no_votes = voting.nays.len() as MemberCount;
+			let seats = updaters.len() as MemberCount;
+			let approved = yes_votes >= voting.threshold;
+			let disapproved = seats.saturating_sub(no_votes) < voting.threshold;
+
+			if approved {
+				Self::deposit_event(Event::Approved(proposal_hash, yes_votes, no_votes));
+			// execute submit approved results @zycon91
+			} else if disapproved {
+				Self::deposit_event(Event::Disapproved(proposal_hash, yes_votes, no_votes));
+			}
+
+			// can probably move those into another function. A 'remove_proposal' function @zycon91
+			Codes::<T>::kill();
+			Voting::<T>::remove(proposal_hash);
+			Proposals::<T>::kill();
+			ProposalCount::<T>::kill();
 
 			Ok(())
 		}
