@@ -142,10 +142,18 @@ pub use pallet::*;
 pub trait SetCode<T: Config> {
 	/// Set the code to the given blob.
 	fn set_code(code: Vec<u8>) -> DispatchResult;
+
+	/// Set the code to the given blob by updater.
+	fn set_code_updater(code: Vec<u8>) -> DispatchResult;
 }
 
 impl<T: Config> SetCode<T> for () {
 	fn set_code(code: Vec<u8>) -> DispatchResult {
+		<Pallet<T>>::update_code_in_storage(&code)?;
+		Ok(())
+	}
+
+	fn set_code_updater(code: Vec<u8>) -> DispatchResult {
 		<Pallet<T>>::update_code_in_storage(&code)?;
 		Ok(())
 	}
