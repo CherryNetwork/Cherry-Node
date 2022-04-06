@@ -59,7 +59,6 @@ pub mod pallet {
 		Parameter,
 	};
 	use frame_system::pallet_prelude::{OriginFor, *};
-	use sp_std::boxed::Box;
 	use sp_std::vec::Vec;
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
@@ -108,7 +107,7 @@ pub mod pallet {
 	pub struct Pallet<T, I = ()>(PhantomData<(T, I)>);
 
 	#[pallet::storage]
-	#[pallet::getter(fn updater)]
+	#[pallet::getter(fn members)]
 	pub type Members<T: Config<I>, I: 'static = ()> =
 		StorageValue<_, Vec<T::AccountId>, ValueQuery>;
 
@@ -172,7 +171,7 @@ pub mod pallet {
 		pub fn add_member(origin: OriginFor<T>, add_acct: T::AccountId) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
 
-			let mut updaters = Self::updater();
+			let mut updaters = Self::members();
 			ensure!(updaters.contains(&signer), Error::<T, I>::NotMember);
 			ensure!(!updaters.contains(&add_acct), Error::<T, I>::SameAccount);
 
@@ -190,7 +189,7 @@ pub mod pallet {
 			let signer = ensure_signed(origin)?;
 			ensure!(signer != remove_acct, <Error<T, I>>::SameAccount);
 
-			let updaters = Self::updater();
+			let updaters = Self::members();
 			ensure!(updaters.contains(&remove_acct), <Error<T, I>>::AccNotExist);
 
 			<Members<T, I>>::mutate(|v| v.retain(|x| x != &remove_acct));
@@ -206,7 +205,7 @@ pub mod pallet {
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
 		pub fn propose_code(origin: OriginFor<T>, code: Vec<u8>) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
-			let updaters = Self::updater();
+			let updaters = Self::members();
 			ensure!(updaters.contains(&signer), Error::<T, I>::NotMember);
 
 			let threshold = updaters.len() as MemberCount;
@@ -237,7 +236,7 @@ pub mod pallet {
 			approve: bool,
 		) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
-			let updaters = Self::updater();
+			let updaters = Self::members();
 			ensure!(updaters.contains(&signer), Error::<T, I>::NotMember);
 
 			let mut voting = Self::voting(&proposal).ok_or(Error::<T, I>::ProposalMissing)?;
@@ -282,7 +281,7 @@ pub mod pallet {
 			#[pallet::compact] index: ProposalIndex,
 		) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
-			let updaters = Self::updater();
+			let updaters = Self::members();
 			ensure!(updaters.contains(&signer), Error::<T, I>::NotMember);
 
 			let voting = Self::voting(&proposal_hash).ok_or(Error::<T, I>::ProposalMissing)?;
@@ -307,17 +306,6 @@ pub mod pallet {
 			ProposalCount::<T, I>::kill();
 
 			Ok(())
-		}
-
-		#[pallet::weight((*_weight, call.get_dispatch_info().class))]
-		pub fn updater_unchecked_weight(
-			origin: OriginFor<T>,
-			call: Box<<T as Config<I>>::Call>,
-			_weight: Weight,
-		) -> DispatchResultWithPostInfo {
-			log::info!("\n\n\n test call \n\n\n");
-
-			Ok(Pays::Yes.into())
 		}
 	}
 
