@@ -238,6 +238,7 @@ parameter_types! {
 
 impl pallet_updater::Config for Runtime {
 	type Event = Event;
+	type Call = Call;
 	type MaxProposals = MaxProposalCnt;
 	type MaxMembers = MaxMemberCnt;
 }
