@@ -1050,7 +1050,7 @@ construct_runtime!(
 		Lottery: pallet_lottery::{Pallet, Call, Storage, Event<T>},
 		TransactionStorage: pallet_transaction_storage::{Pallet, Call, Storage, Inherent, Config<T>, Event<T>},
 		BagsList: pallet_bags_list::{Pallet, Call, Storage, Event<T>},
-		Updater: pallet_updater::{Pallet, Call, Storage, Event<T>},
+		Updater: pallet_updater::{Pallet, Call, Config<T>, Storage, Event<T>},
 	}
 );
 

@@ -51,13 +51,22 @@ pub struct Votes<AccountId, BlockNumber> {
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use frame_support::{dispatch::DispatchResult, pallet_prelude::*};
-	use frame_system::pallet_prelude::*;
+	use frame_support::{
+		dispatch::{DispatchResult, GetDispatchInfo, UnfilteredDispatchable},
+		pallet_prelude::*,
+		traits::InitializeMembers,
+		Parameter,
+	};
+	use frame_system::pallet_prelude::{OriginFor, *};
+	use sp_std::boxed::Box;
+	use sp_std::vec::Vec;
 	/// Configure the pallet by specifying the parameters and types on which it depends.
 	#[pallet::config]
-	pub trait Config: frame_system::Config {
+	pub trait Config<I: 'static = ()>: frame_system::Config {
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
-		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
+		type Event: From<Event<Self, I>> + IsType<<Self as frame_system::Config>::Event>;
+
+		type Call: Parameter + UnfilteredDispatchable<Origin = Self::Origin> + GetDispatchInfo;
 
 		#[pallet::constant]
 		/// Maximum number of members.
@@ -66,34 +75,60 @@ pub mod pallet {
 		type MaxProposals: Get<ProposalIndex>;
 	}
 
+	#[pallet::genesis_config]
+	pub struct GenesisConfig<T: Config<I>, I: 'static = ()> {
+		pub phantom: PhantomData<I>,
+		pub members: Vec<T::AccountId>,
+	}
+
+	#[cfg(feature = "std")]
+	impl<T: Config<I>, I: 'static> Default for GenesisConfig<T, I> {
+		fn default() -> Self {
+			Self { phantom: Default::default(), members: Default::default() }
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config<I>, I: 'static> GenesisBuild<T, I> for GenesisConfig<T, I> {
+		fn build(&self) {
+			use sp_std::collections::btree_set::BTreeSet;
+			let members_set: BTreeSet<_> = self.members.iter().collect();
+
+			assert_eq!(members_set.len(), self.members.len(), "Members must be unique");
+
+			Pallet::<T, I>::initialize_members(&self.members)
+		}
+	}
+
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
-	pub struct Pallet<T>(_);
+	pub struct Pallet<T, I = ()>(PhantomData<(T, I)>);
 
 	#[pallet::storage]
 	#[pallet::getter(fn updater)]
-	pub type Members<T: Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
+	pub type Members<T: Config<I>, I: 'static = ()> =
+		StorageValue<_, Vec<T::AccountId>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn proposals)]
-	pub type Proposals<T: Config> = StorageValue<_, Vec<T::Hash>, ValueQuery>;
+	pub type Proposals<T: Config<I>, I: 'static = ()> = StorageValue<_, Vec<T::Hash>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn proposal_count)]
-	pub type ProposalCount<T: Config> = StorageValue<_, u32, ValueQuery>;
+	pub type ProposalCount<T: Config<I>, I: 'static = ()> = StorageValue<_, u32, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn codes)]
-	pub type Codes<T: Config> = StorageValue<_, Vec<u8>, ValueQuery>;
+	pub type Codes<T: Config<I>, I: 'static = ()> = StorageValue<_, Vec<u8>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn voting)]
-	pub type Voting<T: Config> =
+	pub type Voting<T: Config<I>, I: 'static = ()> =
 		StorageMap<_, Identity, T::Hash, Votes<T::AccountId, T::BlockNumber>, OptionQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
-	pub enum Event<T: Config> {
+	pub enum Event<T: Config<I>, I: 'static = ()> {
 		/// User added.
 		AddedUpdater(T::AccountId),
 		/// User removed.
@@ -110,7 +145,7 @@ pub mod pallet {
 	}
 
 	#[pallet::error]
-	pub enum Error<T> {
+	pub enum Error<T, I = ()> {
 		/// Ensures that an account is different from the other.
 		SameAccount,
 		/// User with the `AccountId` is not a member.
@@ -128,18 +163,18 @@ pub mod pallet {
 	}
 
 	#[pallet::call]
-	impl<T: Config> Pallet<T> {
+	impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		/// Add a new member to storage.
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
 		pub fn add_member(origin: OriginFor<T>, add_acct: T::AccountId) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
 
 			let mut updaters = Self::updater();
-			ensure!(updaters.contains(&signer), Error::<T>::NotMember);
-			ensure!(!updaters.contains(&add_acct), Error::<T>::SameAccount);
+			ensure!(updaters.contains(&signer), Error::<T, I>::NotMember);
+			ensure!(!updaters.contains(&add_acct), Error::<T, I>::SameAccount);
 
 			updaters.push(add_acct.clone());
-			<Members<T>>::put(updaters);
+			<Members<T, I>>::put(updaters);
 
 			Self::deposit_event(Event::AddedUpdater(add_acct));
 
@@ -150,13 +185,12 @@ pub mod pallet {
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
 		pub fn remove_member(origin: OriginFor<T>, remove_acct: T::AccountId) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
-			ensure!(signer != remove_acct, <Error<T>>::SameAccount);
+			ensure!(signer != remove_acct, <Error<T, I>>::SameAccount);
 
 			let updaters = Self::updater();
-			ensure!(updaters.contains(&remove_acct), <Error<T>>::AccNotExist);
+			ensure!(updaters.contains(&remove_acct), <Error<T, I>>::AccNotExist);
 
-			// https://docs.substrate.io/rustdocs/latest/sp_std/vec/struct.Vec.html#method.retain
-			<Members<T>>::mutate(|v| v.retain(|x| x != &remove_acct));
+			<Members<T, I>>::mutate(|v| v.retain(|x| x != &remove_acct));
 
 			Self::deposit_event(Event::RemovedUpdater(remove_acct));
 
@@ -170,16 +204,16 @@ pub mod pallet {
 		pub fn propose_code(origin: OriginFor<T>, code: Vec<u8>) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
 			let updaters = Self::updater();
-			ensure!(updaters.contains(&signer), Error::<T>::NotMember);
+			ensure!(updaters.contains(&signer), Error::<T, I>::NotMember);
 
 			let proposal_hash = T::Hashing::hash_of(&code);
 			let mut proposals = Self::proposals();
-			ensure!(!proposals.contains(&proposal_hash), <Error<T>>::DuplicateProposal);
+			ensure!(!proposals.contains(&proposal_hash), <Error<T, I>>::DuplicateProposal);
 
 			proposals.push(proposal_hash);
-			<Proposals<T>>::put(proposals);
-			<ProposalCount<T>>::mutate(|i| *i += 1);
-			<Codes<T>>::put(code);
+			<Proposals<T, I>>::put(proposals);
+			<ProposalCount<T, I>>::mutate(|i| *i += 1);
+			<Codes<T, I>>::put(code);
 
 			Ok(())
 		}
@@ -193,10 +227,10 @@ pub mod pallet {
 		) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
 			let updaters = Self::updater();
-			ensure!(updaters.contains(&signer), Error::<T>::NotMember);
+			ensure!(updaters.contains(&signer), Error::<T, I>::NotMember);
 
-			let mut voting = Self::voting(&proposal).ok_or(Error::<T>::ProposalMissing)?;
-			ensure!(voting.index == index, Error::<T>::WrongIndex);
+			let mut voting = Self::voting(&proposal).ok_or(Error::<T, I>::ProposalMissing)?;
+			ensure!(voting.index == index, Error::<T, I>::WrongIndex);
 
 			let position_yes = voting.ayes.iter().position(|a| a == &signer);
 			let position_no = voting.nays.iter().position(|a| a == &signer);
@@ -205,7 +239,7 @@ pub mod pallet {
 				if position_yes.is_none() {
 					voting.ayes.push(signer.clone());
 				} else {
-					return Err(Error::<T>::DuplicateVote.into());
+					return Err(Error::<T, I>::DuplicateVote.into());
 				}
 				if let Some(pos) = position_no {
 					voting.nays.swap_remove(pos);
@@ -214,7 +248,7 @@ pub mod pallet {
 				if position_no.is_none() {
 					voting.nays.push(signer.clone());
 				} else {
-					return Err(Error::<T>::DuplicateVote.into());
+					return Err(Error::<T, I>::DuplicateVote.into());
 				}
 				if let Some(pos) = position_yes {
 					voting.ayes.swap_remove(pos);
@@ -225,7 +259,7 @@ pub mod pallet {
 			let no_votes = voting.nays.len() as MemberCount;
 			Self::deposit_event(Event::VotedCode(signer, proposal, approve, yes_votes, no_votes));
 
-			Voting::<T>::insert(&proposal, voting);
+			Voting::<T, I>::insert(&proposal, voting);
 
 			Ok(())
 		}
@@ -238,10 +272,10 @@ pub mod pallet {
 		) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
 			let updaters = Self::updater();
-			ensure!(updaters.contains(&signer), Error::<T>::NotMember);
+			ensure!(updaters.contains(&signer), Error::<T, I>::NotMember);
 
-			let voting = Self::voting(&proposal_hash).ok_or(Error::<T>::ProposalMissing)?;
-			ensure!(voting.index == index, Error::<T>::WrongIndex);
+			let voting = Self::voting(&proposal_hash).ok_or(Error::<T, I>::ProposalMissing)?;
+			ensure!(voting.index == index, Error::<T, I>::WrongIndex);
 
 			let yes_votes = voting.ayes.len() as MemberCount;
 			let no_votes = voting.nays.len() as MemberCount;
@@ -256,12 +290,32 @@ pub mod pallet {
 			}
 
 			// can probably move those into another function. A 'remove_proposal' function @zycon91
-			Codes::<T>::kill();
-			Voting::<T>::remove(proposal_hash);
-			Proposals::<T>::kill();
-			ProposalCount::<T>::kill();
+			Codes::<T, I>::kill();
+			Voting::<T, I>::remove(proposal_hash);
+			Proposals::<T, I>::kill();
+			ProposalCount::<T, I>::kill();
 
 			Ok(())
+		}
+
+		#[pallet::weight((*_weight, call.get_dispatch_info().class))]
+		pub fn updater_unchecked_weight(
+			origin: OriginFor<T>,
+			call: Box<<T as Config<I>>::Call>,
+			_weight: Weight,
+		) -> DispatchResultWithPostInfo {
+			log::info!("\n\n\n test call \n\n\n");
+
+			Ok(Pays::Yes.into())
+		}
+	}
+
+	impl<T: Config<I>, I: 'static> InitializeMembers<T::AccountId> for Pallet<T, I> {
+		fn initialize_members(members: &[T::AccountId]) {
+			if !members.is_empty() {
+				assert!(<Members<T, I>>::get().is_empty(), "Members already initialized");
+				<Members<T, I>>::put(members);
+			}
 		}
 	}
 }
