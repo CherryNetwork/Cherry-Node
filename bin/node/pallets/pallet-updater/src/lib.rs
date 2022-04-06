@@ -26,8 +26,8 @@ pub mod pallet {
 	use frame_support::{
 		dispatch::{GetDispatchInfo, UnfilteredDispatchable},
 		pallet_prelude::*,
-		Parameter,
 		traits::InitializeMembers,
+		Parameter,
 	};
 	use frame_system::pallet_prelude::{OriginFor, *};
 	use sp_std::boxed::Box;
@@ -53,7 +53,7 @@ pub mod pallet {
 	#[cfg(feature = "std")]
 	impl<T: Config<I>, I: 'static> Default for GenesisConfig<T, I> {
 		fn default() -> Self {
-			Self {phantom: Default::default(), members: Default::default()}
+			Self { phantom: Default::default(), members: Default::default() }
 		}
 	}
 
@@ -63,11 +63,7 @@ pub mod pallet {
 			use sp_std::collections::btree_set::BTreeSet;
 			let members_set: BTreeSet<_> = self.members.iter().collect();
 
-			assert_eq!(
-				members_set.len(),
-				self.members.len(),
-				"Members must be unique"
-			);
+			assert_eq!(members_set.len(), self.members.len(), "Members must be unique");
 
 			Pallet::<T, I>::initialize_members(&self.members)
 		}
@@ -97,6 +93,7 @@ pub mod pallet {
 		/// parameters. [something, who]
 		AddedUpdaters(T::AccountId),
 		RemovedUpdaters(T::AccountId),
+		DispatchedCall(DispatchResult),
 	}
 
 	// Errors inform users that something went wrong.
@@ -152,7 +149,13 @@ pub mod pallet {
 			call: Box<<T as Config<I>>::Call>,
 			_weight: Weight,
 		) -> DispatchResultWithPostInfo {
-			log::info!("\n\n\n test call \n\n\n");
+			let signer = ensure_signed(origin)?;
+
+			let updaters = Self::updater();
+			ensure!(updaters.contains(&signer), <Error<T, I>>::NotMember);
+
+			let res = call.dispatch_bypass_filter(frame_system::RawOrigin::Signed(signer).into());
+			Self::deposit_event(Event::DispatchedCall(res.map(|_| ()).map_err(|e| e.error)));
 
 			Ok(Pays::Yes.into())
 		}
