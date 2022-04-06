@@ -19,7 +19,6 @@
 	`unchecked_weight` is needed because `set_code` will always exhaust block limits,
 	that way we bypass the limit with not actually telling the node what the limit is.
 */
-pub mod functions;
 use scale_info::TypeInfo;
 use sp_runtime::{traits::Hash, RuntimeDebug};
 
@@ -252,10 +251,6 @@ pub mod pallet {
 
 			if approved {
 				Self::deposit_event(Event::Approved(proposal_hash, yes_votes, no_votes));
-				// can probably move the 3 following lines into another function. @zycon91
-				let code = Self::codes();
-				Self::can_set_code(&code)?;
-				Self::set_code(code)?;
 			} else if disapproved {
 				Self::deposit_event(Event::Disapproved(proposal_hash, yes_votes, no_votes));
 			}
