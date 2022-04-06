@@ -26,6 +26,7 @@ use frame_support::codec::{Decode, Encode};
 
 pub use pallet::*;
 use sp_std::vec::Vec;
+use sp_std::vec;
 
 /// Simple index type for proposal counting.
 pub type ProposalIndex = u32;
@@ -40,7 +41,7 @@ pub struct Votes<AccountId, BlockNumber> {
 	index: ProposalIndex,
 	/// Number of approval votes that are needed to pass the proposal.
 	threshold: MemberCount,
-	/// Current set of voters that approved it.
+	/// Current set of voters that approved it.ß
 	ayes: Vec<AccountId>,
 	/// Current set of voters that rejected it.
 	nays: Vec<AccountId>,
@@ -73,6 +74,8 @@ pub mod pallet {
 		type MaxMembers: Get<u32>;
 		/// Maximum number of proposals allowed to be active at the same time.
 		type MaxProposals: Get<ProposalIndex>;
+		/// The duration of an updater proposal.
+		type MotionDuration: Get<Self::BlockNumber>;
 	}
 
 	#[pallet::genesis_config]
@@ -206,14 +209,22 @@ pub mod pallet {
 			let updaters = Self::updater();
 			ensure!(updaters.contains(&signer), Error::<T, I>::NotMember);
 
+			let threshold = updaters.len() as MemberCount;
+
 			let proposal_hash = T::Hashing::hash_of(&code);
 			let mut proposals = Self::proposals();
 			ensure!(!proposals.contains(&proposal_hash), <Error<T, I>>::DuplicateProposal);
 
+			let index = Self::proposal_count();
 			proposals.push(proposal_hash);
 			<Proposals<T, I>>::put(proposals);
 			<ProposalCount<T, I>>::mutate(|i| *i += 1);
 			<Codes<T, I>>::put(code);
+			let votes = {
+				let end = frame_system::Pallet::<T>::block_number() + T::MotionDuration::get();
+				Votes { index, threshold, ayes: vec![], nays: vec![], end }
+			};
+			<Voting<T, I>>::insert(proposal_hash, votes);
 
 			Ok(())
 		}

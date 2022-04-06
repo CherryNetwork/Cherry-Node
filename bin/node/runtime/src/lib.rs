@@ -234,6 +234,7 @@ parameter_types! {
 	/// Number of maximum members.
 	pub const MaxMemberCnt: u32 = 3;
 	pub const MaxProposalCnt: u32 = 1;
+	pub const UpdaterMotionDuration: BlockNumber = TECHNICAL_MOTION_DURATION;
 }
 
 impl pallet_updater::Config for Runtime {
@@ -241,6 +242,7 @@ impl pallet_updater::Config for Runtime {
 	type Call = Call;
 	type MaxProposals = MaxProposalCnt;
 	type MaxMembers = MaxMemberCnt;
+	type MotionDuration = UpdaterMotionDuration;
 }
 
 impl pallet_utility::Config for Runtime {
