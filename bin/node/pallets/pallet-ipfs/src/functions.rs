@@ -1,5 +1,6 @@
 use super::*;
 use sp_runtime::offchain::{ipfs, IpfsRequest, IpfsResponse};
+use std::convert::TryInto;
 
 impl<T: Config> Pallet<T> {
 	pub fn retrieve_bytes(_public_key: Bytes, _signature: Bytes, message: Bytes) -> Bytes {
@@ -18,12 +19,13 @@ impl<T: Config> Pallet<T> {
 		acct: &T::AccountId,
 	) -> Result<OwnershipLayer, Error<T>> {
 		match Self::ipfs_asset(cid) {
-			Some(ipfs) =>
+			Some(ipfs) => {
 				if let Some(layer) = ipfs.owners.get_key_value(acct) {
 					Ok(layer.1.clone())
 				} else {
 					Err(<Error<T>>::AccNotExist)
-				},
+				}
+			},
 			None => Err(<Error<T>>::IpfsNotExist),
 		}
 	}
@@ -68,7 +70,7 @@ impl<T: Config> Pallet<T> {
 					// connect and upload the same CID, you will get a duplicate
 					// conn error. @charmitro
 					match Self::ipfs_request(IpfsRequest::Connect(m_addr.clone()), deadline) {
-						Ok(IpfsResponse::Success) =>
+						Ok(IpfsResponse::Success) => {
 							match Self::ipfs_request(IpfsRequest::CatBytes(cid.clone()), deadline) {
 								Ok(IpfsResponse::CatBytes(data)) => {
 									log::info!("IPFS: fetched data");
@@ -172,15 +174,104 @@ impl<T: Config> Pallet<T> {
 									"only AddBytes can be a response for that request type."
 								),
 								Err(e) => log::error!("IPFS: add error: {:?}", e),
-							},
-						Ok(_) =>
-							unreachable!("only AddBytes can be a response for that request type."),
+							}
+						},
+						Ok(_) => {
+							unreachable!("only AddBytes can be a response for that request type.")
+						},
+						Err(e) => log::error!("IPFS: add error: {:?}", e),
+					}
+				},
+				DataCommand::AddBytesPrice(m_addr, data, admin, is_recursive) => {
+					match Self::ipfs_request(IpfsRequest::Connect(m_addr.clone()), deadline) {
+						Ok(IpfsResponse::Success) => {
+							match Self::ipfs_request(
+								IpfsRequest::AddBytes(vec![data.try_into().unwrap()]),
+								deadline,
+							) {
+								Ok(IpfsResponse::AddBytes(cid)) => {
+									log::info!("IPFS: added data");
+									Self::ipfs_request(
+										IpfsRequest::Disconnect(m_addr.clone()),
+										deadline,
+									)?;
+
+									// signer is the probably the node account (often Alice)
+									let signer = Signer::<T, T::AuthorityId>::all_accounts();
+									if !signer.can_sign() {
+										log::error!(
+												"No local account available. Consider adding one via `author_insertKey` RPC.",
+											);
+									}
+
+									let results = signer.send_signed_transaction(|_account| {
+										Call::submit_ipfs_add_results {
+											// admin should be the actual account that we is doing
+											// the transcation in the first place(create_ipfs_asset)
+											admin: admin.clone(),
+											cid: cid.clone(),
+											size: 1u64,
+										}
+									});
+
+									for (_, res) in &results {
+										match res {
+											Ok(()) => {
+												// also this probably doesn't work.
+												log::info!("Submited IPFS results")
+											},
+											Err(e) => {
+												log::error!("Failed to submit transaction: {:?}", e)
+											},
+										}
+									}
+
+									match Self::ipfs_request(
+										IpfsRequest::InsertPin(cid.clone(), is_recursive),
+										deadline,
+									) {
+										Ok(IpfsResponse::Success) => {
+											log::info!(
+												"IPFS: pinned data with CID: {}",
+												sp_std::str::from_utf8(&cid).expect("trusted")
+											)
+										},
+										Ok(_) => {
+											unreachable!("only Success can be a response for that request type")
+										},
+										Err(e) => log::error!("IPFS: Pin Error: {:?}", e),
+									}
+
+									match Self::ipfs_request(
+										IpfsRequest::Disconnect(m_addr.clone()),
+										deadline,
+									) {
+										Ok(IpfsResponse::Success) => {
+											log::info!("IPFS: Disconeccted Succes")
+										},
+										Ok(_) => {
+											unreachable!("only Success can be a response for that request type")
+										},
+										Err(e) => {
+											log::error!("IPFS: Disconnect Error: {:?}", e)
+										},
+									}
+								},
+								Ok(_) => unreachable!(
+									"only AddBytes can be a response for that request type."
+								),
+								Err(e) => log::error!("IPFS: add error: {:?}", e),
+							}
+						},
+						Ok(_) => {
+							unreachable!("only AddBytes can be a response for that request type.")
+						},
 						Err(e) => log::error!("IPFS: add error: {:?}", e),
 					}
 				},
 				DataCommand::AddBytesRaw(m_addr, data, admin, is_recursive) => {
 					match Self::ipfs_request(IpfsRequest::Connect(m_addr.clone()), deadline) {
-						Ok(IpfsResponse::Success) =>
+						Ok(IpfsResponse::Success) => {
 							match Self::ipfs_request(IpfsRequest::AddBytes(data.clone()), deadline)
 							{
 								Ok(IpfsResponse::AddBytes(cid)) => {
@@ -255,9 +346,11 @@ impl<T: Config> Pallet<T> {
 									"only AddBytes can be a response for that request type."
 								),
 								Err(e) => log::error!("IPFS: add error: {:?}", e),
-							},
-						Ok(_) =>
-							unreachable!("only AddBytes can be a response for that request type."),
+							}
+						},
+						Ok(_) => {
+							unreachable!("only AddBytes can be a response for that request type.")
+						},
 						Err(e) => log::error!("IPFS: add error: {:?}", e),
 					}
 				},
@@ -274,13 +367,14 @@ impl<T: Config> Pallet<T> {
 									.expect("our own calls can be trusted to be UTF-8; qed")
 							);
 						},
-						Ok(_) =>
-							unreachable!("only AddBytes can be a response for that request type."),
+						Ok(_) => {
+							unreachable!("only AddBytes can be a response for that request type.")
+						},
 						Err(e) => log::error!("IPFS: add error: {:?}", e),
 					}
 				},
 
-				DataCommand::InsertPin(_m_addr, cid, _admin, is_recursive) =>
+				DataCommand::InsertPin(_m_addr, cid, _admin, is_recursive) => {
 					match Self::ipfs_request(
 						IpfsRequest::InsertPin(cid.clone(), is_recursive),
 						deadline,
@@ -317,9 +411,10 @@ impl<T: Config> Pallet<T> {
 							unreachable!("only Success can be a response for that request type")
 						},
 						Err(e) => log::error!("IPFS: Pin Error: {:?}", e),
-					},
+					}
+				},
 
-				DataCommand::RemovePin(_m_addr, cid, _admin, is_recursive) =>
+				DataCommand::RemovePin(_m_addr, cid, _admin, is_recursive) => {
 					match Self::ipfs_request(
 						IpfsRequest::RemovePin(cid.clone(), is_recursive),
 						deadline,
@@ -356,7 +451,8 @@ impl<T: Config> Pallet<T> {
 							unreachable!("only Success can be a response for that request type")
 						},
 						Err(e) => log::error!("IPFS: Remove Pin Error: {:?}", e),
-					},
+					}
+				},
 
 				DataCommand::RemoveBlock(_m_addr, cid, _admin) => {
 					match Self::ipfs_request(IpfsRequest::RemoveBlock(cid.clone()), deadline) {
@@ -388,8 +484,9 @@ impl<T: Config> Pallet<T> {
 								}
 							}
 						},
-						Ok(_) =>
-							unreachable!("only RemoveBlock can be a response for that request type"),
+						Ok(_) => {
+							unreachable!("only RemoveBlock can be a response for that request type")
+						},
 						Err(e) => log::error!("IPFS: Remove Block Error: {:?}", e),
 					}
 				},

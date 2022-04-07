@@ -22,6 +22,7 @@ use sp_core::{
 	Bytes,
 };
 use sp_io::offchain::timestamp;
+use sp_std::convert::TryInto;
 use sp_std::vec::Vec;
 
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"chfs");
@@ -61,6 +62,7 @@ pub use weights::WeightInfo;
 pub enum DataCommand<AccountId> {
 	AddBytes(OpaqueMultiaddr, Vec<u8>, u64, AccountId, bool),
 	AddBytesRaw(OpaqueMultiaddr, Vec<u8>, AccountId, bool),
+	AddBytesPrice(OpaqueMultiaddr, u32, AccountId, bool),
 	CatBytes(OpaqueMultiaddr, Vec<u8>, AccountId),
 	InsertPin(OpaqueMultiaddr, Vec<u8>, AccountId, bool),
 	RemovePin(OpaqueMultiaddr, Vec<u8>, AccountId, bool),
@@ -249,6 +251,7 @@ pub mod pallet {
 			addr: Vec<u8>,
 			cid: Vec<u8>,
 			size: u64,
+			price: Option<u32>, // TODO(elsuizo:2022-04-06): add here a BalanceOf<T>
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
@@ -257,10 +260,23 @@ pub mod pallet {
 				<Error<T>>::IpfsAlreadyOwned
 			);
 
-			let multiaddr = OpaqueMultiaddr(addr);
-			<DataQueue<T>>::mutate(|queue| {
-				queue.push(DataCommand::AddBytes(multiaddr, cid, size, sender.clone(), true))
-			});
+			if let Some(value) = price {
+				let extra_duration = 100 * (value / 1000);
+				let multiaddr = OpaqueMultiaddr(addr.clone());
+				<DataQueue<T>>::mutate(|queue| {
+					queue.push(DataCommand::AddBytesPrice(
+						multiaddr,
+						extra_duration,
+						sender.clone(),
+						true,
+					))
+				});
+			} else {
+				let multiaddr = OpaqueMultiaddr(addr.clone());
+				<DataQueue<T>>::mutate(|queue| {
+					queue.push(DataCommand::AddBytes(multiaddr, cid, size, sender.clone(), true))
+				});
+			}
 
 			Self::deposit_event(Event::QueuedDataToAdd(sender.clone()));
 
@@ -447,31 +463,80 @@ pub mod pallet {
 		) -> DispatchResult {
 			ensure_signed(origin)?;
 
-			<DataQueue<T>>::take();
+			let data_queue = DataQueue::<T>::get();
 
-			let current_block = <frame_system::Pallet<T>>::block_number();
-			let asset_lifetime = current_block + T::DefaultAssetLifetime::get();
-			let mut gateway_url = "http://15.188.14.75:8080/ipfs/".as_bytes().to_vec();
-			gateway_url.append(&mut cid.clone());
+			for command in data_queue.iter() {
+				match command {
+					DataCommand::AddBytesPrice(_, price, _, _) => {
+						let price = TryInto::<BlockNumberFor<T>>::try_into(*price).ok();
+						let current_block = <frame_system::Pallet<T>>::block_number();
+						let asset_lifetime = current_block + T::DefaultAssetLifetime::get();
+						let mut gateway_url = "http://15.188.14.75:8080/ipfs/".as_bytes().to_vec();
+						gateway_url.append(&mut cid.clone());
 
-			let mut ipfs = Ipfs::<T> {
-				cid: cid.clone(),
-				size,
-				gateway_url,
-				owners: BTreeMap::<AccountOf<T>, OwnershipLayer>::new(),
-				created_at: current_block,
-				deleting_at: asset_lifetime,
-				pinned: true, // true by default.
-			};
+						let mut ipfs = Ipfs::<T> {
+							cid: cid.clone(),
+							size,
+							gateway_url,
+							owners: BTreeMap::<AccountOf<T>, OwnershipLayer>::new(),
+							created_at: current_block,
+							deleting_at: asset_lifetime + price.unwrap(),
+							pinned: true, // true by default.
+						};
 
-			ipfs.owners.insert(admin.clone(), OwnershipLayer::default());
+						ipfs.owners.insert(admin.clone(), OwnershipLayer::default());
 
-			let new_cnt = Self::ipfs_cnt().checked_add(1).ok_or(<Error<T>>::IpfsCntOverflow)?;
+						let new_cnt =
+							Self::ipfs_cnt().checked_add(1).ok_or(<Error<T>>::IpfsCntOverflow)?;
 
-			<IpfsAssetOwned<T>>::try_mutate(&admin, |ipfs_vec| ipfs_vec.try_push(cid.clone()))
-				.map_err(|_| <Error<T>>::ExceedMaxIpfsOwned)?;
-			<IpfsAsset<T>>::insert(cid.clone(), ipfs);
-			<IpfsCnt<T>>::put(new_cnt);
+						<IpfsAssetOwned<T>>::try_mutate(&admin, |ipfs_vec| {
+							ipfs_vec.try_push(cid.clone())
+						})
+						.map_err(|_| <Error<T>>::ExceedMaxIpfsOwned)?;
+						<IpfsAsset<T>>::insert(cid.clone(), ipfs);
+						<IpfsCnt<T>>::put(new_cnt);
+					},
+					_ => {
+						let current_block = <frame_system::Pallet<T>>::block_number();
+						let asset_lifetime = current_block + T::DefaultAssetLifetime::get();
+						let mut gateway_url = "http://15.188.14.75:8080/ipfs/".as_bytes().to_vec();
+						gateway_url.append(&mut cid.clone());
+
+						let mut ipfs = Ipfs::<T> {
+							cid: cid.clone(),
+							size,
+							gateway_url,
+							owners: BTreeMap::<AccountOf<T>, OwnershipLayer>::new(),
+							created_at: current_block,
+							deleting_at: asset_lifetime,
+							pinned: true, // true by default.
+						};
+
+						ipfs.owners.insert(admin.clone(), OwnershipLayer::default());
+
+						let new_cnt =
+							Self::ipfs_cnt().checked_add(1).ok_or(<Error<T>>::IpfsCntOverflow)?;
+
+						<IpfsAssetOwned<T>>::try_mutate(&admin, |ipfs_vec| {
+							ipfs_vec.try_push(cid.clone())
+						})
+						.map_err(|_| <Error<T>>::ExceedMaxIpfsOwned)?;
+						<IpfsAsset<T>>::insert(cid.clone(), ipfs.clone());
+						<IpfsCnt<T>>::put(new_cnt);
+						ipfs.owners.insert(admin.clone(), OwnershipLayer::default());
+
+						let new_cnt =
+							Self::ipfs_cnt().checked_add(1).ok_or(<Error<T>>::IpfsCntOverflow)?;
+
+						<IpfsAssetOwned<T>>::try_mutate(&admin, |ipfs_vec| {
+							ipfs_vec.try_push(cid.clone())
+						})
+						.map_err(|_| <Error<T>>::ExceedMaxIpfsOwned)?;
+						<IpfsAsset<T>>::insert(cid.clone(), ipfs);
+						<IpfsCnt<T>>::put(new_cnt);
+					},
+				}
+			}
 
 			Ok(())
 		}
