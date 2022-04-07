@@ -1,33 +1,14 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-/*
-	Memberships pallet that members are capable of doing RuntimeUpgrades.
-	Notes: Runtime Upgrades are only succesful if the extrinsic is submitted with
-	`unchecked_weight`,  that means:
-	```rust
-		//                REQUIRED
-		#[pallet::weight((*_weight, call.get_dispatch_info().class))]
-		pub fn <call_name>_unchecked_weight(
-			origin: OriginFor<T>,
-			call: Box<<T as Config>::Call>,
-			_weight: Weight, // REQUIRED
-		) -> DispatchResultWithPostInfo {
-			. . .
-		}
-	```
-
-	`unchecked_weight` is needed because `set_code` will always exhaust block limits,
-	that way we bypass the limit with not actually telling the node what the limit is.
-*/
+use frame_system::SetCode;
 use scale_info::TypeInfo;
 use sp_runtime::{traits::Hash, RuntimeDebug};
-use frame_system::SetCode;
 
 use frame_support::codec::{Decode, Encode};
 
 pub use pallet::*;
-use sp_std::vec::Vec;
 use sp_std::vec;
+use sp_std::vec::Vec;
 
 /// Simple index type for proposal counting.
 pub type ProposalIndex = u32;
@@ -297,8 +278,9 @@ pub mod pallet {
 			if approved {
 				Self::deposit_event(Event::Approved(proposal_hash, yes_votes, no_votes));
 				let code = Self::codes();
-				// TODO call can_set_code @charmitro
-				<T as frame_system::Config>::OnSetCode::set_code(code.clone())?;
+
+				frame_system::Pallet::<T>::can_set_code(&code)?;
+				<T as frame_system::Config>::OnSetCode::set_code(code)?;
 			} else if disapproved {
 				Self::deposit_event(Event::Disapproved(proposal_hash, yes_votes, no_votes));
 			}
