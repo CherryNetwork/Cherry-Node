@@ -316,7 +316,7 @@ pub mod pallet {
 			cid: Vec<u8>,
 			fee: BalanceOf<T>,
 		) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
+			ensure_signed(origin)?;
 
 			if let Some(value) = TryInto::<u32>::try_into(fee).ok() {
 				let extra_duration = 100 * (value / 1000);
