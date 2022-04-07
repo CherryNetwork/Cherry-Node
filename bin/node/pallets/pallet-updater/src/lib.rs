@@ -21,6 +21,7 @@
 */
 use scale_info::TypeInfo;
 use sp_runtime::{traits::Hash, RuntimeDebug};
+use frame_system::SetCode;
 
 use frame_support::codec::{Decode, Encode};
 
@@ -171,12 +172,12 @@ pub mod pallet {
 		pub fn add_member(origin: OriginFor<T>, add_acct: T::AccountId) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
 
-			let mut updaters = Self::members();
-			ensure!(updaters.contains(&signer), Error::<T, I>::NotMember);
-			ensure!(!updaters.contains(&add_acct), Error::<T, I>::SameAccount);
+			let mut members = Self::members();
+			ensure!(members.contains(&signer), Error::<T, I>::NotMember);
+			ensure!(!members.contains(&add_acct), Error::<T, I>::SameAccount);
 
-			updaters.push(add_acct.clone());
-			<Members<T, I>>::put(updaters);
+			members.push(add_acct.clone());
+			<Members<T, I>>::put(members);
 
 			Self::deposit_event(Event::AddedUpdater(add_acct));
 
@@ -189,8 +190,8 @@ pub mod pallet {
 			let signer = ensure_signed(origin)?;
 			ensure!(signer != remove_acct, <Error<T, I>>::SameAccount);
 
-			let updaters = Self::members();
-			ensure!(updaters.contains(&remove_acct), <Error<T, I>>::AccNotExist);
+			let members = Self::members();
+			ensure!(members.contains(&remove_acct), <Error<T, I>>::AccNotExist);
 
 			<Members<T, I>>::mutate(|v| v.retain(|x| x != &remove_acct));
 
@@ -205,10 +206,10 @@ pub mod pallet {
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
 		pub fn propose_code(origin: OriginFor<T>, code: Vec<u8>) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
-			let updaters = Self::members();
-			ensure!(updaters.contains(&signer), Error::<T, I>::NotMember);
+			let members = Self::members();
+			ensure!(members.contains(&signer), Error::<T, I>::NotMember);
 
-			let threshold = updaters.len() as MemberCount;
+			let threshold = members.len() as MemberCount;
 
 			let proposal_hash = T::Hashing::hash_of(&code);
 			let mut proposals = Self::proposals();
@@ -236,8 +237,8 @@ pub mod pallet {
 			approve: bool,
 		) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
-			let updaters = Self::members();
-			ensure!(updaters.contains(&signer), Error::<T, I>::NotMember);
+			let members = Self::members();
+			ensure!(members.contains(&signer), Error::<T, I>::NotMember);
 
 			let mut voting = Self::voting(&proposal).ok_or(Error::<T, I>::ProposalMissing)?;
 			ensure!(voting.index == index, Error::<T, I>::WrongIndex);
@@ -281,20 +282,23 @@ pub mod pallet {
 			#[pallet::compact] index: ProposalIndex,
 		) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
-			let updaters = Self::members();
-			ensure!(updaters.contains(&signer), Error::<T, I>::NotMember);
+			let members = Self::members();
+			ensure!(members.contains(&signer), Error::<T, I>::NotMember);
 
 			let voting = Self::voting(&proposal_hash).ok_or(Error::<T, I>::ProposalMissing)?;
 			ensure!(voting.index == index, Error::<T, I>::WrongIndex);
 
 			let yes_votes = voting.ayes.len() as MemberCount;
 			let no_votes = voting.nays.len() as MemberCount;
-			let seats = updaters.len() as MemberCount;
+			let seats = members.len() as MemberCount;
 			let approved = yes_votes >= voting.threshold;
 			let disapproved = seats.saturating_sub(no_votes) < voting.threshold;
 
 			if approved {
 				Self::deposit_event(Event::Approved(proposal_hash, yes_votes, no_votes));
+				let code = Self::codes();
+				// TODO call can_set_code @charmitro
+				<T as frame_system::Config>::OnSetCode::set_code(code.clone())?;
 			} else if disapproved {
 				Self::deposit_event(Event::Disapproved(proposal_hash, yes_votes, no_votes));
 			}
