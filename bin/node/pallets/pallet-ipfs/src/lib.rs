@@ -316,7 +316,12 @@ pub mod pallet {
 			cid: Vec<u8>,
 			fee: BalanceOf<T>,
 		) -> DispatchResult {
-			ensure_signed(origin)?;
+			let sender = ensure_signed(origin)?;
+
+			ensure!(
+				Self::determine_account_ownership_layer(&cid, &sender)? == OwnershipLayer::Owner,
+				<Error<T>>::NotIpfsOwner
+			);
 
 			if let Some(value) = TryInto::<u32>::try_into(fee).ok() {
 				let extra_duration = 100 * (value / 1000);
