@@ -22,7 +22,7 @@ use sp_core::{
 	Bytes,
 };
 use sp_io::offchain::timestamp;
-use sp_std::vec::Vec;
+use sp_std::{convert::TryInto, vec::Vec};
 
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"chfs");
 
@@ -222,7 +222,6 @@ pub mod pallet {
 			if block_no % 2u32.into() == 1u32.into() {
 				<DataQueue<T>>::kill(); // Research this - @charmitro
 			}
-
 			0
 		}
 
@@ -249,7 +248,7 @@ pub mod pallet {
 			addr: Vec<u8>,
 			cid: Vec<u8>,
 			size: u64,
-			price: Option<u32>, // TODO(elsuizo:2022-04-06): add here a BalanceOf<T>
+			price: Option<BalanceOf<T>>,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
@@ -259,18 +258,20 @@ pub mod pallet {
 			);
 
 			if let Some(value) = price {
-				let extra_lifetime = 100 * (value / 1000);
-				let multiaddr = OpaqueMultiaddr(addr.clone());
-				<DataQueue<T>>::mutate(|queue| {
-					queue.push(DataCommand::AddBytes(
-						multiaddr,
-						cid,
-						size,
-						extra_lifetime,
-						sender.clone(),
-						true,
-					))
-				});
+				if let Some(price_converted) = TryInto::<u32>::try_into(value).ok() {
+					let extra_lifetime = 100 * (price_converted / 1000);
+					let multiaddr = OpaqueMultiaddr(addr.clone());
+					<DataQueue<T>>::mutate(|queue| {
+						queue.push(DataCommand::AddBytes(
+							multiaddr,
+							cid,
+							size,
+							extra_lifetime,
+							sender.clone(),
+							true,
+						))
+					});
+				}
 			} else {
 				let multiaddr = OpaqueMultiaddr(addr.clone());
 				<DataQueue<T>>::mutate(|queue| {
@@ -308,29 +309,24 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// /// Extends the duration of an Ipfs asset
-		// #[pallet::weight(0)]
-		// pub fn extend_duration(
-		// 	origin: OriginFor<T>,
-		// 	ci_address: Vec<u8>,
-		// 	fee: BalanceOf<T>,
-		// ) -> DispatchResult {
-		// 	let sender = ensure_signed(origin)?;
+		/// Extends the duration of an Ipfs asset
+		#[pallet::weight(0)]
+		pub fn extend_duration(
+			origin: OriginFor<T>,
+			cid: Vec<u8>,
+			fee: BalanceOf<T>,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
 
-		// 	ensure!(
-		// 		Self::determine_account_ownership_layer(&ci_address, &sender)? == OwnershipLayer::Owner,
-		// 		<Error<T>>::NotIpfsOwner
-		// 	);
+			if let Some(value) = TryInto::<u32>::try_into(fee).ok() {
+				let extra_duration = 100 * (value / 1000);
+				let mut ipfs_asset = Self::ipfs_asset(&cid).ok_or(<Error<T>>::IpfsNotExist)?;
+				ipfs_asset.deleting_at += extra_duration.into();
+				<IpfsAsset<T>>::insert(cid.clone(), ipfs_asset);
+			}
 
-		// 	let x = TryInto::<u32>::try_into(fee).ok();
-		// 	let extra_duration = x.unwrap() / 16;  // 16 coins per 1 second
-		// 	// let old_duration = <IpfsAsset<T>>::get(&ci_address); //get deleting_at data of cid
-		// 	// let new_duration = old_duration + extra_duration.into();
-
-		// 	// update the Ipfs struct with new deleting_at duration.
-
-		// 	Ok(())
-		// }
+			Ok(())
+		}
 
 		/// Pins an IPFS.
 		#[pallet::weight(0)]
@@ -501,8 +497,6 @@ pub mod pallet {
 
 			ipfs_asset.pinned = true;
 			<IpfsAsset<T>>::insert(cid.clone(), ipfs_asset);
-
-			<DataQueue<T>>::take();
 
 			Ok(())
 		}
