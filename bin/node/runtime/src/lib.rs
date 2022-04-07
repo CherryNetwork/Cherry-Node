@@ -233,12 +233,16 @@ impl pallet_randomness_collective_flip::Config for Runtime {}
 parameter_types! {
 	/// Number of maximum members.
 	pub const MaxMemberCnt: u32 = 3;
+	pub const MaxProposalCnt: u32 = 1;
+	pub const UpdaterMotionDuration: BlockNumber = TECHNICAL_MOTION_DURATION;
 }
 
 impl pallet_updater::Config for Runtime {
 	type Event = Event;
 	type Call = Call;
+	type MaxProposals = MaxProposalCnt;
 	type MaxMembers = MaxMemberCnt;
+	type MotionDuration = UpdaterMotionDuration;
 }
 
 impl pallet_utility::Config for Runtime {
@@ -1049,7 +1053,7 @@ construct_runtime!(
 		Lottery: pallet_lottery::{Pallet, Call, Storage, Event<T>},
 		TransactionStorage: pallet_transaction_storage::{Pallet, Call, Storage, Inherent, Config<T>, Event<T>},
 		BagsList: pallet_bags_list::{Pallet, Call, Storage, Event<T>},
-		Updater: pallet_updater::{Pallet, Call, Storage, Event<T>},
+		Updater: pallet_updater::{Pallet, Call, Config<T>, Storage, Event<T>},
 	}
 );
 

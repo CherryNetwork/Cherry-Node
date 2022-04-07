@@ -13,11 +13,12 @@ frame-support = { version = "4.0.0-dev", default-features = false, path = "../..
 frame-system = { version = "4.0.0-dev", default-features = false, path = "../../../../frame/system" }
 frame-benchmarking = { version = "4.0.0-dev", default-features = false, path = "../../../../frame/benchmarking", optional = true }
 sp-std = { version = "4.0.0-dev", default-features = false, path = "../../../../primitives/std" }
+sp-runtime = { version = "4.0.0-dev", default-features = false, path = "../../../../primitives/runtime" }
+log = { version = "0.4.14", default-features = false }
 
 [dev-dependencies]
 sp-core = { version = "4.0.0-dev", path = "../../../../primitives/core", default-features = false }
 sp-io = { version = "4.0.0-dev", path = "../../../../primitives/io", default-features = false }
-sp-runtime = { version = "4.0.0-dev", path = "../../../../primitives/runtime", default-features = false }
 
 [features]
 default = ["std"]
