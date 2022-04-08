@@ -16,6 +16,9 @@ pub type ProposalIndex = u32;
 /// A number of members.
 pub type MemberCount = u32;
 
+#[cfg(test)]
+mod tests;
+
 /// Info for keeping track of a motion being voted on.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct Votes<AccountId, BlockNumber> {
