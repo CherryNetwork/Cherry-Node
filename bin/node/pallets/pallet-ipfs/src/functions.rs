@@ -63,12 +63,12 @@ impl<T: Config> Pallet<T> {
 
 		for cmd in data_queue.into_iter() {
 			match cmd {
-				DataCommand::AddBytes(m_addr, cid, size, admin, is_recursive) => {
+				DataCommand::AddBytes(m_addr, cid, size, extra_lifetime, admin, is_recursive) => {
 					// this should work for different CID's. If you try to
 					// connect and upload the same CID, you will get a duplicate
 					// conn error. @charmitro
 					match Self::ipfs_request(IpfsRequest::Connect(m_addr.clone()), deadline) {
-						Ok(IpfsResponse::Success) =>
+						Ok(IpfsResponse::Success) => {
 							match Self::ipfs_request(IpfsRequest::CatBytes(cid.clone()), deadline) {
 								Ok(IpfsResponse::CatBytes(data)) => {
 									log::info!("IPFS: fetched data");
@@ -113,6 +113,7 @@ impl<T: Config> Pallet<T> {
 														// place(create_ipfs_asset)
 														admin: admin.clone(),
 														cid: cid.clone(),
+														extra_lifetime,
 														size: size.clone(),
 													}
 												});
@@ -172,15 +173,17 @@ impl<T: Config> Pallet<T> {
 									"only AddBytes can be a response for that request type."
 								),
 								Err(e) => log::error!("IPFS: add error: {:?}", e),
-							},
-						Ok(_) =>
-							unreachable!("only AddBytes can be a response for that request type."),
+							}
+						},
+						Ok(_) => {
+							unreachable!("only AddBytes can be a response for that request type.")
+						},
 						Err(e) => log::error!("IPFS: add error: {:?}", e),
 					}
 				},
 				DataCommand::AddBytesRaw(m_addr, data, admin, is_recursive) => {
 					match Self::ipfs_request(IpfsRequest::Connect(m_addr.clone()), deadline) {
-						Ok(IpfsResponse::Success) =>
+						Ok(IpfsResponse::Success) => {
 							match Self::ipfs_request(IpfsRequest::AddBytes(data.clone()), deadline)
 							{
 								Ok(IpfsResponse::AddBytes(cid)) => {
@@ -204,6 +207,7 @@ impl<T: Config> Pallet<T> {
 											// the transcation in the first place(create_ipfs_asset)
 											admin: admin.clone(),
 											cid: cid.clone(),
+											extra_lifetime: 0,
 											size: data.len() as u64,
 										}
 									});
@@ -255,9 +259,11 @@ impl<T: Config> Pallet<T> {
 									"only AddBytes can be a response for that request type."
 								),
 								Err(e) => log::error!("IPFS: add error: {:?}", e),
-							},
-						Ok(_) =>
-							unreachable!("only AddBytes can be a response for that request type."),
+							}
+						},
+						Ok(_) => {
+							unreachable!("only AddBytes can be a response for that request type.")
+						},
 						Err(e) => log::error!("IPFS: add error: {:?}", e),
 					}
 				},
@@ -274,8 +280,9 @@ impl<T: Config> Pallet<T> {
 									.expect("our own calls can be trusted to be UTF-8; qed")
 							);
 						},
-						Ok(_) =>
-							unreachable!("only AddBytes can be a response for that request type."),
+						Ok(_) => {
+							unreachable!("only AddBytes can be a response for that request type.")
+						},
 						Err(e) => log::error!("IPFS: add error: {:?}", e),
 					}
 				},
@@ -388,8 +395,9 @@ impl<T: Config> Pallet<T> {
 								}
 							}
 						},
-						Ok(_) =>
-							unreachable!("only RemoveBlock can be a response for that request type"),
+						Ok(_) => {
+							unreachable!("only RemoveBlock can be a response for that request type")
+						},
 						Err(e) => log::error!("IPFS: Remove Block Error: {:?}", e),
 					}
 				},

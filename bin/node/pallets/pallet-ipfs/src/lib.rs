@@ -22,7 +22,7 @@ use sp_core::{
 	Bytes,
 };
 use sp_io::offchain::timestamp;
-use sp_std::vec::Vec;
+use sp_std::{convert::TryInto, vec::Vec};
 
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"chfs");
 
@@ -59,7 +59,7 @@ pub use weights::WeightInfo;
 
 #[derive(Encode, Decode, RuntimeDebug, PartialEq, TypeInfo)]
 pub enum DataCommand<AccountId> {
-	AddBytes(OpaqueMultiaddr, Vec<u8>, u64, AccountId, bool),
+	AddBytes(OpaqueMultiaddr, Vec<u8>, u64, u32, AccountId, bool),
 	AddBytesRaw(OpaqueMultiaddr, Vec<u8>, AccountId, bool),
 	CatBytes(OpaqueMultiaddr, Vec<u8>, AccountId),
 	InsertPin(OpaqueMultiaddr, Vec<u8>, AccountId, bool),
@@ -222,7 +222,6 @@ pub mod pallet {
 			if block_no % 2u32.into() == 1u32.into() {
 				<DataQueue<T>>::kill(); // Research this - @charmitro
 			}
-
 			0
 		}
 
@@ -249,6 +248,7 @@ pub mod pallet {
 			addr: Vec<u8>,
 			cid: Vec<u8>,
 			size: u64,
+			price: Option<BalanceOf<T>>,
 		) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
@@ -257,10 +257,27 @@ pub mod pallet {
 				<Error<T>>::IpfsAlreadyOwned
 			);
 
-			let multiaddr = OpaqueMultiaddr(addr);
-			<DataQueue<T>>::mutate(|queue| {
-				queue.push(DataCommand::AddBytes(multiaddr, cid, size, sender.clone(), true))
-			});
+			if let Some(value) = price {
+				if let Some(price_converted) = TryInto::<u32>::try_into(value).ok() {
+					let extra_lifetime = 100 * (price_converted / 1000);
+					let multiaddr = OpaqueMultiaddr(addr.clone());
+					<DataQueue<T>>::mutate(|queue| {
+						queue.push(DataCommand::AddBytes(
+							multiaddr,
+							cid,
+							size,
+							extra_lifetime,
+							sender.clone(),
+							true,
+						))
+					});
+				}
+			} else {
+				let multiaddr = OpaqueMultiaddr(addr.clone());
+				<DataQueue<T>>::mutate(|queue| {
+					queue.push(DataCommand::AddBytes(multiaddr, cid, size, 0, sender.clone(), true))
+				});
+			}
 
 			Self::deposit_event(Event::QueuedDataToAdd(sender.clone()));
 
@@ -292,29 +309,29 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// /// Extends the duration of an Ipfs asset
-		// #[pallet::weight(0)]
-		// pub fn extend_duration(
-		// 	origin: OriginFor<T>,
-		// 	ci_address: Vec<u8>,
-		// 	fee: BalanceOf<T>,
-		// ) -> DispatchResult {
-		// 	let sender = ensure_signed(origin)?;
+		/// Extends the duration of an Ipfs asset
+		#[pallet::weight(0)]
+		pub fn extend_duration(
+			origin: OriginFor<T>,
+			cid: Vec<u8>,
+			fee: BalanceOf<T>,
+		) -> DispatchResult {
+			let sender = ensure_signed(origin)?;
 
-		// 	ensure!(
-		// 		Self::determine_account_ownership_layer(&ci_address, &sender)? == OwnershipLayer::Owner,
-		// 		<Error<T>>::NotIpfsOwner
-		// 	);
+			ensure!(
+				Self::determine_account_ownership_layer(&cid, &sender)? == OwnershipLayer::Owner,
+				<Error<T>>::NotIpfsOwner
+			);
 
-		// 	let x = TryInto::<u32>::try_into(fee).ok();
-		// 	let extra_duration = x.unwrap() / 16;  // 16 coins per 1 second
-		// 	// let old_duration = <IpfsAsset<T>>::get(&ci_address); //get deleting_at data of cid
-		// 	// let new_duration = old_duration + extra_duration.into();
+			if let Some(value) = TryInto::<u32>::try_into(fee).ok() {
+				let extra_duration = 100 * (value / 1000);
+				let mut ipfs_asset = Self::ipfs_asset(&cid).ok_or(<Error<T>>::IpfsNotExist)?;
+				ipfs_asset.deleting_at += extra_duration.into();
+				<IpfsAsset<T>>::insert(cid.clone(), ipfs_asset);
+			}
 
-		// 	// update the Ipfs struct with new deleting_at duration.
-
-		// 	Ok(())
-		// }
+			Ok(())
+		}
 
 		/// Pins an IPFS.
 		#[pallet::weight(0)]
@@ -444,6 +461,7 @@ pub mod pallet {
 			admin: AccountOf<T>,
 			cid: Vec<u8>,
 			size: u64,
+			extra_lifetime: u32,
 		) -> DispatchResult {
 			ensure_signed(origin)?;
 
@@ -460,7 +478,7 @@ pub mod pallet {
 				gateway_url,
 				owners: BTreeMap::<AccountOf<T>, OwnershipLayer>::new(),
 				created_at: current_block,
-				deleting_at: asset_lifetime,
+				deleting_at: asset_lifetime + extra_lifetime.into(),
 				pinned: true, // true by default.
 			};
 
@@ -484,8 +502,6 @@ pub mod pallet {
 
 			ipfs_asset.pinned = true;
 			<IpfsAsset<T>>::insert(cid.clone(), ipfs_asset);
-
-			<DataQueue<T>>::take();
 
 			Ok(())
 		}
