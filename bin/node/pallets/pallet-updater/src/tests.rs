@@ -7,11 +7,15 @@ use sp_runtime::{
 	traits::{BlakeTwo256, IdentityLookup},
 	BuildStorage,
 };
-
+use frame_system::{EventRecord, Phase};
 use crate::{self as pallet_updater, Config};
-
+use super::Event as UpdaterEvent;
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
+
+fn record(event: Event) -> EventRecord<Event, H256> {
+	EventRecord { phase: Phase::Initialization, event, topics: vec![] }
+}
 
 // Configure a mock runtime to test the pallet.
 frame_support::construct_runtime!(
@@ -252,3 +256,13 @@ fn test_close_vote_work() {
 		assert_ok!(Updater::close_vote(Origin::signed(1), hash.clone(), 0));
 	})
 }
+
+/*
+#[test]
+fn test_event_add_member() {
+    new_test_ext().execute_with(|| {
+        let res = <pallet_updater::Pallet<Test>>::add_member(Origin::signed(1), 2).unwrap();
+
+        assert_eq!(System::events(), vec![record(Event::Updater(UpdaterEvent::AddedUpdater(2)))]);
+    });
+}*/
