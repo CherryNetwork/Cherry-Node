@@ -175,6 +175,7 @@ pub mod pallet {
 		CantCreateRequest,
 		RequestTimeout,
 		RequestFailed,
+		FeeOutOfBounds,
 	}
 
 	#[pallet::event]
@@ -322,6 +323,8 @@ pub mod pallet {
 				Self::determine_account_ownership_layer(&cid, &sender)? == OwnershipLayer::Owner,
 				<Error<T>>::NotIpfsOwner
 			);
+
+			ensure!(fee >= 1000u32.into(), <Error<T>>::FeeOutOfBounds);
 
 			if let Some(value) = TryInto::<u32>::try_into(fee).ok() {
 				let extra_duration = 100 * (value / 1000);
