@@ -19,6 +19,9 @@ pub type MemberCount = u32;
 #[cfg(test)]
 mod tests;
 
+#[cfg(feature = "runtime-benchmarks")]
+mod benchmarking;
+
 /// Info for keeping track of a motion being voted on.
 #[derive(PartialEq, Eq, Clone, Encode, Decode, RuntimeDebug, TypeInfo)]
 pub struct Votes<AccountId, BlockNumber> {
