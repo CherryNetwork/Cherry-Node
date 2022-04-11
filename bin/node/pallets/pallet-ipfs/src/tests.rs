@@ -113,6 +113,16 @@ fn cherry_extend_lifetime() {
 			cid_vec.clone(),
 			1000u32.into()
 		));
+
+		assert_noop!(
+			mock::Ipfs::extend_duration(
+				Origin::signed(p.clone().public()),
+				cid_vec.clone(),
+				999u32.into()
+			),
+			Error::<Test>::FeeOutOfBounds
+		);
+
 		let result = <IpfsAsset<Test>>::get(&cid_vec); // get the result ipfs
 		assert_eq!(result.clone().unwrap().deleting_at, expected.deleting_at);
 	});
