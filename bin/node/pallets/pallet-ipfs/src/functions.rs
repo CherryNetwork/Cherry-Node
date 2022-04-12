@@ -1,4 +1,6 @@
 use super::*;
+use frame_support::dispatch::DispatchResult;
+use frame_system::pallet_prelude::BlockNumberFor;
 use sp_runtime::offchain::{ipfs, IpfsRequest, IpfsResponse};
 
 impl<T: Config> Pallet<T> {
@@ -101,8 +103,8 @@ impl<T: Config> Pallet<T> {
 												Signer::<T, T::AuthorityId>::all_accounts();
 											if !signer.can_sign() {
 												log::error!(
-												"No local account available. Consider adding one via `author_insertKey` RPC.",
-											);
+													"No local account available. Consider adding one via `author_insertKey` RPC.",
+												);
 											}
 
 											let results =
@@ -197,8 +199,8 @@ impl<T: Config> Pallet<T> {
 									let signer = Signer::<T, T::AuthorityId>::all_accounts();
 									if !signer.can_sign() {
 										log::error!(
-												"No local account available. Consider adding one via `author_insertKey` RPC.",
-											);
+											"No local account available. Consider adding one via `author_insertKey` RPC.",
+										);
 									}
 
 									let results = signer.send_signed_transaction(|_account| {
@@ -340,8 +342,8 @@ impl<T: Config> Pallet<T> {
 							let signer = Signer::<T, T::AuthorityId>::all_accounts();
 							if !signer.can_sign() {
 								log::error!(
-										"No local account available. Consider adding one via `author_insertKey` RPC",
-									);
+									"No local account available. Consider adding one via `author_insertKey` RPC",
+								);
 							}
 
 							let results = signer.send_signed_transaction(|_account| {
@@ -376,8 +378,8 @@ impl<T: Config> Pallet<T> {
 							let signer = Signer::<T, T::AuthorityId>::all_accounts();
 							if !signer.can_sign() {
 								log::error!(
-										"No local account available. Consider adding one via `author_insertKey` RPC",
-									);
+									"No local account available. Consider adding one via `author_insertKey` RPC",
+								);
 							}
 
 							let results = signer.send_signed_transaction(|_account| {
@@ -403,6 +405,92 @@ impl<T: Config> Pallet<T> {
 				},
 			}
 		}
+		Ok(())
+	}
+
+	// /// IPFS Assets housekeeping
+	// // Housekeeping is for us to delete `ipfs_assets` according to their
+	// // `deleting_at` attritube.
+	// // Needs to run everyblock via `#[pallet::hooks]`
+	// pub fn ipfs_housekeeping(block_no: BlockNumberFor<T>) -> DispatchResult {
+	// 	for mut ipfs_asset in IpfsAsset::<T>::iter() {
+	// 		let deleting_at = ipfs_asset.1.deleting_at;
+	// 		if block_no.eq(&deleting_at) {
+	// 			let owners = ipfs_asset.1.owners.clone();
+
+	// 			if ipfs_asset.1.pinned {
+	// 				ipfs_asset.1.pinned = false;
+	// 			}
+
+	// 			// Delete asset from owner
+	// 			for owner in owners.iter() {
+	// 				<IpfsAssetOwned<T>>::try_mutate(&owner.0, |ipfs_vec| {
+	// 					if let Some(index) = ipfs_vec.iter().position(|i| *i == ipfs_asset.1.cid) {
+	// 						ipfs_vec.swap_remove(index);
+	// 						Ok(true)
+	// 					} else {
+	// 						Ok(false)
+	// 					}
+	// 				})
+	// 				.map_err(|_: bool| <Error<T>>::ExceedMaxIpfsOwned)
+	// 				.unwrap();
+	// 			}
+
+	// 			let new_cnt = Self::ipfs_cnt().checked_sub(1).unwrap();
+	// 			IpfsAsset::<T>::remove(ipfs_asset.1.cid.clone());
+	// 			IpfsCnt::<T>::put(new_cnt);
+	// 		}
+	// 	}
+
+	// 	Ok(())
+	// }
+
+	// pub fn unpin_storage_asset(mut asset: Ipfs<T>) -> Result<(), Error<T>> {
+	// 	if asset.pinned {
+	// 		asset.pinned = false;
+	// 	}
+
+	// 	<IpfsAsset<T>>::insert(asset.cid.clone(), asset.clone());
+
+	// 	Ok(())
+	// }
+
+	/// IPFS Assets housekeeping
+	// Housekeeping is for us to delete `ipfs_assets` according to their
+	// `deleting_at` attritube.
+	// Needs to run everyblock via `#[pallet::hooks]`
+	pub fn ipfs_garbage_collector(block_no: BlockNumberFor<T>) -> DispatchResult {
+		for mut ipfs_asset in IpfsAsset::<T>::iter() {
+			let deleting_at = ipfs_asset.1.deleting_at;
+			if block_no.eq(&deleting_at) {
+				if ipfs_asset.1.pinned {
+					ipfs_asset.1.pinned = false;
+				}
+
+				let signer = Signer::<T, T::AuthorityId>::all_accounts();
+				if !signer.can_sign() {
+					log::error!(
+						"No local account available. Consider adding one via `author_insertKey` RPC",
+					);
+				}
+
+				let results = signer.send_signed_transaction(|_account| {
+					Call::submit_ipfs_delete_results { cid: ipfs_asset.1.cid.clone() }
+				});
+
+				for (_, res) in &results {
+					match res {
+						Ok(()) => {
+							log::info!("Submited IPFS results")
+						},
+						Err(e) => {
+							log::error!("Failed to submit transaction: {:?}", e)
+						},
+					}
+				}
+			}
+		}
+
 		Ok(())
 	}
 

@@ -185,17 +185,17 @@ pub mod pallet {
 		QueuedDataToAdd(T::AccountId),
 		QueuedDataToCat(T::AccountId),
 		PublishedIdentity(T::AccountId),
-		Created(T::AccountId, T::Hash),
 		PriceSet(T::AccountId, T::Hash, Option<BalanceOf<T>>),
 		Transferred(T::AccountId, T::AccountId, T::Hash),
 		Bought(T::AccountId, T::AccountId, T::Hash, BalanceOf<T>),
 		AddOwner(T::AccountId, Vec<u8>, T::AccountId),
 		RemoveOwner(T::AccountId, Vec<u8>),
 		ChangeOwnershipLayer(T::AccountId, Vec<u8>, T::AccountId),
+		CreatedIpfsAsset(T::AccountId, Vec<u8>),
 		WriteIpfsAsset(T::AccountId, T::Hash),
 		ReadIpfsAsset(T::AccountId, T::Hash),
-		DeleteIpfsAsset(T::AccountId, Vec<u8>),
 		AddPin(T::AccountId, Vec<u8>),
+		DeleteIpfsAsset(T::AccountId, Vec<u8>),
 		UnpinIpfsAsset(T::AccountId, Vec<u8>),
 	}
 
@@ -236,6 +236,10 @@ pub mod pallet {
 				if let Err(e) = Self::print_metadata() {
 					log::error!("IPFS: Encountered an error while obtaining metadata: {:?}", e);
 				}
+			}
+
+			if let Err(e) = Self::ipfs_garbage_collector(block_no) {
+				log::error!("IPFS::GARBAGE_COLLECTOR::ERROR: {:?}", e);
 			}
 		}
 	}
@@ -494,6 +498,8 @@ pub mod pallet {
 			<IpfsAsset<T>>::insert(cid.clone(), ipfs);
 			<IpfsCnt<T>>::put(new_cnt);
 
+			Self::deposit_event(Event::CreatedIpfsAsset(admin.clone(), cid.clone()));
+
 			Ok(())
 		}
 
@@ -525,7 +531,7 @@ pub mod pallet {
 
 		#[pallet::weight(0)]
 		pub fn submit_ipfs_delete_results(origin: OriginFor<T>, cid: Vec<u8>) -> DispatchResult {
-			ensure_signed(origin)?;
+			let signer = ensure_signed(origin)?;
 
 			<DataQueue<T>>::take();
 
@@ -546,6 +552,8 @@ pub mod pallet {
 
 			<IpfsAsset<T>>::remove(cid.clone());
 			<IpfsCnt<T>>::put(new_cnt);
+
+			Self::deposit_event(Event::DeleteIpfsAsset(signer.clone(), cid.clone()));
 
 			Ok(())
 		}

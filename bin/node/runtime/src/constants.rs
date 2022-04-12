@@ -40,7 +40,7 @@ pub mod time_dev {
 	pub const HOURS: BlockNumber = MINUTES * 60;
 	pub const DAYS: BlockNumber = HOURS * 24;
 
-	pub const DEFAULT_ASSET_LIFETIME: BlockNumber = MINUTES * 5;
+	pub const DEFAULT_ASSET_LIFETIME: BlockNumber = MINUTES * 1;
 	/// Since BABE is probabilistic this is the average expected block time that
 	/// we are targeting. Blocks will be produced at a minimum duration defined
 	/// by `SLOT_DURATION`, but some slots will not be allocated to any
