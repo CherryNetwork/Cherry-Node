@@ -30,20 +30,21 @@ const SEED: u32 = 0;
 // Create the pre-requisite information needed to create a treasury `propose_spend`.
 fn setup_proposal<T: Config<I>, I: 'static>(
 	u: u32,
-) -> (T::AccountId, BalanceOf<T, I>, <T::Lookup as StaticLookup>::Source) {
+) -> (T::AccountId, BalanceOf<T, I>, <T::Lookup as StaticLookup>::Source, u32) {
 	let caller = account("caller", u, SEED);
 	let value: BalanceOf<T, I> = T::ProposalBondMinimum::get().saturating_mul(100u32.into());
 	let _ = T::Currency::make_free_balance_be(&caller, value);
 	let beneficiary = account("beneficiary", u, SEED);
 	let beneficiary_lookup = T::Lookup::unlookup(beneficiary);
-	(caller, value, beneficiary_lookup)
+	let chunks = 1;
+	(caller, value, beneficiary_lookup, chunks)
 }
 
 // Create proposals that are approved for use in `on_initialize`.
 fn create_approved_proposals<T: Config<I>, I: 'static>(n: u32) -> Result<(), &'static str> {
 	for i in 0..n {
-		let (caller, value, lookup) = setup_proposal::<T, I>(i);
-		Treasury::<T, I>::propose_spend(RawOrigin::Signed(caller).into(), value, lookup)?;
+		let (caller, value, lookup, chunks) = setup_proposal::<T, I>(i);
+		Treasury::<T, I>::propose_spend(RawOrigin::Signed(caller).into(), value, lookup, 1)?;
 		let proposal_id = <ProposalCount<T, I>>::get() - 1;
 		Treasury::<T, I>::approve_proposal(RawOrigin::Root.into(), proposal_id)?;
 	}
@@ -59,18 +60,19 @@ fn setup_pot_account<T: Config<I>, I: 'static>() {
 
 benchmarks_instance_pallet! {
 	propose_spend {
-		let (caller, value, beneficiary_lookup) = setup_proposal::<T, _>(SEED);
+		let (caller, value, beneficiary_lookup, chunks) = setup_proposal::<T, _>(SEED);
 		// Whitelist caller account from further DB operations.
 		let caller_key = frame_system::Account::<T>::hashed_key_for(&caller);
 		frame_benchmarking::benchmarking::add_to_whitelist(caller_key.into());
-	}: _(RawOrigin::Signed(caller), value, beneficiary_lookup)
+	}: _(RawOrigin::Signed(caller), value, beneficiary_lookup, 1)
 
 	reject_proposal {
-		let (caller, value, beneficiary_lookup) = setup_proposal::<T, _>(SEED);
+		let (caller, value, beneficiary_lookup, chunks) = setup_proposal::<T, _>(SEED);
 		Treasury::<T, _>::propose_spend(
 			RawOrigin::Signed(caller).into(),
 			value,
-			beneficiary_lookup
+			beneficiary_lookup,
+			1
 		)?;
 		let proposal_id = Treasury::<T, _>::proposal_count() - 1;
 	}: _(RawOrigin::Root, proposal_id)
@@ -78,11 +80,12 @@ benchmarks_instance_pallet! {
 	approve_proposal {
 		let p in 0 .. T::MaxApprovals::get() - 1;
 		create_approved_proposals::<T, _>(p)?;
-		let (caller, value, beneficiary_lookup) = setup_proposal::<T, _>(SEED);
+		let (caller, value, beneficiary_lookup, chunks) = setup_proposal::<T, _>(SEED);
 		Treasury::<T, _>::propose_spend(
 			RawOrigin::Signed(caller).into(),
 			value,
-			beneficiary_lookup
+			beneficiary_lookup,
+			1
 		)?;
 		let proposal_id = Treasury::<T, _>::proposal_count() - 1;
 	}: _(RawOrigin::Root, proposal_id)
