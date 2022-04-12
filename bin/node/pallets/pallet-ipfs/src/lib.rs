@@ -1,7 +1,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 
-#[cfg(feature = "runtime-benchmarks")]
-mod benchmarking;
+//#[cfg(feature = "runtime-benchmarks")]
+// mod benchmarking; TODO: fix benchamrks for frame changes
 pub mod functions;
 #[cfg(test)]
 mod mock;
