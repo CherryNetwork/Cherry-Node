@@ -20,12 +20,13 @@ impl<T: Config> Pallet<T> {
 		acct: &T::AccountId,
 	) -> Result<OwnershipLayer, Error<T>> {
 		match Self::ipfs_asset(cid) {
-			Some(ipfs) =>
+			Some(ipfs) => {
 				if let Some(layer) = ipfs.owners.get_key_value(acct) {
 					Ok(layer.1.clone())
 				} else {
 					Err(<Error<T>>::AccNotExist)
-				},
+				}
+			},
 			None => Err(<Error<T>>::IpfsNotExist),
 		}
 	}
@@ -289,7 +290,7 @@ impl<T: Config> Pallet<T> {
 					}
 				},
 
-				DataCommand::InsertPin(_m_addr, cid, _admin, is_recursive) =>
+				DataCommand::InsertPin(_m_addr, cid, _admin, is_recursive) => {
 					match Self::ipfs_request(
 						IpfsRequest::InsertPin(cid.clone(), is_recursive),
 						deadline,
@@ -326,9 +327,10 @@ impl<T: Config> Pallet<T> {
 							unreachable!("only Success can be a response for that request type")
 						},
 						Err(e) => log::error!("IPFS: Pin Error: {:?}", e),
-					},
+					}
+				},
 
-				DataCommand::RemovePin(_m_addr, cid, _admin, is_recursive) =>
+				DataCommand::RemovePin(_m_addr, cid, _admin, is_recursive) => {
 					match Self::ipfs_request(
 						IpfsRequest::RemovePin(cid.clone(), is_recursive),
 						deadline,
@@ -365,7 +367,8 @@ impl<T: Config> Pallet<T> {
 							unreachable!("only Success can be a response for that request type")
 						},
 						Err(e) => log::error!("IPFS: Remove Pin Error: {:?}", e),
-					},
+					}
+				},
 
 				DataCommand::RemoveBlock(_m_addr, cid, _admin) => {
 					match Self::ipfs_request(IpfsRequest::RemoveBlock(cid.clone()), deadline) {
@@ -407,53 +410,6 @@ impl<T: Config> Pallet<T> {
 		}
 		Ok(())
 	}
-
-	// /// IPFS Assets housekeeping
-	// // Housekeeping is for us to delete `ipfs_assets` according to their
-	// // `deleting_at` attritube.
-	// // Needs to run everyblock via `#[pallet::hooks]`
-	// pub fn ipfs_housekeeping(block_no: BlockNumberFor<T>) -> DispatchResult {
-	// 	for mut ipfs_asset in IpfsAsset::<T>::iter() {
-	// 		let deleting_at = ipfs_asset.1.deleting_at;
-	// 		if block_no.eq(&deleting_at) {
-	// 			let owners = ipfs_asset.1.owners.clone();
-
-	// 			if ipfs_asset.1.pinned {
-	// 				ipfs_asset.1.pinned = false;
-	// 			}
-
-	// 			// Delete asset from owner
-	// 			for owner in owners.iter() {
-	// 				<IpfsAssetOwned<T>>::try_mutate(&owner.0, |ipfs_vec| {
-	// 					if let Some(index) = ipfs_vec.iter().position(|i| *i == ipfs_asset.1.cid) {
-	// 						ipfs_vec.swap_remove(index);
-	// 						Ok(true)
-	// 					} else {
-	// 						Ok(false)
-	// 					}
-	// 				})
-	// 				.map_err(|_: bool| <Error<T>>::ExceedMaxIpfsOwned)
-	// 				.unwrap();
-	// 			}
-
-	// 			let new_cnt = Self::ipfs_cnt().checked_sub(1).unwrap();
-	// 			IpfsAsset::<T>::remove(ipfs_asset.1.cid.clone());
-	// 			IpfsCnt::<T>::put(new_cnt);
-	// 		}
-	// 	}
-
-	// 	Ok(())
-	// }
-
-	// pub fn unpin_storage_asset(mut asset: Ipfs<T>) -> Result<(), Error<T>> {
-	// 	if asset.pinned {
-	// 		asset.pinned = false;
-	// 	}
-
-	// 	<IpfsAsset<T>>::insert(asset.cid.clone(), asset.clone());
-
-	// 	Ok(())
-	// }
 
 	/// IPFS Assets housekeeping
 	// Housekeeping is for us to delete `ipfs_assets` according to their
