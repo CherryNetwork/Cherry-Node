@@ -26,6 +26,7 @@ use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite, whiteli
 use frame_support::{ensure, traits::Get};
 use frame_system::RawOrigin;
 use sp_runtime::traits::Bounded;
+use sp_std::convert::TryInto;
 
 const SEED: u32 = 0;
 
@@ -44,14 +45,16 @@ fn add_registrars<T: Config>(r: u32) -> Result<(), &'static str> {
 			i.into(),
 			10u32.into(),
 		)?;
-		let fields =
-			IdentityFields(
-				IdentityField::Display |
-					IdentityField::Legal | IdentityField::Web |
-					IdentityField::Riot | IdentityField::Email |
-					IdentityField::PgpFingerprint |
-					IdentityField::Image | IdentityField::Twitter,
-			);
+		let fields = IdentityFields(
+			IdentityField::Display
+				| IdentityField::Legal
+				| IdentityField::Web
+				| IdentityField::Riot
+				| IdentityField::Email
+				| IdentityField::PgpFingerprint
+				| IdentityField::Image
+				| IdentityField::Twitter,
+		);
 		Identity::<T>::set_fields(RawOrigin::Signed(registrar.clone()).into(), i.into(), fields)?;
 	}
 
@@ -111,9 +114,11 @@ fn create_identity_info<T: Config>(num_fields: u32) -> IdentityInfo<T::MaxAdditi
 		pgp_fingerprint: Some([0; 20]),
 		image: data.clone(),
 		twitter: data.clone(),
+		discord: data.clone(),
+		telegram: data.clone(),
 	};
 
-	return info
+	return info;
 }
 
 benchmarks! {
@@ -153,7 +158,7 @@ benchmarks! {
 		};
 	}: _(RawOrigin::Signed(caller.clone()), Box::new(create_identity_info::<T>(x)))
 	verify {
-		assert_last_event::<T>(Event::<T>::IdentitySet(caller).into());
+		assert_last_event::<T>(Event::<T>::IdentitySet {who: caller}.into());
 	}
 
 	// We need to split `set_subs` into two benchmarks to accurately isolate the potential
@@ -237,7 +242,7 @@ benchmarks! {
 		};
 	}: _(RawOrigin::Signed(caller.clone()), r - 1, 10u32.into())
 	verify {
-		assert_last_event::<T>(Event::<T>::JudgementRequested(caller, r-1).into());
+		assert_last_event::<T>(Event::<T>::JudgementRequested {who: caller, registrar_index: r-1}.into());
 	}
 
 	cancel_request {
@@ -257,7 +262,7 @@ benchmarks! {
 		Identity::<T>::request_judgement(caller_origin, r - 1, 10u32.into())?;
 	}: _(RawOrigin::Signed(caller.clone()), r - 1)
 	verify {
-		assert_last_event::<T>(Event::<T>::JudgementUnrequested(caller, r-1).into());
+		assert_last_event::<T>(Event::<T>::JudgementUnrequested {who: caller, registrar_index: r-1}.into());
 	}
 
 	set_fee {
@@ -328,7 +333,7 @@ benchmarks! {
 		Identity::<T>::request_judgement(user_origin.clone(), r, 10u32.into())?;
 	}: _(RawOrigin::Signed(caller), r, user_lookup, Judgement::Reasonable)
 	verify {
-		assert_last_event::<T>(Event::<T>::JudgementGiven(user, r).into())
+		assert_last_event::<T>(Event::<T>::JudgementGiven{target: user, registrar_index: r}.into())
 	}
 
 	kill_identity {
