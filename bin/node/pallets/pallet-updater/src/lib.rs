@@ -61,8 +61,6 @@ pub mod pallet {
 		#[pallet::constant]
 		/// Maximum number of members.
 		type MaxMembers: Get<u32>;
-		/// Maximum number of proposals allowed to be active at the same time.
-		type MaxProposals: Get<ProposalIndex>;
 		/// The duration of an updater proposal.
 		type MotionDuration: Get<Self::BlockNumber>;
 	}
@@ -152,6 +150,10 @@ pub mod pallet {
 		WrongIndex,
 		/// Duplicate vote ignored.
 		DuplicateVote,
+		/// We cannot have more than one proposals at a time.
+		ExceedMaxProposals,
+		/// Voting is still ongoing.
+		OngoingVoting,
 	}
 
 	#[pallet::call]
@@ -159,10 +161,8 @@ pub mod pallet {
 		/// Add a new member to storage.
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
 		pub fn add_member(origin: OriginFor<T>, add_acct: T::AccountId) -> DispatchResult {
-			let signer = ensure_signed(origin)?;
-
+			ensure_root(origin)?;
 			let mut members = Self::members();
-			ensure!(members.contains(&signer), Error::<T, I>::NotMember);
 			ensure!(!members.contains(&add_acct), Error::<T, I>::SameAccount);
 
 			members.push(add_acct.clone());
@@ -176,8 +176,7 @@ pub mod pallet {
 		/// Remove a member from storage.
 		#[pallet::weight(10_000 + T::DbWeight::get().writes(1))]
 		pub fn remove_member(origin: OriginFor<T>, remove_acct: T::AccountId) -> DispatchResult {
-			let signer = ensure_signed(origin)?;
-			ensure!(signer != remove_acct, <Error<T, I>>::SameAccount);
+			ensure_root(origin)?;
 
 			let members = Self::members();
 			ensure!(members.contains(&remove_acct), <Error<T, I>>::AccNotExist);
@@ -203,6 +202,7 @@ pub mod pallet {
 			let proposal_hash = T::Hashing::hash_of(&code);
 			let mut proposals = Self::proposals();
 			ensure!(!proposals.contains(&proposal_hash), <Error<T, I>>::DuplicateProposal);
+			ensure!(proposals.is_empty(), <Error<T, I>>::ExceedMaxProposals);
 
 			let index = Self::proposal_count();
 			proposals.push(proposal_hash);
@@ -282,6 +282,8 @@ pub mod pallet {
 			let seats = members.len() as MemberCount;
 			let approved = yes_votes >= voting.threshold;
 			let disapproved = seats.saturating_sub(no_votes) < voting.threshold;
+
+			ensure!(yes_votes + no_votes == seats, <Error::<T, I>>::OngoingVoting);
 
 			if approved {
 				Self::deposit_event(Event::Approved(proposal_hash, yes_votes, no_votes));
