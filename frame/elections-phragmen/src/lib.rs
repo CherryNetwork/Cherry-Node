@@ -117,7 +117,7 @@ use sp_runtime::{
 };
 use sp_std::{cmp::Ordering, prelude::*};
 
-mod benchmarking;
+// mod benchmarking; TODO: fix benchamrks for frame changes
 pub mod weights;
 pub use weights::WeightInfo;
 
