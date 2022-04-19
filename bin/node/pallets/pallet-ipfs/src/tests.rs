@@ -630,3 +630,58 @@ fn cherry_delete_ipfs_asset_ipfs_not_exist() {
 		assert_ok!(mock::Ipfs::handle_data_requests());
 	});
 }
+
+#[test]
+fn cherry_ipfs_can_submit_identity() {
+	let (p, _) = sp_core::sr25519::Pair::generate();
+	let (offchain, state) = testing::TestOffchainExt::new();
+	let (pool, _) = testing::TestTransactionPoolExt::new();
+	const PHRASE: &str =
+		"news slush supreme milk chapter athlete soap sausage put clutch what kitten";
+	let keystore = KeyStore::new();
+	SyncCryptoStore::sr25519_generate_new(
+		&keystore,
+		crate::KEY_TYPE,
+		Some(&format!("{}/hunter1", PHRASE)),
+	)
+	.unwrap();
+
+	let mut t = new_test_ext_funded(p.clone());
+	t.register_extension(OffchainWorkerExt::new(offchain));
+	t.register_extension(TransactionPoolExt::new(pool));
+	t.register_extension(KeystoreExt(Arc::new(keystore)));
+
+	let multiaddr_ipv4_vec =
+		"/ip4/127.0.0.1/tcp/4001/p2p/12D3KooWMvyvKxYcy9mjbFbXcogFSCvENzQ62ogRxHKZaksFCkAp"
+			.as_bytes()
+			.to_vec();
+	let multiaddr_ipv6_vec =
+		"/ip6/127.0.0.1/tcp/4001/p2p/1223KooWMzyvKxYcy9mjbFbXcogFSCvENzQ62ogRxHKZaksFCkAp"
+			.as_bytes()
+			.to_vec();
+	let cid_vec = "QmPZv7P8nQUSh2CpqTvUeYemFyjvMjgWEs8H1Tm8b3zAm9".as_bytes().to_vec();
+
+	let multiaddr = vec![multiaddr_ipv4_vec, multiaddr_ipv6_vec]
+		.into_iter()
+		.map(|x| OpaqueMultiaddr(x))
+		.collect::<Vec<OpaqueMultiaddr>>();
+
+	t.execute_with(|| {
+		assert_ok!(mock::Ipfs::submit_ipfs_identity(
+			Origin::signed(p.clone().public()),
+			cid_vec.clone(),
+			multiaddr.clone()
+		));
+
+		assert_eq!(mock::Ipfs::nodes_registery().len(), 1);
+
+		assert_noop!(
+			mock::Ipfs::submit_ipfs_identity(
+				Origin::signed(p.clone().public()),
+				cid_vec,
+				multiaddr
+			),
+			Error::<Test>::AlreadyInRegistery
+		);
+	});
+}
