@@ -670,12 +670,10 @@ fn cherry_ipfs_can_submit_identity() {
 		.collect::<Vec<OpaqueMultiaddr>>();
 
 	t.execute_with(|| {
-		assert_ok!(mock::Ipfs::create_ipfs_asset(
+		assert_ok!(mock::Ipfs::submit_ipfs_identity(
 			Origin::signed(p.clone().public()),
-			multiaddr_ipv4_vec.clone(),
-			cid_vec.clone(),
-			size.clone(),
-			None
+			cid_vec,
+			multiaddr,
 		));
 	});
 }
