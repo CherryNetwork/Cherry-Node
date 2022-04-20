@@ -467,7 +467,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
 
-			<IPFSNodes::<T>>::insert(public_key.clone(), multiaddress.clone());
+			<IPFSNodes<T>>::insert(public_key.clone(), multiaddress.clone());
 
 			Self::deposit_event(Event::PublishedIdentity(signer.clone()));
 
