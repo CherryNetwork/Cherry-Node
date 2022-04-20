@@ -476,6 +476,12 @@ pub mod pallet {
 		) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
 
+			ensure!(
+				Self::determine_account_ownership_layer(&public_key, &signer)? ==
+					OwnershipLayer::Owner,
+				<Error<T>>::NotIpfsOwner
+			);
+
 			let new_registry =
 				IpfsNodesRegistery { account_id: signer.clone(), public_key, multiaddress };
 

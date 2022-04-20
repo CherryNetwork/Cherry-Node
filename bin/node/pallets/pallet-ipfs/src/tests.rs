@@ -634,6 +634,7 @@ fn cherry_delete_ipfs_asset_ipfs_not_exist() {
 #[test]
 fn cherry_ipfs_can_submit_identity() {
 	let (p, _) = sp_core::sr25519::Pair::generate();
+	let (p_n, _) = sp_core::sr25519::Pair::generate();
 	let (offchain, state) = testing::TestOffchainExt::new();
 	let (pool, _) = testing::TestTransactionPoolExt::new();
 	const PHRASE: &str =
@@ -661,12 +662,30 @@ fn cherry_ipfs_can_submit_identity() {
 			.to_vec();
 	let cid_vec = "QmPZv7P8nQUSh2CpqTvUeYemFyjvMjgWEs8H1Tm8b3zAm9".as_bytes().to_vec();
 
-	let multiaddr = vec![multiaddr_ipv4_vec, multiaddr_ipv6_vec]
+	let size = 1024;
+
+	let multiaddr = vec![multiaddr_ipv4_vec.clone(), multiaddr_ipv6_vec.clone()]
 		.into_iter()
 		.map(|x| OpaqueMultiaddr(x))
 		.collect::<Vec<OpaqueMultiaddr>>();
 
 	t.execute_with(|| {
+		assert_ok!(mock::Ipfs::create_ipfs_asset(
+			Origin::signed(p.clone().public()),
+			multiaddr_ipv4_vec.clone(),
+			cid_vec.clone(),
+			size.clone(),
+			None
+		));
+
+		assert_ok!(mock::Ipfs::submit_ipfs_add_results(
+			Origin::signed(p.clone().public()),
+			p.clone().public(),
+			cid_vec.clone(),
+			size.clone(),
+			0u32
+		));
+
 		assert_ok!(mock::Ipfs::submit_ipfs_identity(
 			Origin::signed(p.clone().public()),
 			cid_vec.clone(),
@@ -678,10 +697,15 @@ fn cherry_ipfs_can_submit_identity() {
 		assert_noop!(
 			mock::Ipfs::submit_ipfs_identity(
 				Origin::signed(p.clone().public()),
-				cid_vec,
-				multiaddr
+				cid_vec.clone(),
+				multiaddr.clone()
 			),
 			Error::<Test>::AlreadyInRegistery
+		);
+
+		assert_noop!(
+			mock::Ipfs::submit_ipfs_identity(Origin::signed(p_n.public()), cid_vec, multiaddr),
+			Error::<Test>::AccNotExist
 		);
 	});
 }
