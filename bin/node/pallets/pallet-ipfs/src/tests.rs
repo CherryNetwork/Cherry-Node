@@ -677,35 +677,5 @@ fn cherry_ipfs_can_submit_identity() {
 			size.clone(),
 			None
 		));
-
-		assert_ok!(mock::Ipfs::submit_ipfs_add_results(
-			Origin::signed(p.clone().public()),
-			p.clone().public(),
-			cid_vec.clone(),
-			size.clone(),
-			0u32
-		));
-
-		assert_ok!(mock::Ipfs::submit_ipfs_identity(
-			Origin::signed(p.clone().public()),
-			cid_vec.clone(),
-			multiaddr.clone()
-		));
-
-		assert_eq!(mock::Ipfs::nodes_registery().len(), 1);
-
-		assert_noop!(
-			mock::Ipfs::submit_ipfs_identity(
-				Origin::signed(p.clone().public()),
-				cid_vec.clone(),
-				multiaddr.clone()
-			),
-			Error::<Test>::AlreadyInRegistery
-		);
-
-		assert_noop!(
-			mock::Ipfs::submit_ipfs_identity(Origin::signed(p_n.public()), cid_vec, multiaddr),
-			Error::<Test>::AccNotExist
-		);
 	});
 }

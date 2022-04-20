@@ -115,22 +115,14 @@ pub mod pallet {
 		}
 	}
 
-	#[derive(Clone, Encode, Decode, RuntimeDebug, PartialEq, TypeInfo)]
-	#[scale_info(skip_type_params(T))]
-	pub struct IpfsNodesRegistery<T: Config> {
-		pub account_id: T::AccountId,
-		pub public_key: Vec<u8>,
-		pub multiaddress: Vec<OpaqueMultiaddr>,
-	}
-
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
 
 	#[pallet::storage]
-	#[pallet::getter(fn nodes_registery)]
-	pub(super) type NodesRegistery<T: Config> =
-		StorageValue<_, Vec<IpfsNodesRegistery<T>>, ValueQuery>;
+	#[pallet::getter(fn ipfs_nodes)]
+	pub(super) type IPFSNodes<T: Config> =
+		StorageMap<_, Twox64Concat, Vec<u8>, Vec<OpaqueMultiaddr>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn data_queue)]
@@ -194,7 +186,6 @@ pub mod pallet {
 		RequestTimeout,
 		RequestFailed,
 		FeeOutOfBounds,
-		AlreadyInRegistery,
 	}
 
 	#[pallet::event]
@@ -476,25 +467,7 @@ pub mod pallet {
 		) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
 
-			ensure!(
-				Self::determine_account_ownership_layer(&public_key, &signer)? ==
-					OwnershipLayer::Owner,
-				<Error<T>>::NotIpfsOwner
-			);
-
-			let new_registry =
-				IpfsNodesRegistery { account_id: signer.clone(), public_key, multiaddress };
-
-			let mut nodes_registery = Self::nodes_registery();
-
-			ensure!(
-				!nodes_registery.clone().contains(&new_registry),
-				<Error<T>>::AlreadyInRegistery
-			);
-
-			nodes_registery.push(new_registry);
-
-			<NodesRegistery<T>>::put(nodes_registery);
+			<IPFSNodes::<T>>::insert(public_key.clone(), multiaddress.clone());
 
 			Self::deposit_event(Event::PublishedIdentity(signer.clone()));
 
