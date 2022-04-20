@@ -20,13 +20,12 @@ impl<T: Config> Pallet<T> {
 		acct: &T::AccountId,
 	) -> Result<OwnershipLayer, Error<T>> {
 		match Self::ipfs_asset(cid) {
-			Some(ipfs) => {
+			Some(ipfs) =>
 				if let Some(layer) = ipfs.owners.get_key_value(acct) {
 					Ok(layer.1.clone())
 				} else {
 					Err(<Error<T>>::AccNotExist)
-				}
-			},
+				},
 			None => Err(<Error<T>>::IpfsNotExist),
 		}
 	}
@@ -290,7 +289,7 @@ impl<T: Config> Pallet<T> {
 					}
 				},
 
-				DataCommand::InsertPin(_m_addr, cid, _admin, is_recursive) => {
+				DataCommand::InsertPin(_m_addr, cid, _admin, is_recursive) =>
 					match Self::ipfs_request(
 						IpfsRequest::InsertPin(cid.clone(), is_recursive),
 						deadline,
@@ -327,10 +326,9 @@ impl<T: Config> Pallet<T> {
 							unreachable!("only Success can be a response for that request type")
 						},
 						Err(e) => log::error!("IPFS: Pin Error: {:?}", e),
-					}
-				},
+					},
 
-				DataCommand::RemovePin(_m_addr, cid, _admin, is_recursive) => {
+				DataCommand::RemovePin(_m_addr, cid, _admin, is_recursive) =>
 					match Self::ipfs_request(
 						IpfsRequest::RemovePin(cid.clone(), is_recursive),
 						deadline,
@@ -367,8 +365,7 @@ impl<T: Config> Pallet<T> {
 							unreachable!("only Success can be a response for that request type")
 						},
 						Err(e) => log::error!("IPFS: Remove Pin Error: {:?}", e),
-					}
-				},
+					},
 
 				DataCommand::RemoveBlock(_m_addr, cid, _admin) => {
 					match Self::ipfs_request(IpfsRequest::RemoveBlock(cid.clone()), deadline) {
