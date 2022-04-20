@@ -430,7 +430,7 @@ pub mod pallet {
 
 		/// TODO: Read an IPFS asset.
 		#[pallet::weight(0)]
-		pub fn read_file(origin: OriginFor<T>, addr: Vec<u8>, cid: Vec<u8>) -> DispatchResult {
+		pub fn get_ipfs_asset(origin: OriginFor<T>, addr: Vec<u8>, cid: Vec<u8>) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 
 			ensure!(
