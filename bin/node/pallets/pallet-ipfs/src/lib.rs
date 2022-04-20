@@ -70,7 +70,12 @@ pub enum DataCommand<AccountId> {
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
-	use frame_support::{dispatch::DispatchResult, pallet_prelude::*, traits::Currency};
+	use frame_support::{
+		dispatch::DispatchResult,
+		ensure,
+		pallet_prelude::{ValueQuery, *},
+		traits::Currency,
+	};
 	use frame_system::{
 		offchain::{AppCrypto, CreateSignedTransaction},
 		pallet_prelude::*,
@@ -113,6 +118,11 @@ pub mod pallet {
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
+
+	#[pallet::storage]
+	#[pallet::getter(fn ipfs_nodes)]
+	pub(super) type IPFSNodes<T: Config> =
+		StorageMap<_, Twox64Concat, Vec<u8>, Vec<OpaqueMultiaddr>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn data_queue)]
@@ -452,10 +462,12 @@ pub mod pallet {
 		#[pallet::weight(0)]
 		pub fn submit_ipfs_identity(
 			origin: OriginFor<T>,
-			_public_key: Vec<u8>,
-			_multiaddress: Vec<OpaqueMultiaddr>,
+			public_key: Vec<u8>,
+			multiaddress: Vec<OpaqueMultiaddr>,
 		) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
+
+			<IPFSNodes<T>>::insert(public_key.clone(), multiaddress.clone());
 
 			Self::deposit_event(Event::PublishedIdentity(signer.clone()));
 
