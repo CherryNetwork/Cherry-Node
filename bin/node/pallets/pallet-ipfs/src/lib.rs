@@ -122,7 +122,7 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn ipfs_nodes)]
 	pub(super) type IPFSNodes<T: Config> =
-		StorageMap<_, Twox64Concat, Vec<u8>, Vec<OpaqueMultiaddr>>;
+		StorageMap<_, Twox64Concat, Vec<u8>, Vec<OpaqueMultiaddr>, ValueQuery>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn data_queue)]
