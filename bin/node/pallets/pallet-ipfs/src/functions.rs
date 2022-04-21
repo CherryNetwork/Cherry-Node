@@ -288,6 +288,34 @@ impl<T: Config> Pallet<T> {
 						Err(e) => log::error!("IPFS: add error: {:?}", e),
 					}
 				},
+				// this block deals with whenever Identity is in the command queue
+				DataCommand::Identity => {
+					match Self::ipfs_request(IpfsRequest::Identity, deadline) {
+						Ok(IpfsResponse::Identity(public_key, multiaddress)) => {
+							if !(<IPFSNodes<T>>::contains_key(
+								public_key.clone(), //make sure it does NOT contain the key
+							)) {
+								let signer = Signer::<T, T::AuthorityId>::all_accounts();
+								if !signer.can_sign() {
+									log::error!(
+									"No local account available. Consider adding one via `author_insertKey` RPC",
+								);
+								}
+
+								let _ = signer.send_signed_transaction(|_account| {
+									Call::submit_ipfs_identity {
+										public_key: public_key.clone(),
+										multiaddress: multiaddress.clone(),
+									}
+								});
+							}
+						},
+						Ok(_) => {
+							unreachable!("only Success can be a response for that request type")
+						},
+						Err(e) => log::error!("IPFS: Remove Pin Error: {:?}", e),
+					}
+				},
 
 				DataCommand::InsertPin(_m_addr, cid, _admin, is_recursive) =>
 					match Self::ipfs_request(

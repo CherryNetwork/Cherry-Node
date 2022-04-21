@@ -62,6 +62,7 @@ pub enum DataCommand<AccountId> {
 	AddBytes(OpaqueMultiaddr, Vec<u8>, u64, u32, AccountId, bool),
 	AddBytesRaw(OpaqueMultiaddr, Vec<u8>, AccountId, bool),
 	CatBytes(OpaqueMultiaddr, Vec<u8>, AccountId),
+	Identity,
 	InsertPin(OpaqueMultiaddr, Vec<u8>, AccountId, bool),
 	RemovePin(OpaqueMultiaddr, Vec<u8>, AccountId, bool),
 	RemoveBlock(OpaqueMultiaddr, Vec<u8>, AccountId),
@@ -246,6 +247,9 @@ pub mod pallet {
 				if let Err(e) = Self::print_metadata() {
 					log::error!("IPFS: Encountered an error while obtaining metadata: {:?}", e);
 				}
+
+				// add `Identity` to DataCommand queue every 5 blocks
+				<DataQueue<T>>::mutate(|queue| queue.push(DataCommand::Identity));
 			}
 
 			if let Err(e) = Self::ipfs_garbage_collector(block_no) {
