@@ -507,7 +507,8 @@ where
 	TCl: Send + Sync + ProvideRuntimeApi<TBl> + BlockchainEvents<TBl> + 'static,
 	<TCl as ProvideRuntimeApi<TBl>>::Api: sc_offchain::OffchainWorkerApi<TBl>,
 {
-	let offchain_workers = Some(Arc::new(sc_offchain::OffchainWorkers::new(client.clone(), ipfs_rt)));
+	let offchain_workers =
+		Some(Arc::new(sc_offchain::OffchainWorkers::new(client.clone(), ipfs_rt)));
 
 	// Inform the offchain worker about new imported blocks
 	if let Some(offchain) = offchain_workers.clone() {

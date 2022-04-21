@@ -261,28 +261,28 @@ impl Timestamp {
 /// A request that can be handled by an IPFS node.
 #[derive(Clone, PartialEq, Eq, RuntimeDebug, Encode, Decode, PassByCodec)]
 pub enum IpfsRequest {
-    /// Get the list of node's peerIds and addresses.
-    Addrs,
-    /// Add the given bytes to the IPFS repo.
-    AddBytes(Vec<u8>),
-    /// Add an address to listen on.
-    AddListeningAddr(OpaqueMultiaddr),
-    /// Get the bitswap stats of the node.
-    BitswapStats,
-    /// Get bytes with the given Cid from the IPFS repo and display them.
-    CatBytes(Vec<u8>),
-    /// Connect to an external IPFS node with the specified Multiaddr.
-    Connect(OpaqueMultiaddr),
-    /// Disconnect from an external IPFS node with the specified Multiaddr.
+	/// Get the list of node's peerIds and addresses.
+	Addrs,
+	/// Add the given bytes to the IPFS repo.
+	AddBytes(Vec<u8>),
+	/// Add an address to listen on.
+	AddListeningAddr(OpaqueMultiaddr),
+	/// Get the bitswap stats of the node.
+	BitswapStats,
+	/// Get bytes with the given Cid from the IPFS repo and display them.
+	CatBytes(Vec<u8>),
+	/// Connect to an external IPFS node with the specified Multiaddr.
+	Connect(OpaqueMultiaddr),
+	/// Disconnect from an external IPFS node with the specified Multiaddr.
 	Disconnect(OpaqueMultiaddr),
-    /// Obtain an IPFS block.
-    GetBlock(Vec<u8>),
-    /// Find the addresses related to the given PeerId.
-    FindPeer(Vec<u8>),
-    /// Get a list of PeerIds closest to the given PeerId.
-    GetClosestPeers(Vec<u8>),
-    /// Find the providers for the given Cid.
-    GetProviders(Vec<u8>),
+	/// Obtain an IPFS block.
+	GetBlock(Vec<u8>),
+	/// Find the addresses related to the given PeerId.
+	FindPeer(Vec<u8>),
+	/// Get a list of PeerIds closest to the given PeerId.
+	GetClosestPeers(Vec<u8>),
+	/// Find the providers for the given Cid.
+	GetProviders(Vec<u8>),
 	/// Get the node's public key and dedicated external addresses.
 	Identity,
 	/// Pins a given Cid recursively or directly (non-recursively)
@@ -298,7 +298,7 @@ pub enum IpfsRequest {
 		/// The topic to publish the message to.
 		topic: Vec<u8>,
 		/// The message to publish.
-		message: Vec<u8>
+		message: Vec<u8>,
 	},
 	/// Remove a block from the ipfs repo. A pinned block cannot be removed.
 	RemoveBlock(Vec<u8>),
@@ -317,8 +317,8 @@ pub enum IpfsRequest {
 /// A response that can be returned from the IPFS node.
 #[derive(Clone, PartialEq, Eq, RuntimeDebug, Encode, Decode, PassByCodec)]
 pub enum IpfsResponse {
-    /// A list of pairs of node's peers and their known addresses.
-    Addrs(Vec<(Vec<u8>, Vec<OpaqueMultiaddr>)>),
+	/// A list of pairs of node's peers and their known addresses.
+	Addrs(Vec<(Vec<u8>, Vec<OpaqueMultiaddr>)>),
 	/// The Cid of the added bytes.
 	AddBytes(Vec<u8>),
 	/// A collection of node stats related to the bitswap protocol.
@@ -363,7 +363,9 @@ pub enum IpfsResponse {
 }
 
 /// Opaque type for offchain IPFS requests.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, RuntimeDebug, Encode, Decode, PassByInner, Default)]
+#[derive(
+	Clone, Copy, PartialEq, Eq, PartialOrd, Ord, RuntimeDebug, Encode, Decode, PassByInner, Default,
+)]
 #[cfg_attr(feature = "std", derive(Hash))]
 pub struct IpfsRequestId(pub u16);
 
@@ -600,7 +602,7 @@ pub trait Externalities: Send {
 	fn ipfs_response_wait(
 		&mut self,
 		ids: &[IpfsRequestId],
-		deadline: Option<Timestamp>
+		deadline: Option<Timestamp>,
 	) -> Vec<IpfsRequestStatus>;
 
 	/// Set the authorized nodes from runtime.
@@ -691,7 +693,11 @@ impl<T: Externalities + ?Sized> Externalities for Box<T> {
 		(&mut **self).ipfs_request_start(request)
 	}
 
-	fn ipfs_response_wait(&mut self, ids: &[IpfsRequestId], deadline: Option<Timestamp>) -> Vec<IpfsRequestStatus> {
+	fn ipfs_response_wait(
+		&mut self,
+		ids: &[IpfsRequestId],
+		deadline: Option<Timestamp>,
+	) -> Vec<IpfsRequestStatus> {
 		// self.check(Capability::Ipfs, "ipfs_response_wait");
 		// self.externalities.ipfs_response_wait(ids, deadline)
 		(&mut **self).ipfs_response_wait(ids, deadline)
@@ -803,13 +809,17 @@ impl<T: Externalities> Externalities for LimitedExternalities<T> {
 		self.check(Capability::Http, "http_response_read_body");
 		self.externalities.http_response_read_body(request_id, buffer, deadline)
 	}
-	
+
 	fn ipfs_request_start(&mut self, request: IpfsRequest) -> Result<IpfsRequestId, ()> {
 		self.check(Capability::Ipfs, "ipfs_request_start");
 		self.externalities.ipfs_request_start(request)
 	}
 
-	fn ipfs_response_wait(&mut self, ids: &[IpfsRequestId], deadline: Option<Timestamp>) -> Vec<IpfsRequestStatus> {
+	fn ipfs_response_wait(
+		&mut self,
+		ids: &[IpfsRequestId],
+		deadline: Option<Timestamp>,
+	) -> Vec<IpfsRequestStatus> {
 		self.check(Capability::Ipfs, "ipfs_response_wait");
 		self.externalities.ipfs_response_wait(ids, deadline)
 	}
