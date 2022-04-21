@@ -7,8 +7,7 @@ use crate::Pallet as Updater;
 use frame_benchmarking::{account, benchmarks, impl_benchmark_test_suite, whitelisted_caller};
 use frame_system::RawOrigin;
 use hex_literal::hex;
-use sp_runtime::traits::BlakeTwo256;
-use sp_runtime::AccountId32;
+use sp_runtime::{traits::BlakeTwo256, AccountId32};
 
 benchmarks! {
 	add_member {

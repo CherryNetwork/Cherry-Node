@@ -23,9 +23,9 @@
 use crate::{
 	offchain::{
 		self, storage::InMemOffchainStorage, HttpError, HttpRequestId as RequestId,
-		HttpRequestStatus as RequestStatus, OffchainOverlayedChange, OffchainStorage,
-		OpaqueNetworkState, StorageKind, Timestamp, TransactionPool,
-		IpfsRequest, IpfsRequestId, IpfsRequestStatus, IpfsResponse,
+		HttpRequestStatus as RequestStatus, IpfsRequest, IpfsRequestId, IpfsRequestStatus,
+		IpfsResponse, OffchainOverlayedChange, OffchainStorage, OpaqueNetworkState, StorageKind,
+		Timestamp, TransactionPool,
 	},
 	OpaquePeerId,
 };
@@ -227,12 +227,9 @@ impl OffchainState {
 	/// This method can be used to initialize expected IPFS requests and their responses
 	/// before running the actual code that utilizes them (for instance before calling into
 	/// runtime). Expected request has to be fulfilled before this struct is dropped,
-	/// the `ipfs_response` and `response_headers` fields will be used to return results to the callers.
-	/// Requests are expected to be performed in the insertion order.
-	pub fn expect_ipfs_request(
-		&mut self,
-		expected: IpfsPendingRequest,
-	) {
+	/// the `ipfs_response` and `response_headers` fields will be used to return results to the
+	/// callers. Requests are expected to be performed in the insertion order.
+	pub fn expect_ipfs_request(&mut self, expected: IpfsPendingRequest) {
 		if expected.response.is_none() {
 			panic!("Expected ipfs request needs to have a response");
 		}
@@ -416,7 +413,9 @@ impl offchain::Externalities for TestOffchainExt {
 		let id = IpfsRequestId(len as u16);
 		if let Some(mut req) = state.expected_ipfs_requests.pop_back() {
 			let response = req.response.take().expect("Response checked when added.");
-			state.ipfs_requests.insert(id.clone(), IpfsPendingRequest { id, response: Some(response) });
+			state
+				.ipfs_requests
+				.insert(id.clone(), IpfsPendingRequest { id, response: Some(response) });
 		} else {
 			panic!("No response provided for ipfs request id: {:?}", len)
 		}
@@ -429,16 +428,18 @@ impl offchain::Externalities for TestOffchainExt {
 		_deadline: Option<Timestamp>,
 	) -> Vec<IpfsRequestStatus> {
 		let state = self.0.read();
-		ids.iter().map(|id| match state.ipfs_requests.get(id) {
-			Some(req) => {
-				if req.response.is_none() {
-					panic!("No `response` provided for request with id: {:?}", id)
-				}
-				IpfsRequestStatus::Finished(req.response.clone().unwrap())
-			},
-			Some(_) => IpfsRequestStatus::Finished(IpfsResponse::Success),
-			None => IpfsRequestStatus::Invalid,
-		}).collect()
+		ids.iter()
+			.map(|id| match state.ipfs_requests.get(id) {
+				Some(req) => {
+					if req.response.is_none() {
+						panic!("No `response` provided for request with id: {:?}", id)
+					}
+					IpfsRequestStatus::Finished(req.response.clone().unwrap())
+				},
+				Some(_) => IpfsRequestStatus::Finished(IpfsResponse::Success),
+				None => IpfsRequestStatus::Invalid,
+			})
+			.collect()
 	}
 
 	fn set_authorized_nodes(&mut self, _nodes: Vec<OpaquePeerId>, _authorized_oy: bool) {

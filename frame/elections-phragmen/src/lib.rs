@@ -525,7 +525,7 @@ pub mod pallet {
 				return Err(Error::<T>::InvalidReplacement.with_weight(
 					// refund. The weight value comes from a benchmark which is special to this.
 					<T as pallet::Config>::WeightInfo::remove_member_wrong_refund(),
-				));
+				))
 			}
 
 			let had_replacement = Self::remove_and_replace_member(&who, true)?;
@@ -739,7 +739,7 @@ pub mod pallet {
 					member.clone()
 				})
 				.collect::<Vec<T::AccountId>>();
-			
+
 			// report genesis members to upstream, if any.
 			T::InitializeMembers::initialize_members(&members);
 		}
@@ -922,7 +922,7 @@ impl<T: Config> Pallet<T> {
 
 		if candidates_and_deposit.len().is_zero() {
 			Self::deposit_event(Event::EmptyTerm);
-			return T::DbWeight::get().reads(5);
+			return T::DbWeight::get().reads(5)
 		}
 
 		// All of the new winners that come out of phragmen will thus have a deposit recorded.
@@ -1038,8 +1038,8 @@ impl<T: Config> Pallet<T> {
 			// All candidates/members/runners-up who are no longer retaining a position as a
 			// seat holder will lose their bond.
 			candidates_and_deposit.iter().for_each(|(c, d)| {
-				if new_members_ids_sorted.binary_search(c).is_err()
-					&& new_runners_up_ids_sorted.binary_search(c).is_err()
+				if new_members_ids_sorted.binary_search(c).is_err() &&
+					new_runners_up_ids_sorted.binary_search(c).is_err()
 				{
 					let (imbalance, _) = <T as pallet::Config>::Currency::slash_reserved(c, *d);
 					T::LoserCandidate::on_unbalanced(imbalance);

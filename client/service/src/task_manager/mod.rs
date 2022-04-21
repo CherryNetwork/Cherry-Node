@@ -250,7 +250,7 @@ impl TaskManager {
 	pub fn new(
 		tokio_handle: Handle,
 		ipfs_rt: tokio::runtime::Runtime,
-		prometheus_registry: Option<&Registry>
+		prometheus_registry: Option<&Registry>,
 	) -> Result<Self, PrometheusError> {
 		let (signal, on_exit) = exit_future::signal();
 

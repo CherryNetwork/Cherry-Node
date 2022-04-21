@@ -7,8 +7,7 @@ use sp_runtime::{traits::Hash, RuntimeDebug};
 use frame_support::codec::{Decode, Encode};
 
 pub use pallet::*;
-use sp_std::vec;
-use sp_std::vec::Vec;
+use sp_std::{vec, vec::Vec};
 
 /// Simple index type for proposal counting.
 pub type ProposalIndex = u32;
@@ -239,7 +238,7 @@ pub mod pallet {
 				if position_yes.is_none() {
 					voting.ayes.push(signer.clone());
 				} else {
-					return Err(Error::<T, I>::DuplicateVote.into());
+					return Err(Error::<T, I>::DuplicateVote.into())
 				}
 				if let Some(pos) = position_no {
 					voting.nays.swap_remove(pos);
@@ -248,7 +247,7 @@ pub mod pallet {
 				if position_no.is_none() {
 					voting.nays.push(signer.clone());
 				} else {
-					return Err(Error::<T, I>::DuplicateVote.into());
+					return Err(Error::<T, I>::DuplicateVote.into())
 				}
 				if let Some(pos) = position_yes {
 					voting.ayes.swap_remove(pos);

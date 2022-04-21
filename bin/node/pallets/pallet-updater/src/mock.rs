@@ -1,15 +1,15 @@
 #![cfg(test)]
 
+use frame_support::parameter_types;
 use frame_system as system;
-use frame_support::{parameter_types};
 use frame_system::{EventRecord, Phase};
+use sp_core::H256;
+use sp_io;
 use sp_runtime::{
 	testing::Header,
 	traits::{BlakeTwo256, IdentityLookup},
 	BuildStorage,
 };
-use sp_core::H256;
-use sp_io;
 
 use crate::{self as pallet_updater, Config};
 

@@ -1,8 +1,10 @@
 use super::*;
 use frame_support::{assert_noop, assert_ok};
 use mock::*;
-use sp_core::offchain::{testing, IpfsResponse, OffchainWorkerExt, TransactionPoolExt};
-use sp_core::Pair;
+use sp_core::{
+	offchain::{testing, IpfsResponse, OffchainWorkerExt, TransactionPoolExt},
+	Pair,
+};
 use sp_keystore::{testing::KeyStore, KeystoreExt, SyncCryptoStore};
 use std::sync::Arc;
 
