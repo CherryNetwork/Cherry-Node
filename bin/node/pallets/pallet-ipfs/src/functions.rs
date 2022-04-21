@@ -4,7 +4,7 @@ use frame_system::pallet_prelude::BlockNumberFor;
 use sp_runtime::offchain::{ipfs, IpfsRequest, IpfsResponse};
 
 impl<T: Config> Pallet<T> {
-	pub fn retrieve_bytes(_public_key: Bytes, _signature: Bytes, message: Bytes) -> Bytes {
+	pub fn retrieve_bytes(message: Bytes) -> Bytes {
 		let message_vec: Vec<u8> = message.to_vec();
 		if let Some(data) =
 			sp_io::offchain::local_storage_get(StorageKind::PERSISTENT, &message_vec)

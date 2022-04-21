@@ -9,10 +9,8 @@ use sp_core::Bytes;
 sp_api::decl_runtime_apis! {
 	pub trait RpcIpfsApi
 	{
-		fn retrieve_bytes(
-			public_key: Bytes,
-			signature: Bytes,
-			message: Bytes,
-		) -> Bytes;
+	fn retrieve_bytes(
+		message: Bytes,
+	) -> Bytes;
 	}
 }
