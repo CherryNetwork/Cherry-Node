@@ -24,8 +24,9 @@ pub use http::SharedClient;
 use sc_network::{Multiaddr, PeerId};
 use sp_core::{
 	offchain::{
-		self, HttpError, HttpRequestId, HttpRequestStatus, OffchainStorage, OpaqueMultiaddr,
-		OpaqueNetworkState, StorageKind, Timestamp, IpfsRequest, IpfsRequestId, IpfsRequestStatus,
+		self, HttpError, HttpRequestId, HttpRequestStatus, IpfsRequest, IpfsRequestId,
+		IpfsRequestStatus, OffchainStorage, OpaqueMultiaddr, OpaqueNetworkState, StorageKind,
+		Timestamp,
 	},
 	OpaquePeerId,
 };
@@ -34,11 +35,6 @@ pub use sp_offchain::STORAGE_PREFIX;
 mod http;
 
 mod ipfs;
-
-#[cfg(target_os = "unknown")]
-use http_dummy as http;
-#[cfg(target_os = "unknown")]
-mod http_dummy;
 
 mod timestamp;
 
@@ -234,7 +230,7 @@ impl offchain::Externalities for Api {
 	fn ipfs_response_wait(
 		&mut self,
 		ids: &[IpfsRequestId],
-		deadline: Option<Timestamp>
+		deadline: Option<Timestamp>,
 	) -> Vec<IpfsRequestStatus> {
 		self.ipfs.response_wait(ids, deadline)
 	}
@@ -314,13 +310,13 @@ pub(crate) struct AsyncApi<I: ::ipfs::IpfsTypes> {
 	ipfs: Option<ipfs::IpfsWorker<I>>,
 }
 
-impl <I: ::ipfs::IpfsTypes> AsyncApi<I> {
+impl<I: ::ipfs::IpfsTypes> AsyncApi<I> {
 	/// Creates new Offchain extensions API implementation an the asynchronous processing part.
 	pub fn new(
 		network_provider: Arc<dyn NetworkProvider + Send + Sync>,
 		is_validator: bool,
 		shared_client: SharedClient,
-		ipfs_node: ::ipfs::Ipfs<I>
+		ipfs_node: ::ipfs::Ipfs<I>,
 	) -> (Api, Self) {
 		let (http_api, http_worker) = http::http(shared_client);
 
@@ -382,7 +378,8 @@ mod tests {
 		let options = ::ipfs::IpfsOptions::default();
 		let mut rt = tokio::runtime::Runtime::new().unwrap();
 		let ipfs_node = rt.block_on(async move {
-			let (ipfs, fut) = ::ipfs::UninitializedIpfs::new(options, None).await.start().await.unwrap();
+			let (ipfs, fut) =
+				::ipfs::UninitializedIpfs::new(options, None).await.start().await.unwrap();
 			tokio::task::spawn(fut);
 			ipfs
 		});
