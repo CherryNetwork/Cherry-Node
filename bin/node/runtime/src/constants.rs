@@ -161,5 +161,4 @@ pub mod time_prod {
 	pub const BOUNTY_DEPOSIT_PAYOUT_DELAY: BlockNumber = 1 * DAYS;
 	pub const TIP_COUNTDOWN: BlockNumber = 1 * DAYS;
 	pub const BOUNTY_UPDATE_PERIOD: BlockNumber = 14 * DAYS;
-
 }

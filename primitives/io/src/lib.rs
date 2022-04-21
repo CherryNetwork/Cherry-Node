@@ -49,8 +49,8 @@ use sp_core::{
 	crypto::KeyTypeId,
 	ecdsa, ed25519,
 	offchain::{
-		HttpError, HttpRequestId, HttpRequestStatus, OpaqueNetworkState, StorageKind, Timestamp,
-		IpfsRequest, IpfsRequestId, IpfsRequestStatus,
+		HttpError, HttpRequestId, HttpRequestStatus, IpfsRequest, IpfsRequestId, IpfsRequestStatus,
+		OpaqueNetworkState, StorageKind, Timestamp,
 	},
 	sr25519, LogLevel, LogLevelFilter, OpaquePeerId, H256,
 };
