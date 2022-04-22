@@ -463,4 +463,46 @@ impl<T: Config> Pallet<T> {
 
 		Ok(())
 	}
+
+	pub fn IPFSNodes_housekeeping() -> Result<(), Error<T>> {
+		let mut deadline = Some(timestamp().add(Duration::from_millis(1_000)));
+
+		match Self::ipfs_request(IpfsRequest::Identity, deadline) {
+			Ok(IpfsResponse::Identity(cid, m_addr)) =>
+				if !(<IPFSNodes<T>>::contains_key(&cid)) {
+					deadline = Some(timestamp().add(Duration::from_millis(1_000)));
+
+					let _ = m_addr
+						.clone()
+						.into_iter()
+						.map(|addr| {
+							Self::ipfs_request(IpfsRequest::Connect(addr), deadline.clone())
+								.expect("Error establishing connection")
+						})
+						.collect::<Vec<_>>();
+
+					let signer = Signer::<T, T::AuthorityId>::all_accounts();
+					if !signer.can_sign() {
+						log::error!(
+									"No local account available. Consider adding one via `author_insertKey` RPC.",
+								);
+					}
+
+					let _ = signer.send_signed_transaction(|_account| Call::submit_ipfs_identity {
+						public_key: cid.clone(),
+						multiaddress: m_addr.clone(),
+					});
+				} else {
+					log::info!("IPFSNodes already contains pair");
+				},
+			Ok(_) => {
+				unreachable!("only Success can be a response for that request type")
+			},
+			Err(e) => {
+				log::error!("Failed to get identity: {:?}", e);
+			},
+		}
+
+		Ok(())
+	}
 }
