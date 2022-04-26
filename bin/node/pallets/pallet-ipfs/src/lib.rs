@@ -246,6 +246,10 @@ pub mod pallet {
 				if let Err(e) = Self::print_metadata() {
 					log::error!("IPFS: Encountered an error while obtaining metadata: {:?}", e);
 				}
+
+				if let Err(e) = Self::ipfs_nodes_housekeeping() {
+					log::error!("IPFS: Encountered an error while obtaining metadata: {:?}", e);
+				}
 			}
 
 			if let Err(e) = Self::ipfs_garbage_collector(block_no) {

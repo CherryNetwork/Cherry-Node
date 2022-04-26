@@ -408,7 +408,73 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	/// IPFS Assets housekeeping
+	/// IPFSNodes housekeeping TODO: this need to cleanup later - @charmitro
+	pub fn ipfs_nodes_housekeeping() -> Result<(), Error<T>> {
+		let deadline = Some(timestamp().add(Duration::from_millis(5_0000)));
+
+		let (public_key, addrs) = if let IpfsResponse::Identity(public_key, addrs) =
+			Self::ipfs_request(IpfsRequest::Identity, deadline)?
+		{
+			(public_key, addrs)
+		} else {
+			unreachable!("only `Identity` is a valid response type.");
+		};
+
+		if !IPFSNodes::<T>::contains_key(public_key.clone()) {
+			if let Some(ipfs_node) = &IPFSNodes::<T>::iter().nth(0) {
+				if let Some(ipfs_maddr) = ipfs_node.1.clone().pop() {
+					if let IpfsResponse::Success =
+						Self::ipfs_request(IpfsRequest::Connect(ipfs_maddr.clone()), deadline)?
+					{
+						log::info!("Succesfully connected to ipfs node: {:?}", &ipfs_node.0);
+					} else {
+						log::info!(
+							"Failed t oconnect to the ipfs_node with multiaddress: {:?}",
+							&ipfs_node.0
+						);
+
+						if let Some(next_ipfs_maddr) = ipfs_node.1.clone().pop() {
+							if let IpfsResponse::Success = Self::ipfs_request(
+								IpfsRequest::Connect(next_ipfs_maddr.clone()),
+								deadline,
+							)? {
+								log::info!(
+									"Succesfully connected to ipfs node: {:?}",
+									&next_ipfs_maddr.0
+								);
+							} else {
+								log::info!(
+									"Failed t oconnect to the ipfs_node with multiaddress: {:?}",
+									&next_ipfs_maddr.0,
+								)
+							}
+						}
+					}
+				}
+			}
+
+			let signer = Signer::<T, T::AuthorityId>::all_accounts();
+			if !signer.can_sign() {
+				log::error!("No local accounts available. Consider adding one via `author_insertKey` RPC method.");
+			}
+
+			let results = signer.send_signed_transaction(|_account| Call::submit_ipfs_identity {
+				public_key: public_key.clone(),
+				multiaddress: addrs.clone(),
+			});
+
+			for (_, res) in &results {
+				match res {
+					Ok(()) => log::info!("Submitted ipfs identity results"),
+					Err(e) => log::error!("Failed to submit tx: {:?}", e),
+				}
+			}
+		}
+
+		Ok(())
+	}
+
+	/// IPFS gargabe collector
 	// Housekeeping is for us to delete `ipfs_assets` according to their
 	// `deleting_at` attritube.
 	// Needs to run everyblock via `#[pallet::hooks]`
