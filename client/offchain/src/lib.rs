@@ -75,7 +75,7 @@ where
 	fn set_authorized_peers(&self, peers: HashSet<PeerId>) {
 		self.set_authorized_peers(peers)
 	}
- 
+
 	fn set_authorized_only(&self, reserved_only: bool) {
 		self.set_authorized_only(reserved_only)
 	}
@@ -96,7 +96,7 @@ impl<Client, Block: traits::Block> OffchainWorkers<Client, Block> {
 		let shared_client = api::SharedClient::new();
 
 		let (ipfs_node, node_info) = std::thread::spawn(move || {
-		    let ipfs_rt = ipfs_rt.lock();
+			let ipfs_rt = ipfs_rt.lock();
 			// https://docs.rs/ipfs/0.2.1/ipfs/struct.IpfsOptions.html
 			let mut options = ipfs::IpfsOptions::inmemory_with_generated_keys();
 			options.listening_addrs = vec!["/ip4/0.0.0.0/tcp/35555".parse().unwrap()];
@@ -108,11 +108,14 @@ impl<Client, Block: traits::Block> OffchainWorkers<Client, Block> {
 				let node_info = ipfs.identity().await.unwrap();
 				(ipfs, node_info)
 			})
-		}).join().expect("couldn't start the IPFS async runtime");
+		})
+		.join()
+		.expect("couldn't start the IPFS async runtime");
 
 		log::info!(
-		    "IPFS: node started with PeerId {} and addresses {:?}",
-		    node_info.0.into_peer_id(), node_info.1
+			"IPFS: node started with PeerId {} and addresses {:?}",
+			node_info.0.into_peer_id(),
+			node_info.1
 		);
 
 		Self {
@@ -164,8 +167,12 @@ where
 		};
 		debug!("Checking offchain workers at {:?}: version:{}", at, version);
 		if version > 0 {
-			let (api, runner) =
-				api::AsyncApi::new(network_provider, is_validator, self.shared_client.clone(), self.ipfs_node.clone());
+			let (api, runner) = api::AsyncApi::new(
+				network_provider,
+				is_validator,
+				self.shared_client.clone(),
+				self.ipfs_node.clone(),
+			);
 			debug!("Spawning offchain workers at {:?}", at);
 			let header = header.clone();
 			let client = self.client.clone();
