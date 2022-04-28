@@ -26,7 +26,7 @@ impl<T: Config> Pallet<T> {
 		if !Self::validators().contains(acct) {
 			Validators::<T>::mutate(|validators| validators.push(acct.clone()));
 		} else {
-			log::info!("The AccountId {} is already a Validator", acct)
+			log::info!("The AccountId {:?} is already a Validator", acct)
 		}
 	}
 
@@ -34,7 +34,7 @@ impl<T: Config> Pallet<T> {
 		if Self::validators().contains(acct) {
 			Validators::<T>::mutate(|validators| validators.retain(|who| who != acct))
 		} else {
-			log::info!("The AccountId {} is not in the list of Validators", acct)
+			log::info!("The AccountId {:?} is not in the list of Validators", acct)
 		}
 	}
 
