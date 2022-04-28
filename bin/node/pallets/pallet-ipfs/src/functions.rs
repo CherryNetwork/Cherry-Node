@@ -15,6 +15,13 @@ impl<T: Config> Pallet<T> {
 		}
 	}
 
+	pub fn initialize_validators(validators: &[T::AccountId]) {
+		assert!(validators.len() > 1, "At least 2 validators should be initialized.");
+		assert!(<Validators<T>>::get().is_empty(), "Validators are already initialized.");
+		<Validators<T>>::put(validators);
+		<ApprovedValidators<T>>::put(validators);
+	}
+
 	pub fn add_validator(acct: &T::AccountId) {
 		if !Self::validators().contains(acct) {
 			Validators::<T>::mutate(|validators| validators.push(acct.clone()));

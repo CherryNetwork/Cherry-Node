@@ -129,6 +129,10 @@ pub mod pallet {
 	pub(super) type Validators<T: Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
 
 	#[pallet::storage]
+	#[pallet::getter(fn approved_validators)]
+	pub(super) type ApprovedValidators<T: Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
+
+	#[pallet::storage]
 	#[pallet::getter(fn data_queue)]
 	pub(super) type DataQueue<T: Config> =
 		StorageValue<_, Vec<DataCommand<T::AccountId>>, ValueQuery>;
@@ -259,6 +263,25 @@ pub mod pallet {
 			if let Err(e) = Self::ipfs_garbage_collector(block_no) {
 				log::error!("IPFS::GARBAGE_COLLECTOR::ERROR: {:?}", e);
 			}
+		}
+	}
+
+	#[pallet::genesis_config]
+	pub struct GenesisConfig<T: Config> {
+		pub initial_validators: Vec<T::AccountId>,
+	}
+
+	#[cfg(feature = "std")]
+	impl<T: Config> Default for GenesisConfig<T> {
+		fn default() -> Self {
+			Self { initial_validators: Default::default() }
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+		fn build(&self) {
+			Pallet::<T>::initialize_validators(&self.initial_validators);
 		}
 	}
 
