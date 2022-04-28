@@ -125,6 +125,10 @@ pub mod pallet {
 		StorageMap<_, Twox64Concat, Vec<u8>, Vec<OpaqueMultiaddr>, ValueQuery>;
 
 	#[pallet::storage]
+	#[pallet::getter(fn validators)]
+	pub(super) type Validators<T: Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
+
+	#[pallet::storage]
 	#[pallet::getter(fn data_queue)]
 	pub(super) type DataQueue<T: Config> =
 		StorageValue<_, Vec<DataCommand<T::AccountId>>, ValueQuery>;
@@ -327,6 +331,36 @@ pub mod pallet {
 
 			Ok(())
 		}
+
+		// /// Add a new validator
+		// #[pallet::weight(0)]
+		// pub fn add_validator(
+		// 	origin: OriginFor<T>,
+		// 	_cid: Vec<u8>,
+		// 	acct: T::AccountId,
+		// ) -> DispatchResult {
+		// 	let sender = ensure_signed(origin)?;
+		// 	if !Self::validators().contains(&acct) {
+		// 		<Validators<T>>::mutate(|validators| validators.push(acct));
+		// 	}
+		// 	Self::deposit_event(Event::QueuedDataToAdd(sender.clone()));
+		// 	Ok(())
+		// }
+
+		// /// Remove a validator
+		// #[pallet::weight(0)]
+		// pub fn remove_validator2(
+		// 	origin: OriginFor<T>,
+		// 	_cid: Vec<u8>,
+		// 	acct: T::AccountId,
+		// ) -> DispatchResult {
+		// 	let sender = ensure_signed(origin)?;
+		// 	if Self::validators().contains(&acct) {
+		// 		<Validators<T>>::mutate(|validators| validators.retain(|who| *who != acct))
+		// 	}
+		// 	Self::deposit_event(Event::QueuedDataToAdd(sender.clone()));
+		// 	Ok(())
+		// }
 
 		/// Extends the duration of an Ipfs asset
 		#[pallet::weight(0)]

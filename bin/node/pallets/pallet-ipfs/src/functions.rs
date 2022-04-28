@@ -15,6 +15,22 @@ impl<T: Config> Pallet<T> {
 		}
 	}
 
+	pub fn add_validator(acct: &T::AccountId) {
+		if !Self::validators().contains(acct) {
+			Validators::<T>::mutate(|validators| validators.push(acct.clone()));
+		} else {
+			log::info!("The AccountId {} is already a Validator", acct)
+		}
+	}
+
+	pub fn remove_validator(acct: &T::AccountId) {
+		if Self::validators().contains(acct) {
+			Validators::<T>::mutate(|validators| validators.retain(|who| who != acct))
+		} else {
+			log::info!("The AccountId {} is not in the list of Validators", acct)
+		}
+	}
+
 	pub fn determine_account_ownership_layer(
 		cid: &Vec<u8>,
 		acct: &T::AccountId,
