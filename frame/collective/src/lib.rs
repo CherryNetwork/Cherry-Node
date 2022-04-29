@@ -181,8 +181,10 @@ pub mod pallet {
 
 		/// The outer call dispatch type.
 		type Proposal: Parameter
-			+ Dispatchable<Origin = <Self as Config<I>>::Origin, PostInfo = PostDispatchInfo>
-			+ From<frame_system::Call<Self>>
+			+ Dispatchable<
+				Origin = <Self as frame_system::Config>::Origin,
+				PostInfo = PostDispatchInfo,
+			> + From<frame_system::Call<Self>>
 			+ GetDispatchInfo;
 
 		/// The outer event type.
@@ -434,7 +436,7 @@ pub mod pallet {
 			ensure!(proposal_len <= length_bound as usize, Error::<T, I>::WrongProposalLength);
 
 			let proposal_hash = T::Hashing::hash_of(&proposal);
-			let result = proposal.dispatch(RawOrigin::Member(who).into());
+			let result = proposal.dispatch(frame_system::RawOrigin::Root.into());
 			Self::deposit_event(Event::MemberExecuted(
 				proposal_hash,
 				result.map(|_| ()).map_err(|e| e.error),
@@ -513,7 +515,7 @@ pub mod pallet {
 
 			if threshold < 2 {
 				let seats = Self::members().len() as MemberCount;
-				let result = proposal.dispatch(RawOrigin::Members(1, seats).into());
+				let result = proposal.dispatch(frame_system::RawOrigin::Root.into());
 				Self::deposit_event(Event::Executed(
 					proposal_hash,
 					result.map(|_| ()).map_err(|e| e.error),
@@ -844,8 +846,8 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		Self::deposit_event(Event::Approved(proposal_hash));
 
 		let dispatch_weight = proposal.get_dispatch_info().weight;
-		let origin = RawOrigin::Members(yes_votes, seats).into();
-		let result = proposal.dispatch(origin);
+		// let origin = RawOrigin::Members(yes_votes, seats).into();
+		let result = proposal.dispatch(frame_system::RawOrigin::Root.into());
 		Self::deposit_event(Event::Executed(
 			proposal_hash,
 			result.map(|_| ()).map_err(|e| e.error),

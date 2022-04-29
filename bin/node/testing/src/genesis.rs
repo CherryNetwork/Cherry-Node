@@ -93,7 +93,7 @@ pub fn config_endowed(
 		technical_committee: Default::default(),
 		technical_membership: Default::default(),
 		elections: Default::default(),
-		sudo: Default::default(),
+		// sudo: Default::default(),
 		treasury: Default::default(),
 		society: SocietyConfig { members: vec![alice(), bob()], pot: 0, max_members: 999 },
 		vesting: Default::default(),
