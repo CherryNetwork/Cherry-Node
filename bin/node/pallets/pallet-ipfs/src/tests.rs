@@ -369,100 +369,6 @@ fn cherry_add_validator() {
 		let expected = 1usize;
 		assert_eq!(result, expected);
 	});
-
-	// NOTE(elsuizo: 2022-04-28): this is to test the other approach
-	// let (p, r) = sp_core::sr25519::Pair::generate();
-	// let (offchain, state) = testing::TestOffchainExt::new();
-	// let (pool, _) = testing::TestTransactionPoolExt::new();
-	// const PHRASE: &str =
-	// 	"news slush supreme milk chapter athlete soap sausage put clutch what kitten";
-	// let keystore = KeyStore::new();
-	// SyncCryptoStore::sr25519_generate_new(
-	// 	&keystore,
-	// 	crate::KEY_TYPE,
-	// 	Some(&format!("{}/hunter1", PHRASE)),
-	// )
-	// .unwrap();
-	//
-	// let mut t = new_test_ext_funded(p.clone());
-	// t.register_extension(OffchainWorkerExt::new(offchain));
-	// t.register_extension(TransactionPoolExt::new(pool));
-	// t.register_extension(KeystoreExt(Arc::new(keystore)));
-	//
-	// let cid_vec = "QmPZv7P8nQUSh2CpqTvUeYemFyjvMjgWEs8H1Tm8b3zAm9".as_bytes().to_vec();
-	// let size = 1024;
-	// let bytes = "sjdasdadasdjasdlasd".as_bytes().to_vec();
-	//
-	// // mock IPFS calls
-	// // These have to represent exactly the same ipfs_requests that
-	// // are done in your actual code and wit the same order.
-	// // - @charmitro
-	// {
-	// 	let mut state = state.write();
-	// 	// connect to external node
-	// 	state.expect_ipfs_request(testing::IpfsPendingRequest {
-	// 		response: Some(IpfsResponse::Success),
-	// 		..Default::default()
-	// 	});
-	// 	// fetch data
-	// 	state.expect_ipfs_request(testing::IpfsPendingRequest {
-	// 		id: sp_core::offchain::IpfsRequestId(0),
-	// 		response: Some(IpfsResponse::CatBytes(bytes.clone())),
-	// 		..Default::default()
-	// 	});
-	// 	// disconnect from the external node
-	// 	state.expect_ipfs_request(testing::IpfsPendingRequest {
-	// 		response: Some(IpfsResponse::Success),
-	// 		..Default::default()
-	// 	});
-	// 	// add bytes to your local node
-	// 	state.expect_ipfs_request(testing::IpfsPendingRequest {
-	// 		response: Some(IpfsResponse::AddBytes(cid_vec.clone())),
-	// 		..Default::default()
-	// 	});
-	// 	// insert pin
-	// 	state.expect_ipfs_request(testing::IpfsPendingRequest {
-	// 		response: Some(IpfsResponse::Success),
-	// 		..Default::default()
-	// 	});
-	// 	// disconnect
-	// 	state.expect_ipfs_request(testing::IpfsPendingRequest {
-	// 		response: Some(IpfsResponse::Success),
-	// 		..Default::default()
-	// 	});
-	// }
-	//
-	// let multiaddr_vec =
-	// 	"/ip4/127.0.0.1/tcp/4001/p2p/12D3KooWJdTrFkpPFMi4112oJUKeNvU4Haskg2rqNRCjdgc1yyVH"
-	// 		.as_bytes()
-	// 		.to_vec();
-	// let gateway_url = "http://15.188.14.75:8080/ipfs/".as_bytes().to_vec();
-	// let expected = 1usize;
-	//
-	// t.execute_with(|| {
-	// 	assert_ok!(mock::Ipfs::add_validator(
-	// 		Origin::signed(p.clone().public()),
-	// 		cid_vec.clone(),
-	// 		sp_core::sr25519::Public(r)
-	// 	));
-	// 	assert_ok!(mock::Ipfs::add_validator(
-	// 		Origin::signed(p.clone().public()),
-	// 		cid_vec.clone(),
-	// 		sp_core::sr25519::Public(r)
-	// 	));
-	// 	assert_ok!(mock::Ipfs::add_validator(
-	// 		Origin::signed(p.clone().public()),
-	// 		cid_vec.clone(),
-	// 		sp_core::sr25519::Public(r)
-	// 	));
-	// 	// assert_noop!(mock::Ipfs::add_validator(
-	// 	// 	Origin::signed(p.clone().public()),
-	// 	// 	cid_vec.clone(),
-	// 	// 	sp_core::sr25519::Public(r)
-	// 	// ));
-	// 	let result = <Validators<Test>>::get().len(); // get the result len
-	// 	assert_eq!(result, expected);
-	// });
 }
 
 #[test]
@@ -761,8 +667,7 @@ fn cherry_delete_ipfs_asset_ipfs_not_exist() {
 #[test]
 fn cherry_ipfs_can_submit_identity() {
 	let (p, _) = sp_core::sr25519::Pair::generate();
-	let (p_n, _) = sp_core::sr25519::Pair::generate();
-	let (offchain, state) = testing::TestOffchainExt::new();
+	let (offchain, _) = testing::TestOffchainExt::new();
 	let (pool, _) = testing::TestTransactionPoolExt::new();
 	const PHRASE: &str =
 		"news slush supreme milk chapter athlete soap sausage put clutch what kitten";
@@ -788,8 +693,6 @@ fn cherry_ipfs_can_submit_identity() {
 			.as_bytes()
 			.to_vec();
 	let cid_vec = "QmPZv7P8nQUSh2CpqTvUeYemFyjvMjgWEs8H1Tm8b3zAm9".as_bytes().to_vec();
-
-	let size = 1024;
 
 	let multiaddr = vec![multiaddr_ipv4_vec.clone(), multiaddr_ipv6_vec.clone()]
 		.into_iter()

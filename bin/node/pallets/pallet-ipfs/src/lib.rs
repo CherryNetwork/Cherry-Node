@@ -355,36 +355,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		// /// Add a new validator
-		// #[pallet::weight(0)]
-		// pub fn add_validator(
-		// 	origin: OriginFor<T>,
-		// 	_cid: Vec<u8>,
-		// 	acct: T::AccountId,
-		// ) -> DispatchResult {
-		// 	let sender = ensure_signed(origin)?;
-		// 	if !Self::validators().contains(&acct) {
-		// 		<Validators<T>>::mutate(|validators| validators.push(acct));
-		// 	}
-		// 	Self::deposit_event(Event::QueuedDataToAdd(sender.clone()));
-		// 	Ok(())
-		// }
-
-		// /// Remove a validator
-		// #[pallet::weight(0)]
-		// pub fn remove_validator2(
-		// 	origin: OriginFor<T>,
-		// 	_cid: Vec<u8>,
-		// 	acct: T::AccountId,
-		// ) -> DispatchResult {
-		// 	let sender = ensure_signed(origin)?;
-		// 	if Self::validators().contains(&acct) {
-		// 		<Validators<T>>::mutate(|validators| validators.retain(|who| *who != acct))
-		// 	}
-		// 	Self::deposit_event(Event::QueuedDataToAdd(sender.clone()));
-		// 	Ok(())
-		// }
-
 		/// Extends the duration of an Ipfs asset
 		#[pallet::weight(0)]
 		pub fn extend_duration(
