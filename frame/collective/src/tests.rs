@@ -788,6 +788,7 @@ fn motions_reproposing_disapproved_works() {
 	});
 }
 
+// Breaking after commit 8e9fcd17cddb77e0eba78ba50a3045eb8a484225 - @charmitro cc. @zycon91
 #[test]
 fn motions_approval_with_enough_votes_and_lower_voting_threshold_works() {
 	new_test_ext().execute_with(|| {
