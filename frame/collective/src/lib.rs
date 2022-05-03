@@ -181,8 +181,10 @@ pub mod pallet {
 
 		/// The outer call dispatch type.
 		type Proposal: Parameter
-			+ Dispatchable<Origin = <Self as Config<I>>::Origin, PostInfo = PostDispatchInfo>
-			+ From<frame_system::Call<Self>>
+			+ Dispatchable<
+				Origin = <Self as frame_system::Config>::Origin,
+				PostInfo = PostDispatchInfo,
+			> + From<frame_system::Call<Self>>
 			+ GetDispatchInfo;
 
 		/// The outer event type.
@@ -434,7 +436,7 @@ pub mod pallet {
 			ensure!(proposal_len <= length_bound as usize, Error::<T, I>::WrongProposalLength);
 
 			let proposal_hash = T::Hashing::hash_of(&proposal);
-			let result = proposal.dispatch(RawOrigin::Member(who).into());
+			let result = proposal.dispatch(frame_system::RawOrigin::Root.into());
 			Self::deposit_event(Event::MemberExecuted(
 				proposal_hash,
 				result.map(|_| ()).map_err(|e| e.error),
@@ -512,8 +514,8 @@ pub mod pallet {
 			);
 
 			if threshold < 2 {
-				let seats = Self::members().len() as MemberCount;
-				let result = proposal.dispatch(RawOrigin::Members(1, seats).into());
+				// let seats = Self::members().len() as MemberCount;
+				let result = proposal.dispatch(frame_system::RawOrigin::Root.into());
 				Self::deposit_event(Event::Executed(
 					proposal_hash,
 					result.map(|_| ()).map_err(|e| e.error),
@@ -696,7 +698,7 @@ pub mod pallet {
 				)?;
 				Self::deposit_event(Event::Closed(proposal_hash, yes_votes, no_votes));
 				let (proposal_weight, proposal_count) =
-					Self::do_approve_proposal(seats, yes_votes, proposal_hash, proposal);
+					Self::do_approve_proposal(proposal_hash, proposal);
 				return Ok((
 					Some(
 						T::WeightInfo::close_early_approved(len as u32, seats, proposal_count)
@@ -741,7 +743,7 @@ pub mod pallet {
 				)?;
 				Self::deposit_event(Event::Closed(proposal_hash, yes_votes, no_votes));
 				let (proposal_weight, proposal_count) =
-					Self::do_approve_proposal(seats, yes_votes, proposal_hash, proposal);
+					Self::do_approve_proposal(proposal_hash, proposal);
 				Ok((
 					Some(
 						T::WeightInfo::close_approved(len as u32, seats, proposal_count)
@@ -836,16 +838,16 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 	/// Computation and i/o `O(P)` where:
 	/// - `P` is number of active proposals
 	fn do_approve_proposal(
-		seats: MemberCount,
-		yes_votes: MemberCount,
+		// seats: MemberCount,
+		// yes_votes: MemberCount,
 		proposal_hash: T::Hash,
 		proposal: <T as Config<I>>::Proposal,
 	) -> (Weight, u32) {
 		Self::deposit_event(Event::Approved(proposal_hash));
 
 		let dispatch_weight = proposal.get_dispatch_info().weight;
-		let origin = RawOrigin::Members(yes_votes, seats).into();
-		let result = proposal.dispatch(origin);
+		// let origin = RawOrigin::Members(yes_votes, seats).into();
+		let result = proposal.dispatch(frame_system::RawOrigin::Root.into());
 		Self::deposit_event(Event::Executed(
 			proposal_hash,
 			result.map(|_| ()).map_err(|e| e.error),
