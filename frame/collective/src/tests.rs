@@ -788,71 +788,71 @@ fn motions_reproposing_disapproved_works() {
 	});
 }
 
-// Breaking after commit 8e9fcd17cddb77e0eba78ba50a3045eb8a484225 - @charmitro cc. @zycon91
-#[test]
-fn motions_approval_with_enough_votes_and_lower_voting_threshold_works() {
-	new_test_ext().execute_with(|| {
-		let proposal = Call::Democracy(mock_democracy::Call::external_propose_majority {});
-		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
-		let proposal_weight = proposal.get_dispatch_info().weight;
-		let hash: H256 = proposal.blake2_256().into();
-		// The voting threshold is 2, but the required votes for `ExternalMajorityOrigin` is 3.
-		// The proposal will be executed regardless of the voting threshold
-		// as long as we have enough yes votes.
-		//
-		// Failed to execute with only 2 yes votes.
-		assert_ok!(Collective::propose(
-			Origin::signed(1),
-			2,
-			Box::new(proposal.clone()),
-			proposal_len
-		));
-		assert_ok!(Collective::vote(Origin::signed(1), hash, 0, true));
-		assert_ok!(Collective::vote(Origin::signed(2), hash, 0, true));
-		assert_ok!(Collective::close(Origin::signed(2), hash, 0, proposal_weight, proposal_len));
-		assert_eq!(
-			System::events(),
-			vec![
-				record(Event::Collective(CollectiveEvent::Proposed(1, 0, hash, 2))),
-				record(Event::Collective(CollectiveEvent::Voted(1, hash, true, 1, 0))),
-				record(Event::Collective(CollectiveEvent::Voted(2, hash, true, 2, 0))),
-				record(Event::Collective(CollectiveEvent::Closed(hash, 2, 0))),
-				record(Event::Collective(CollectiveEvent::Approved(hash))),
-				record(Event::Collective(CollectiveEvent::Executed(
-					hash,
-					Err(DispatchError::BadOrigin)
-				))),
-			]
-		);
+// Breaking after commit 8e9fcd17cddb77e0eba78ba50a3045eb8a484225 -- we no longer use
+// pallet_democracy - @charmitro @zycon91 #[test]
+// fn motions_approval_with_enough_votes_and_lower_voting_threshold_works() {
+// 	new_test_ext().execute_with(|| {
+// 		let proposal = Call::Democracy(mock_democracy::Call::external_propose_majority {});
+// 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
+// 		let proposal_weight = proposal.get_dispatch_info().weight;
+// 		let hash: H256 = proposal.blake2_256().into();
+// 		// The voting threshold is 2, but the required votes for `ExternalMajorityOrigin` is 3.
+// 		// The proposal will be executed regardless of the voting threshold
+// 		// as long as we have enough yes votes.
+// 		//
+// 		// Failed to execute with only 2 yes votes.
+// 		assert_ok!(Collective::propose(
+// 			Origin::signed(1),
+// 			2,
+// 			Box::new(proposal.clone()),
+// 			proposal_len
+// 		));
+// 		assert_ok!(Collective::vote(Origin::signed(1), hash, 0, true));
+// 		assert_ok!(Collective::vote(Origin::signed(2), hash, 0, true));
+// 		assert_ok!(Collective::close(Origin::signed(2), hash, 0, proposal_weight, proposal_len));
+// 		assert_eq!(
+// 			System::events(),
+// 			vec![
+// 				record(Event::Collective(CollectiveEvent::Proposed(1, 0, hash, 2))),
+// 				record(Event::Collective(CollectiveEvent::Voted(1, hash, true, 1, 0))),
+// 				record(Event::Collective(CollectiveEvent::Voted(2, hash, true, 2, 0))),
+// 				record(Event::Collective(CollectiveEvent::Closed(hash, 2, 0))),
+// 				record(Event::Collective(CollectiveEvent::Approved(hash))),
+// 				record(Event::Collective(CollectiveEvent::Executed(
+// 					hash,
+// 					Err(DispatchError::BadOrigin)
+// 				))),
+// 			]
+// 		);
 
-		System::reset_events();
+// 		System::reset_events();
 
-		// Executed with 3 yes votes.
-		assert_ok!(Collective::propose(
-			Origin::signed(1),
-			2,
-			Box::new(proposal.clone()),
-			proposal_len
-		));
-		assert_ok!(Collective::vote(Origin::signed(1), hash, 1, true));
-		assert_ok!(Collective::vote(Origin::signed(2), hash, 1, true));
-		assert_ok!(Collective::vote(Origin::signed(3), hash, 1, true));
-		assert_ok!(Collective::close(Origin::signed(2), hash, 1, proposal_weight, proposal_len));
-		assert_eq!(
-			System::events(),
-			vec![
-				record(Event::Collective(CollectiveEvent::Proposed(1, 1, hash, 2))),
-				record(Event::Collective(CollectiveEvent::Voted(1, hash, true, 1, 0))),
-				record(Event::Collective(CollectiveEvent::Voted(2, hash, true, 2, 0))),
-				record(Event::Collective(CollectiveEvent::Voted(3, hash, true, 3, 0))),
-				record(Event::Collective(CollectiveEvent::Closed(hash, 3, 0))),
-				record(Event::Collective(CollectiveEvent::Approved(hash))),
-				record(Event::Democracy(mock_democracy::pallet::Event::<Test>::ExternalProposed)),
-				record(Event::Collective(CollectiveEvent::Executed(hash, Ok(())))),
-			]
-		);
-	});
-}
+// 		// Executed with 3 yes votes.
+// 		assert_ok!(Collective::propose(
+// 			Origin::signed(1),
+// 			2,
+// 			Box::new(proposal.clone()),
+// 			proposal_len
+// 		));
+// 		assert_ok!(Collective::vote(Origin::signed(1), hash, 1, true));
+// 		assert_ok!(Collective::vote(Origin::signed(2), hash, 1, true));
+// 		assert_ok!(Collective::vote(Origin::signed(3), hash, 1, true));
+// 		assert_ok!(Collective::close(Origin::signed(2), hash, 1, proposal_weight, proposal_len));
+// 		assert_eq!(
+// 			System::events(),
+// 			vec![
+// 				record(Event::Collective(CollectiveEvent::Proposed(1, 1, hash, 2))),
+// 				record(Event::Collective(CollectiveEvent::Voted(1, hash, true, 1, 0))),
+// 				record(Event::Collective(CollectiveEvent::Voted(2, hash, true, 2, 0))),
+// 				record(Event::Collective(CollectiveEvent::Voted(3, hash, true, 3, 0))),
+// 				record(Event::Collective(CollectiveEvent::Closed(hash, 3, 0))),
+// 				record(Event::Collective(CollectiveEvent::Approved(hash))),
+// 				record(Event::Democracy(mock_democracy::pallet::Event::<Test>::ExternalProposed)),
+// 				record(Event::Collective(CollectiveEvent::Executed(hash, Ok(())))),
+// 			]
+// 		);
+// 	});
+// }
 
 #[test]
 fn motions_disapproval_works() {
