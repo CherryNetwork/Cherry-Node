@@ -136,6 +136,7 @@ members = [
 	"frame/vesting",
 	"frame/bags-list",
 	"primitives/api",
+	"primitives/evm",
 	"primitives/api/proc-macro",
 	"primitives/api/test",
 	"primitives/application-crypto",
