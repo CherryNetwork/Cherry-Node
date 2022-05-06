@@ -27,6 +27,7 @@ log = { version = "0.4.14", default-features = false }
 sp-keystore = { version = "0.10.0-dev", path = "../../../../primitives/keystore", optional = true }
 
 pallet-assets = { version = "4.0.0-dev", default-features = false, path = "../../../../frame/assets" }
+pallet-session = { version = "4.0.0-dev", default-features = false, path = "../../../../frame/session" }
 
 [dependencies.serde]
 default-features = false

@@ -333,12 +333,18 @@ fn cherry_initial_state() {
 	new_test_ext().execute_with(|| {
 		let data_queue = crate::DataQueue::<Test>::get();
 		let validators = crate::Validators::<Test>::get();
-		let result = validators.len();
+		let offline_validators = crate::OfflineValidators::<Test>::get();
+		let approved_validators = crate::ApprovedValidators::<Test>::get();
+		let validators_init_len = validators.len();
+		let offline_validators_init_len = offline_validators.len();
+		let approved_validators_init_len = approved_validators.len();
 		let expected = 0;
 		let len = data_queue.len();
 
-		assert_eq!(len, 0);
-		assert_eq!(result, expected);
+		assert_eq!(len, expected);
+		assert_eq!(validators_init_len, expected);
+		assert_eq!(offline_validators_init_len, expected);
+		assert_eq!(approved_validators_init_len, expected);
 	});
 }
 

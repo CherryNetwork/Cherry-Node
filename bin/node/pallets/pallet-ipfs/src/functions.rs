@@ -30,12 +30,47 @@ impl<T: Config> Pallet<T> {
 		}
 	}
 
+	pub fn add_approve_validator(acct: &T::AccountId) {
+		if !Self::approved_validators().contains(acct) {
+			ApprovedValidators::<T>::mutate(|approve_validators| {
+				approve_validators.push(acct.clone())
+			});
+		} else {
+			log::info!("The AccountId {:?} is already an approved Validator", acct)
+		}
+	}
+
 	pub fn remove_validator(acct: &T::AccountId) {
 		if Self::validators().contains(acct) {
 			Validators::<T>::mutate(|validators| validators.retain(|who| who != acct))
 		} else {
 			log::info!("The AccountId {:?} is not in the list of Validators", acct)
 		}
+	}
+
+	pub fn remove_approve_validator(acct: &T::AccountId) {
+		if Self::approved_validators().contains(acct) {
+			ApprovedValidators::<T>::mutate(|approved_validators| {
+				approved_validators.retain(|who| who != acct)
+			})
+		} else {
+			log::info!("The AccountId {:?} is not in the list of approved Validators", acct)
+		}
+	}
+
+	pub fn mark_offline_validator(acct: &T::AccountId) {
+		OfflineValidators::<T>::mutate(|offline_validators| offline_validators.push(acct.clone()));
+		log::info!("The AccountId {:?} was offline and is marked to auto-remove", acct)
+	}
+
+	pub fn remove_offline_validators() {
+		let bad_validators = OfflineValidators::<T>::get();
+		Validators::<T>::mutate(|validators| {
+			validators.retain(|good_validators| !bad_validators.contains(good_validators))
+		});
+		log::info!("removing the offline validators: {:?}", bad_validators);
+
+		<OfflineValidators<T>>::put(Vec::<T::AccountId>::new());
 	}
 
 	pub fn determine_account_ownership_layer(

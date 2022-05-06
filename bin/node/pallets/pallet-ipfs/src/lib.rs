@@ -133,6 +133,10 @@ pub mod pallet {
 	pub(super) type ApprovedValidators<T: Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
 
 	#[pallet::storage]
+	#[pallet::getter(fn offline_validators)]
+	pub type OfflineValidators<T: Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
+
+	#[pallet::storage]
 	#[pallet::getter(fn data_queue)]
 	pub(super) type DataQueue<T: Config> =
 		StorageValue<_, Vec<DataCommand<T::AccountId>>, ValueQuery>;
@@ -701,4 +705,23 @@ pub mod pallet {
 			Ok(())
 		}
 	}
+}
+
+impl<T: Config> pallet_session::SessionManager<T::AccountId> for Pallet<T> {
+	// Plan a new session and provide new validator set.
+	fn new_session(_new_index: u32) -> Option<Vec<T::AccountId>> {
+		// TODO(elsuizo: 2022-05-03): this could be the next step
+		// Remove any offline validators. This will only work when the runtime
+		// also has the im-online pallet.
+		// Self::remove_offline_validators();
+
+		// TODO(elsuizo: 2022-05-03): replace this or maybe added
+		// log::debug!(target: LOG_TARGET, "New session called; updated validator set provided.");
+
+		Some(Self::validators())
+	}
+
+	fn end_session(_end_index: u32) {}
+
+	fn start_session(_start_index: u32) {}
 }
