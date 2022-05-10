@@ -460,7 +460,7 @@ impl pallet_staking::Config for Runtime {
 	type SlashCancelOrigin = EnsureOneOf<
 		AccountId,
 		EnsureRoot<AccountId>,
-		pallet_collective::EnsureProportionAtLeast<_3, _4, AccountId, CouncilCollective>,
+		pallet_council::EnsureProportionAtLeast<_3, _4, AccountId, ()>,
 	>;
 	type SessionInterface = Self;
 	type EraPayout = pallet_staking::ConvertCurve<RewardCurve>;
@@ -606,17 +606,28 @@ parameter_types! {
 	pub const CouncilMaxMembers: u32 = 100;
 }
 
-type CouncilCollective = pallet_collective::Instance1;
-impl pallet_collective::Config<CouncilCollective> for Runtime {
+impl pallet_council::Config for Runtime {
 	type Origin = Origin;
 	type Proposal = Call;
 	type Event = Event;
 	type MotionDuration = CouncilMotionDuration;
 	type MaxProposals = CouncilMaxProposals;
 	type MaxMembers = CouncilMaxMembers;
-	type DefaultVote = pallet_collective::PrimeDefaultVote;
-	type WeightInfo = pallet_collective::weights::SubstrateWeight<Runtime>;
+	type DefaultVote = pallet_council::PrimeDefaultVote;
+	type WeightInfo = pallet_council::weights::SubstrateWeight<Runtime>;
 }
+
+// type CouncilCollective = pallet_collective::Instance1;
+// impl pallet_collective::Config<CouncilCollective> for Runtime {
+// 	type Origin = Origin;
+// 	type Proposal = Call;
+// 	type Event = Event;
+// 	type MotionDuration = CouncilMotionDuration;
+// 	type MaxProposals = CouncilMaxProposals;
+// 	type MaxMembers = CouncilMaxMembers;
+// 	type DefaultVote = pallet_collective::PrimeDefaultVote;
+// 	type WeightInfo = pallet_collective::weights::SubstrateWeight<Runtime>;
+// }
 
 parameter_types! {
 	pub const CandidacyBond: Balance = 10 * DOLLARS;
@@ -674,7 +685,7 @@ impl pallet_collective::Config<TechnicalCollective> for Runtime {
 type EnsureRootOrHalfCouncil = EnsureOneOf<
 	AccountId,
 	EnsureRoot<AccountId>,
-	pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>,
+	pallet_council::EnsureProportionMoreThan<_1, _2, AccountId, ()>,
 >;
 impl pallet_membership::Config<pallet_membership::Instance1> for Runtime {
 	type Event = Event;
@@ -715,12 +726,12 @@ impl pallet_treasury::Config for Runtime {
 	type ApproveOrigin = EnsureOneOf<
 		AccountId,
 		EnsureRoot<AccountId>,
-		pallet_collective::EnsureProportionAtLeast<_3, _5, AccountId, CouncilCollective>,
+		pallet_council::EnsureProportionAtLeast<_3, _5, AccountId, ()>,
 	>;
 	type RejectOrigin = EnsureOneOf<
 		AccountId,
 		EnsureRoot<AccountId>,
-		pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>,
+		pallet_council::EnsureProportionMoreThan<_1, _2, AccountId, ()>,
 	>;
 	type Event = Event;
 	type OnSlash = ();
@@ -928,8 +939,7 @@ impl pallet_society::Config for Runtime {
 	type MembershipChanged = ();
 	type RotationPeriod = RotationPeriod;
 	type MaxLockDuration = MaxLockDuration;
-	type FounderSetOrigin =
-		pallet_collective::EnsureProportionMoreThan<_1, _2, AccountId, CouncilCollective>;
+	type FounderSetOrigin = pallet_council::EnsureProportionMoreThan<_1, _2, AccountId, ()>; // TODO: `()` seems to be no good. @charmitro cc. @zycon91
 	type SuspensionJudgementOrigin = pallet_society::EnsureFounder<Runtime>;
 	type MaxCandidateIntake = MaxCandidateIntake;
 	type ChallengePeriod = ChallengePeriod;
@@ -1027,7 +1037,8 @@ construct_runtime!(
 		ElectionProviderMultiPhase: pallet_election_provider_multi_phase::{Pallet, Call, Storage, Event<T>, ValidateUnsigned},
 		Staking: pallet_staking::{Pallet, Call, Config<T>, Storage, Event<T>},
 		Session: pallet_session::{Pallet, Call, Storage, Event, Config<T>},
-		Council: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>},
+		// Council: pallet_collective::<Instance1>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>},
+		Council: pallet_council::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>},
 		TechnicalCommittee: pallet_collective::<Instance2>::{Pallet, Call, Storage, Origin<T>, Event<T>, Config<T>},
 		Elections: pallet_elections_phragmen::{Pallet, Call, Storage, Event<T>, Config<T>},
 		TechnicalMembership: pallet_membership::<Instance1>::{Pallet, Call, Storage, Event<T>, Config<T>},
@@ -1363,7 +1374,8 @@ impl_runtime_apis! {
 			list_benchmark!(list, extra, pallet_bags_list, BagsList);
 			list_benchmark!(list, extra, pallet_balances, Balances);
 			list_benchmark!(list, extra, pallet_bounties, Bounties);
-			list_benchmark!(list, extra, pallet_collective, Council);
+			// list_benchmark!(list, extra, pallet_collective, Council);
+			list_benchmark!(list, extra, pallet_council, Council);
 			list_benchmark!(list, extra, pallet_election_provider_multi_phase, ElectionProviderMultiPhase);
 			// list_benchmark!(list, extra, pallet_elections_phragmen, Elections); TODO: fix benchamrks for frame changes
 			list_benchmark!(list, extra, pallet_grandpa, Grandpa);
@@ -1431,7 +1443,8 @@ impl_runtime_apis! {
 			add_benchmark!(params, batches, pallet_balances, Balances);
 			add_benchmark!(params, batches, pallet_bags_list, BagsList);
 			add_benchmark!(params, batches, pallet_bounties, Bounties);
-			add_benchmark!(params, batches, pallet_collective, Council);
+			// add_benchmark!(params, batches, pallet_collective, Council);
+			add_benchmark!(params, batches, pallet_council, Council);
 			add_benchmark!(params, batches, pallet_election_provider_multi_phase, ElectionProviderMultiPhase);
 			// add_benchmark!(params, batches, pallet_elections_phragmen, Elections); TODO: fix benchamrks for frame changes
 			add_benchmark!(params, batches, pallet_grandpa, Grandpa);

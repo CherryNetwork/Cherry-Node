@@ -335,6 +335,7 @@ pub fn testnet_genesis(
 				.map(|member| (member, STASH))
 				.collect(),
 		},
+		// council: CouncilConfig::default(),
 		council: CouncilConfig::default(),
 		technical_committee: TechnicalCommitteeConfig {
 			members: endowed_accounts
