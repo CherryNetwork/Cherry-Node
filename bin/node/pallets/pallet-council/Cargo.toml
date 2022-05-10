@@ -20,6 +20,7 @@ sp-std = { version = "4.0.0-dev", default-features = false, path = "../../../../
 frame-benchmarking = { version = "4.0.0-dev", default-features = false, path = "../../../../frame/benchmarking", optional = true }
 frame-support = { version = "4.0.0-dev", default-features = false, path = "../../../../frame/support" }
 frame-system = { version = "4.0.0-dev", default-features = false, path = "../../../../frame/system" }
+pallet-assets = { version = "4.0.0-dev", default-features = false, path = "../../../../frame/assets" }
 
 [features]
 default = ["std"]
