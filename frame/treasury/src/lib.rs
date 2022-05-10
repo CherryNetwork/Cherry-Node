@@ -350,7 +350,7 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			#[pallet::compact] value: BalanceOf<T, I>,
 			beneficiary: <T::Lookup as StaticLookup>::Source,
-			chunks: u32,
+			occurs: u32,
 		) -> DispatchResult {
 			let proposer = ensure_signed(origin)?;
 			let beneficiary = T::Lookup::lookup(beneficiary)?;
@@ -361,8 +361,8 @@ pub mod pallet {
 				let chunk: <<T as Config<I>>::Currency as Currency<
 					<T as frame_system::Config>::AccountId,
 				>>::Balance;
-				if chunks.gt(&0) {
-					chunk = value / chunks.into();
+				if occurs.gt(&0) {
+					chunk = value / occurs.into();
 				} else {
 					chunk = value;
 				}
@@ -380,8 +380,8 @@ pub mod pallet {
 						value: chunk.clone(),
 						beneficiary: beneficiary.clone(),
 						bond,
-						occurs: chunks,
-						remaining_occurs: chunks,
+						occurs,
+						remaining_occurs: occurs,
 					},
 				);
 
@@ -390,8 +390,8 @@ pub mod pallet {
 				let chunk: <<T as Config<I>>::Currency as Currency<
 					<T as frame_system::Config>::AccountId,
 				>>::Balance;
-				if chunks.gt(&0) {
-					chunk = value / chunks.into();
+				if occurs.gt(&0) {
+					chunk = value / occurs.into();
 				} else {
 					chunk = value;
 				}
@@ -408,8 +408,8 @@ pub mod pallet {
 						value: chunk.clone(),
 						beneficiary: beneficiary.clone(),
 						bond,
-						occurs: chunks,
-						remaining_occurs: chunks,
+						occurs,
+						remaining_occurs: occurs,
 					},
 				);
 
@@ -503,8 +503,12 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 				if let Some(mut p) = Self::proposals(index) {
 					if p.value <= budget_remaining {
 						budget_remaining -= p.value;
-						p.remaining_occurs = p.remaining_occurs - 1;
-						if p.remaining_occurs <= 0 {
+
+						if p.remaining_occurs.gt(&0) {
+							p.remaining_occurs = p.remaining_occurs - 1;
+						}
+
+						if p.remaining_occurs.le(&0) {
 							<Proposals<T, I>>::remove(index);
 						} else {
 							<Proposals<T, I>>::remove(index);
@@ -520,7 +524,6 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 						Self::deposit_event(Event::Awarded(index, p.value, p.beneficiary.clone()));
 						false
 					} else {
-						log::info!("qewrasdfa");
 						missed_any = true;
 						true
 					}
