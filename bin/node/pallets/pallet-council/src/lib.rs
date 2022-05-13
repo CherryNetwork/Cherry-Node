@@ -284,6 +284,11 @@ pub mod pallet {
 	#[pallet::getter(fn prime)]
 	pub type Prime<T: Config<I>, I: 'static = ()> = StorageValue<_, T::AccountId, OptionQuery>;
 
+	/// The voting power of council members
+	#[pallet::storage]
+	#[pallet::getter(fn voting_power)]
+	pub type VotingPower<T: Config<I>, I: 'static = ()> = StorageMap<_, Identity, T::AccountId, u32, OptionQuery>;
+
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config<I>, I: 'static = ()> {
@@ -592,6 +597,10 @@ pub mod pallet {
 			let members = Self::members();
 			ensure!(members.contains(&who), Error::<T, I>::NotMember);
 
+			let power = <assets::Pallet<T>>::balance(<GovTokenId<T, I>>::get(), who.clone());
+			let vote_power = TryInto::<u32>::try_into(power).ok().unwrap();
+			VotingPower::<T, I>::insert(&who, vote_power);
+
 			let mut voting = Self::voting(&proposal).ok_or(Error::<T, I>::ProposalMissing)?;
 			ensure!(voting.index == index, Error::<T, I>::WrongIndex);
 
@@ -816,6 +825,19 @@ pub mod pallet {
 			let proposal_count = Self::do_disapprove_proposal(proposal_hash);
 			Ok(Some(<T as pallet::Config<I>>::WeightInfo::disapprove_proposal(proposal_count))
 				.into())
+		}
+
+		/// !SUDO call to set the Governance Token Asset ID
+		#[pallet::weight(0)]
+		pub fn set_gov_token_id(
+			origin: OriginFor<T>,
+			token_id: <T as assets::Config>::AssetId,
+		) -> DispatchResultWithPostInfo {
+			let _who = ensure_root(origin)?;
+	
+			<GovTokenId<T, I>>::put(token_id);
+		
+			Ok(None.into())
 		}
 	}
 }
