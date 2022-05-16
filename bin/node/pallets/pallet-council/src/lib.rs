@@ -726,11 +726,21 @@ pub mod pallet {
 			let voting = Self::voting(&proposal_hash).ok_or(Error::<T, I>::ProposalMissing)?;
 			ensure!(voting.index == index, Error::<T, I>::WrongIndex);
 
-			let mut no_votes = voting.nays.len() as MemberCount;
+			let mut no_votes = voting.nays_power.len() as MemberCount;
 			let mut yes_votes = voting.ayes.len() as MemberCount;
 			let seats = Self::members().len() as MemberCount;
-			let approved = yes_votes >= voting.threshold;
-			let disapproved = seats.saturating_sub(no_votes) < voting.threshold;
+
+			let mut yes_power = 0;
+			let mut no_power = 0;
+			for voting_power in voting.ayes_power.clone() {
+				yes_power = yes_power + voting_power;
+			}
+			for voting_power in voting.nays_power.clone() {
+				no_power = no_power + voting_power;
+			}
+
+			let approved = yes_power.ge(&voting.threshold);
+			let disapproved = no_power.lt(&yes_power) || (yes_power + no_power).lt(&voting.threshold);
 			// Allow (dis-)approving the proposal as soon as there are enough votes.
 			if approved {
 				let (proposal, len) = Self::validate_and_get_proposal(
@@ -738,7 +748,7 @@ pub mod pallet {
 					length_bound,
 					proposal_weight_bound,
 				)?;
-				Self::deposit_event(Event::Closed(proposal_hash, yes_votes, no_votes));
+				Self::deposit_event(Event::Closed(proposal_hash, yes_power, no_power));
 				let (proposal_weight, proposal_count) =
 					Self::do_approve_proposal(proposal_hash, proposal);
 				return Ok((
@@ -754,7 +764,7 @@ pub mod pallet {
 				)
 					.into())
 			} else if disapproved {
-				Self::deposit_event(Event::Closed(proposal_hash, yes_votes, no_votes));
+				Self::deposit_event(Event::Closed(proposal_hash, yes_power, no_power));
 				let proposal_count = Self::do_disapprove_proposal(proposal_hash);
 				return Ok((
 					Some(<T as pallet::Config<I>>::WeightInfo::close_early_disapproved(
@@ -768,7 +778,7 @@ pub mod pallet {
 
 			// Only allow actual closing of the proposal after the voting period has ended.
 			ensure!(
-				frame_system::Pallet::<T>::block_number() >= voting.end,
+				frame_system::Pallet::<T>::block_number().ge(&voting.end),
 				Error::<T, I>::TooEarly
 			);
 
