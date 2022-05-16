@@ -154,8 +154,12 @@ pub struct Votes<AccountId, BlockNumber> {
 	threshold: MemberCount,
 	/// The current set of voters that approved it.
 	ayes: Vec<AccountId>,
+	/// The current power of voters that approved it.
+	ayes_power: Vec<u32>,
 	/// The current set of voters that rejected it.
 	nays: Vec<AccountId>,
+	/// The current power of voters that rejected it.
+	nays_power: Vec<u32>,
 	/// The hard end time of this vote.
 	end: BlockNumber,
 }
@@ -556,7 +560,7 @@ pub mod pallet {
 				<ProposalOf<T, I>>::insert(proposal_hash, *proposal);
 				let votes = {
 					let end = frame_system::Pallet::<T>::block_number() + T::MotionDuration::get();
-					Votes { index, threshold, ayes: vec![], nays: vec![], end }
+					Votes { index, threshold, ayes: vec![], nays: vec![], ayes_power: vec![], nays_power: vec![], end }
 				};
 				<Voting<T, I>>::insert(proposal_hash, votes);
 
@@ -613,26 +617,39 @@ pub mod pallet {
 			if approve {
 				if position_yes.is_none() {
 					voting.ayes.push(who.clone());
+					voting.ayes_power.push(vote_power);
 				} else {
 					return Err(Error::<T, I>::DuplicateVote.into())
 				}
 				if let Some(pos) = position_no {
 					voting.nays.swap_remove(pos);
+					voting.nays_power.swap_remove(pos);
 				}
 			} else {
 				if position_no.is_none() {
 					voting.nays.push(who.clone());
+					voting.nays_power.push(vote_power);
 				} else {
 					return Err(Error::<T, I>::DuplicateVote.into())
 				}
 				if let Some(pos) = position_yes {
 					voting.ayes.swap_remove(pos);
+					voting.ayes_power.swap_remove(pos);
 				}
 			}
 
-			let yes_votes = voting.ayes.len() as MemberCount;
-			let no_votes = voting.nays.len() as MemberCount;
-			Self::deposit_event(Event::Voted(who, proposal, approve, yes_votes, no_votes));
+			// let yes_votes = voting.ayes.len() as MemberCount;
+			// let no_votes = voting.nays.len() as MemberCount;
+			
+			let mut yes_power = 0;
+			let mut no_power = 0;
+			for voting_power in voting.ayes_power.clone() {
+				yes_power = yes_power + voting_power;
+			}
+			for voting_power in voting.nays_power.clone() {
+				no_power = no_power + voting_power;
+			}
+			Self::deposit_event(Event::Voted(who, proposal, approve, yes_power, no_power));
 
 			Voting::<T, I>::insert(&proposal, voting);
 
