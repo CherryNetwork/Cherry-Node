@@ -291,7 +291,8 @@ pub mod pallet {
 	/// The voting power of council members
 	#[pallet::storage]
 	#[pallet::getter(fn voting_power)]
-	pub type VotingPower<T: Config<I>, I: 'static = ()> = StorageMap<_, Identity, T::AccountId, u32, OptionQuery>;
+	pub type VotingPower<T: Config<I>, I: 'static = ()> =
+		StorageMap<_, Identity, T::AccountId, u32, OptionQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
@@ -560,7 +561,15 @@ pub mod pallet {
 				<ProposalOf<T, I>>::insert(proposal_hash, *proposal);
 				let votes = {
 					let end = frame_system::Pallet::<T>::block_number() + T::MotionDuration::get();
-					Votes { index, threshold, ayes: vec![], nays: vec![], ayes_power: vec![], nays_power: vec![], end }
+					Votes {
+						index,
+						threshold,
+						ayes: vec![],
+						nays: vec![],
+						ayes_power: vec![],
+						nays_power: vec![],
+						end,
+					}
 				};
 				<Voting<T, I>>::insert(proposal_hash, votes);
 
@@ -640,7 +649,7 @@ pub mod pallet {
 
 			// let yes_votes = voting.ayes.len() as MemberCount;
 			// let no_votes = voting.nays.len() as MemberCount;
-			
+
 			let mut yes_power = 0;
 			let mut no_power = 0;
 			for voting_power in voting.ayes_power.clone() {
@@ -740,7 +749,8 @@ pub mod pallet {
 			}
 
 			let approved = yes_power.ge(&voting.threshold);
-			let disapproved = no_power.lt(&yes_power) || (yes_power + no_power).lt(&voting.threshold);
+			let disapproved =
+				no_power.lt(&yes_power) || (yes_power + no_power).lt(&voting.threshold);
 			// Allow (dis-)approving the proposal as soon as there are enough votes.
 			if approved {
 				let (proposal, len) = Self::validate_and_get_proposal(
@@ -861,9 +871,9 @@ pub mod pallet {
 			token_id: <T as assets::Config>::AssetId,
 		) -> DispatchResultWithPostInfo {
 			let _who = ensure_root(origin)?;
-	
+
 			<GovTokenId<T, I>>::put(token_id);
-		
+
 			Ok(None.into())
 		}
 	}
