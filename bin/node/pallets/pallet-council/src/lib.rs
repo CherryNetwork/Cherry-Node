@@ -751,11 +751,11 @@ pub mod pallet {
 			let max_gov_tokens = Self::calculate_max_gov_tokens();
 			let actual_threshold = max_gov_tokens * 30 / 100;
 
-			let approved = yes_power.ge(&voting.threshold);
+			let approved = (yes_power + no_power).ge(&actual_threshold) && yes_power.gt(&no_power);
 			let disapproved =
-				no_power.lt(&yes_power) || (yes_power + no_power).lt(&voting.threshold);
+				no_power.gt(&yes_power) || (yes_power + no_power).lt(&voting.threshold);
 			// Allow (dis-)approving the proposal as soon as there are enough votes.
-			if approved && (yes_power + no_power).ge(&actual_threshold) {
+			if approved {
 				let (proposal, len) = Self::validate_and_get_proposal(
 					&proposal_hash,
 					length_bound,
@@ -776,7 +776,7 @@ pub mod pallet {
 					Pays::Yes,
 				)
 					.into())
-			} else if disapproved || (yes_power + no_power).lt(&actual_threshold){
+			} else if disapproved {
 				Self::deposit_event(Event::Closed(proposal_hash, yes_power, no_power));
 				let proposal_count = Self::do_disapprove_proposal(proposal_hash);
 				return Ok((
@@ -976,7 +976,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 	fn calculate_max_gov_tokens() -> u32 {
 		let members = Self::members();
-		
+
 		let mut max_gov_tokens: u32 = 0;
 		for member in members {
 			let power = <assets::Pallet<T>>::balance(<GovTokenId<T, I>>::get(), member.clone());
@@ -984,7 +984,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			max_gov_tokens += vote_power;
 		}
 
-		return max_gov_tokens;
+		return max_gov_tokens
 	}
 }
 
