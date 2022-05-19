@@ -67,6 +67,18 @@ pub enum DataCommand<AccountId> {
 	RemoveBlock(OpaqueMultiaddr, Vec<u8>, AccountId),
 }
 
+pub type EraIndex = u32;
+pub type RewardPoint = u32;
+
+/// Reward points for storage providers of some specific assest id during an era.
+#[derive(PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo)]
+pub struct EraRewardPoints<AccountId> {
+	/// the total number of points
+	total: RewardPoint,
+	/// the reward points for individual validators, sum(i.rewardPoint in individual) = total
+	individual: sp_std::collections::btree_map::BTreeMap<AccountId, RewardPoint>,
+}
+
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
@@ -123,6 +135,25 @@ pub mod pallet {
 	#[pallet::getter(fn ipfs_nodes)]
 	pub(super) type IPFSNodes<T: Config> =
 		StorageMap<_, Twox64Concat, Vec<u8>, Vec<OpaqueMultiaddr>, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn current_session)]
+	pub(super) type CurrentEra<T: Config> = StorageValue<_, EraIndex>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn active_session)]
+	pub(super) type ActiveEra<T: Config> = StorageValue<_, EraIndex>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn era_reward_points)]
+	pub(super) type ErasRewardPoints<T: Config> = StorageDoubleMap<
+		_,
+		Twox64Concat,
+		EraIndex,
+		Twox64Concat,
+		Vec<u8>,
+		EraRewardPoints<T::AccountId>,
+	>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn validators)]
@@ -709,19 +740,30 @@ pub mod pallet {
 
 impl<T: Config> pallet_session::SessionManager<T::AccountId> for Pallet<T> {
 	// Plan a new session and provide new validator set.
-	fn new_session(_new_index: u32) -> Option<Vec<T::AccountId>> {
+	fn new_session(new_index: u32) -> Option<Vec<T::AccountId>> {
 		// TODO(elsuizo: 2022-05-03): this could be the next step
 		// Remove any offline validators. This will only work when the runtime
 		// also has the im-online pallet.
 		// Self::remove_offline_validators();
 
-		// TODO(elsuizo: 2022-05-03): replace this or maybe added
+		log::info!("Starting session with index: {:?}", new_index);
+
+		CurrentEra::<T>::mutate(|s| *s = Some(new_index));
+		Self::remove_offline_validators();
+
+		// TODO(charmitro <2022-05-19 Thu>): Select new candidates;
 		// log::debug!(target: LOG_TARGET, "New session called; updated validator set provided.");
 
 		Some(Self::validators())
 	}
 
-	fn end_session(_end_index: u32) {}
+	fn end_session(end_index: u32) {
+		log::info!("Ending session with index: {:?}", end_index);
+		// TODO(charmitro: <2022-05-19 Thu>): Self::mark_dead_validators();
+	}
 
-	fn start_session(_start_index: u32) {}
+	fn start_session(start_index: u32) {
+		log::info!("Starting session with index: {:?}", start_index);
+		ActiveEra::<T>::mutate(|s| *s = Some(start_index));
+	}
 }
