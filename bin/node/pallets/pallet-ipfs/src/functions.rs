@@ -1,5 +1,5 @@
 use super::*;
-use frame_support::dispatch::DispatchResult;
+use frame_support::{dispatch::DispatchResult, traits::Get};
 use frame_system::pallet_prelude::BlockNumberFor;
 use sp_runtime::offchain::{ipfs, IpfsRequest, IpfsResponse};
 
@@ -61,6 +61,26 @@ impl<T: Config> Pallet<T> {
 	pub fn mark_offline_validator(acct: &T::AccountId) {
 		OfflineValidators::<T>::mutate(|offline_validators| offline_validators.push(acct.clone()));
 		log::info!("The AccountId {:?} was offline and is marked to auto-remove", acct)
+	}
+
+	pub fn mark_dead_validators(era_index: EraIndex) {
+		let participating_validators = SessionParticipation::<T>::get(era_index.clone());
+		for acct in Validators::<T>::get() {
+			if !participating_validators.contains(&acct) {
+				if UnproductiveSessions::<T>::get(acct.clone()) <= T::MaxDeadSessions::get() {
+					UnproductiveSessions::<T>::mutate(acct.clone(), |v| {
+						*v += 1;
+					});
+				} else {
+					let mut validators = Validators::<T>::get();
+
+					validators.retain(|v| *v != acct.clone());
+					Validators::<T>::put(validators);
+
+					log::info!("Validator removal just happened.");
+				}
+			}
+		}
 	}
 
 	pub fn remove_offline_validators() {

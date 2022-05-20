@@ -168,6 +168,16 @@ pub mod pallet {
 	pub type OfflineValidators<T: Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
 
 	#[pallet::storage]
+	#[pallet::getter(fn total_session_rewards)]
+	pub type SessionParticipation<T: Config> =
+		StorageMap<_, Blake2_128Concat, EraIndex, Vec<T::AccountId>, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn unproductive_sessions)]
+	pub type UnproductiveSessions<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::AccountId, u32, ValueQuery>;
+
+	#[pallet::storage]
 	#[pallet::getter(fn data_queue)]
 	pub(super) type DataQueue<T: Config> =
 		StorageValue<_, Vec<DataCommand<T::AccountId>>, ValueQuery>;
@@ -183,6 +193,9 @@ pub mod pallet {
 		/// The maximum amount of IPFS Assets a single account can own.
 		#[pallet::constant]
 		type MaxIpfsOwned: Get<u32>;
+
+		#[pallet::constant]
+		type MaxDeadSessions: Get<u32>;
 
 		/// Default time that an IPFS asset will be stored online.
 		#[pallet::constant]
