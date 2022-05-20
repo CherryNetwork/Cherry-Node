@@ -238,6 +238,12 @@ pub mod pallet {
 				"Members cannot contain duplicate accounts."
 			);
 
+			// TODO(charmitro <2022-05-20 Fri>):
+			// increase balance for council members; cc. @zycon91
+			// for member in self.members.iter() {
+			// 	let result = <assets::Pallet<T>>::increase_balance();
+			// }
+
 			Pallet::<T, I>::initialize_members(&self.members)
 		}
 	}
@@ -272,6 +278,12 @@ pub mod pallet {
 	pub type Voting<T: Config<I>, I: 'static = ()> =
 		StorageMap<_, Identity, T::Hash, Votes<T::AccountId, T::BlockNumber>, OptionQuery>;
 
+	/// The voting power of council members
+	#[pallet::storage]
+	#[pallet::getter(fn voting_power)]
+	pub type VotingPower<T: Config<I>, I: 'static = ()> =
+		StorageMap<_, Identity, T::AccountId, u32, OptionQuery>;
+
 	/// Proposals so far.
 	#[pallet::storage]
 	#[pallet::getter(fn proposal_count)]
@@ -287,12 +299,6 @@ pub mod pallet {
 	#[pallet::storage]
 	#[pallet::getter(fn prime)]
 	pub type Prime<T: Config<I>, I: 'static = ()> = StorageValue<_, T::AccountId, OptionQuery>;
-
-	/// The voting power of council members
-	#[pallet::storage]
-	#[pallet::getter(fn voting_power)]
-	pub type VotingPower<T: Config<I>, I: 'static = ()> =
-		StorageMap<_, Identity, T::AccountId, u32, OptionQuery>;
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
