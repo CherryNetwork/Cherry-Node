@@ -95,7 +95,7 @@ pub trait DefaultVote {
 }
 
 /// Set the prime member's vote as the default vote.
-pub struct PrimeDefaultVote;
+pub struct PrimeDefaultVote; // all this prime vote stuff need deletion @zycon91 cc. @charmitro
 
 impl DefaultVote for PrimeDefaultVote {
 	fn default_vote(
@@ -110,7 +110,7 @@ impl DefaultVote for PrimeDefaultVote {
 
 /// First see if yes vote are over majority of the whole collective. If so, set the default vote
 /// as yes. Otherwise, use the prime member's vote as the default vote.
-pub struct MoreThanMajorityThenPrimeDefaultVote;
+pub struct MoreThanMajorityThenPrimeDefaultVote; // all this prime vote stuff need deletion @zycon91 cc. @charmitro
 
 impl DefaultVote for MoreThanMajorityThenPrimeDefaultVote {
 	fn default_vote(
@@ -801,7 +801,7 @@ pub mod pallet {
 				Error::<T, I>::TooEarly
 			);
 
-			let prime_vote = Self::prime().map(|who| voting.ayes.iter().any(|a| a == &who));
+			let prime_vote = Self::prime().map(|who| voting.ayes.iter().any(|a| a == &who)); // all this prime vote stuff need deletion @zycon91 cc. @charmitro
 
 			// default voting strategy.
 			let default = T::DefaultVote::default_vote(prime_vote, yes_power, no_power, seats);
