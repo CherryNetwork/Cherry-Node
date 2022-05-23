@@ -1,6 +1,6 @@
-#![cfg(test)]
-
+use super::*;
 use frame_support::{construct_runtime, parameter_types, traits::GenesisBuild};
+use frame_system::{EventRecord, Phase};
 use sp_core::H256;
 use sp_io;
 use sp_runtime::{
@@ -23,7 +23,7 @@ construct_runtime!(
         System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
         Council: pallet_council::{Pallet, Call, Storage, Event<T>, Config<T>, Origin<T>},
         Assets: pallet_assets::{Pallet, Call, Storage, Event<T>},
-		Balances: pallet_balances::{Pallet, Call, Storage, Config<T>, Event<T>},
+		Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
     }
 );
 
@@ -125,4 +125,12 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut ext: sp_io::TestExternalities = storage.into();
 	ext.execute_with(|| System::set_block_number(1));
 	ext
+}
+
+pub fn make_proposal(value: u64) -> Call {
+	Call::System(frame_system::Call::remark { remark: value.encode() })
+}
+
+pub fn record(event: Event) -> EventRecord<Event, H256> {
+	EventRecord { phase: Phase::Initialization, event, topics: vec![] }
 }
