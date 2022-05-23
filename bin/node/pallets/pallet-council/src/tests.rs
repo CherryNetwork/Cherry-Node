@@ -1,6 +1,7 @@
 use super::*;
-use crate::{self as pallet_council, mock::*, Config};
+use crate::{self as pallet_council, Config};
 use frame_support::{assert_noop, assert_ok, parameter_types};
+use mock::*;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -8,247 +9,142 @@ use sp_runtime::{
 	BuildStorage,
 };
 
-
-
 #[test]
 fn motions_basic_environment_works() {
 	new_test_ext().execute_with(|| {
-		assert_eq!(Council::members(), vec![1, 2, 3]);
-		assert_eq!(*Council::proposals(), Vec::<H256>::new());
+		assert_eq!(pallet_council::Pallet::<Test>::members(), vec![1, 2, 3]);
+		assert_eq!(*pallet_council::Pallet::<Test>::proposals(), Vec::<H256>::new());
 	});
 }
 
-// #[test]
-// fn close_works() {
-// 	new_test_ext().execute_with(|| {
-// 		let proposal = make_proposal(42);
-// 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
-// 		let proposal_weight = proposal.get_dispatch_info().weight;
-// 		let hash = BlakeTwo256::hash_of(&proposal);
+#[test]
+fn close_works() {
+	new_test_ext().execute_with(|| {
+		assert_ok!(set_gov_token_id(<Test as pallet::Config>::Origin::root()));
+		let proposal = make_proposal(42);
+		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
+		let proposal_weight = proposal.get_dispatch_info().weight;
+		let hash = BlakeTwo256::hash_of(&proposal);
 
-// 		assert_ok!(Council::propose(
-// 			Origin::signed(1),
-// 			3,
-// 			Box::new(proposal.clone()),
-// 			proposal_len
-// 		));
-// 		assert_ok!(Council::vote(Origin::signed(1), hash, 0, true));
-// 		assert_ok!(Council::vote(Origin::signed(2), hash, 0, true));
+		assert_ok!(pallet_council::Pallet::<Test>::propose(
+			<Test as pallet::Config>::Origin::signed(1),
+			3,
+			Box::new(proposal.clone()),
+			proposal_len
+		));
 
-// 		System::set_block_number(3);
-// 		assert_noop!(
-// 			Council::close(Origin::signed(4), hash, 0, proposal_weight, proposal_len),
-// 			Error::<Test>::TooEarly
-// 		);
+		assert_noop!(
+			pallet_council::Pallet::<Test>::close(
+				<Test as pallet::Config>::Origin::signed(4),
+				hash,
+				0,
+				proposal_weight,
+				proposal_len
+			),
+			Error::<Test>::TooEarly
+		);
 
-// 		System::set_block_number(4);
-// 		assert_ok!(Council::close(Origin::signed(4), hash, 0, proposal_weight, proposal_len));
+		assert_ok!(pallet_council::Pallet::<Test>::vote(
+			<Test as pallet::Config>::Origin::signed(1),
+			hash,
+			0,
+			true
+		));
+		assert_ok!(pallet_council::Pallet::<Test>::vote(
+			<Test as pallet::Config>::Origin::signed(2),
+			hash,
+			0,
+			true
+		));
 
-// 		assert_eq!(
-// 			System::events(),
-// 			vec![
-// 				record(Event::Council(Event::Proposed(1, 0, hash, 3))),
-// 				record(Event::Council(Event::Voted(1, hash, true, 1, 0))),
-// 				record(Event::Council(Event::Voted(2, hash, true, 2, 0))),
-// 				record(Event::Council(Event::Closed(hash, 2, 1))),
-// 				record(Event::Council(Event::Disapproved(hash)))
-// 			]
-// 		);
-// 	});
-// }
+		System::set_block_number(4);
+		assert_ok!(pallet_council::Pallet::<Test>::close(
+			<Test as pallet::Config>::Origin::signed(4),
+			hash,
+			0,
+			proposal_weight,
+			proposal_len
+		));
 
-// #[test]
-// fn proposal_weight_limit_works_on_approve() {
-// 	new_test_ext().execute_with(|| {
-// 		let proposal = Call::Collective(crate::Call::set_members {
-// 			new_members: vec![1, 2, 3],
-// 			prime: None,
-// 			old_count: MaxMembers::get(),
-// 		});
-// 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
-// 		let proposal_weight = proposal.get_dispatch_info().weight;
-// 		let hash = BlakeTwo256::hash_of(&proposal);
-// 		// Set 1 as prime voter
-// 		Prime::<Test, Instance1>::set(Some(1));
-// 		assert_ok!(Collective::propose(
-// 			Origin::signed(1),
-// 			3,
-// 			Box::new(proposal.clone()),
-// 			proposal_len
-// 		));
-// 		assert_ok!(Collective::vote(Origin::signed(1), hash, 0, true));
-// 		// With 1's prime vote, this should pass
-// 		System::set_block_number(4);
-// 		assert_noop!(
-// 			Collective::close(Origin::signed(4), hash, 0, proposal_weight - 100, proposal_len),
-// 			Error::<Test, Instance1>::WrongProposalWeight
-// 		);
-// 		assert_ok!(Collective::close(Origin::signed(4), hash, 0, proposal_weight, proposal_len));
-// 	})
-// }
+		assert_eq!(
+			System::events(),
+			vec![
+				record(mock::Event::Council(pallet_council::Event::<Test>::Proposed(
+					1, 0, hash, 3
+				))),
+				record(mock::Event::Council(pallet_council::Event::<Test>::Voted(
+					1, hash, true, 100, 0
+				))),
+				record(mock::Event::Council(pallet_council::Event::<Test>::Voted(
+					2, hash, true, 200, 0
+				))),
+				record(mock::Event::Council(pallet_council::Event::<Test>::Closed(hash, 200, 0))),
+				record(mock::Event::Council(pallet_council::Event::<Test>::Approved(hash))),
+				record(mock::Event::Council(pallet_council::Event::<Test>::Executed(
+					hash,
+					Err(DispatchError::BadOrigin)
+				))),
+			]
+		);
+	});
+}
 
-// #[test]
-// fn proposal_weight_limit_ignored_on_disapprove() {
-// 	new_test_ext().execute_with(|| {
-// 		let proposal = Call::Collective(crate::Call::set_members {
-// 			new_members: vec![1, 2, 3],
-// 			prime: None,
-// 			old_count: MaxMembers::get(),
-// 		});
-// 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
-// 		let proposal_weight = proposal.get_dispatch_info().weight;
-// 		let hash = BlakeTwo256::hash_of(&proposal);
+#[test]
+fn proposal_weight_limit_works_on_approve() {
+	new_test_ext().execute_with(|| {
+		let proposal = mock::Call::Council(crate::Call::set_members {
+			new_members: vec![1, 2, 3],
+			prime: None,
+			old_count: MaxMembers::get(),
+		});
+		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
+		let proposal_weight = proposal.get_dispatch_info().weight;
+		let hash = BlakeTwo256::hash_of(&proposal);
+		assert_ok!(pallet_council::Pallet::<Test>::propose(
+			<Test as pallet::Config>::Origin::signed(1),
+			3,
+			Box::new(proposal.clone()),
+			proposal_len
+		));
+		assert_ok!(pallet_council::Pallet::<Test>::vote(<Test as pallet::Config>::Origin::signed(1), hash, 0, true));
+		System::set_block_number(4);
+		assert_noop!(
+			pallet_council::Pallet::<Test>::close(<Test as pallet::Config>::Origin::signed(4), hash, 0, proposal_weight - 100, proposal_len),
+			Error::<Test>::WrongProposalWeight
+		);
+		assert_ok!(pallet_council::Pallet::<Test>::close(<Test as pallet::Config>::Origin::signed(4), hash, 0, proposal_weight, proposal_len));
+	})
+}
 
-// 		assert_ok!(Collective::propose(
-// 			Origin::signed(1),
-// 			3,
-// 			Box::new(proposal.clone()),
-// 			proposal_len
-// 		));
-// 		// No votes, this proposal wont pass
-// 		System::set_block_number(4);
-// 		assert_ok!(Collective::close(
-// 			Origin::signed(4),
-// 			hash,
-// 			0,
-// 			proposal_weight - 100,
-// 			proposal_len
-// 		));
-// 	})
-// }
+#[test]
+fn proposal_weight_limit_ignored_on_disapprove() {
+	new_test_ext().execute_with(|| {
+		let proposal = mock::Call::Council(crate::Call::set_members {
+			new_members: vec![1, 2, 3],
+			prime: None,
+			old_count: MaxMembers::get(),
+		});
+		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
+		let proposal_weight = proposal.get_dispatch_info().weight;
+		let hash = BlakeTwo256::hash_of(&proposal);
 
-// #[test]
-// fn close_with_prime_works() {
-// 	new_test_ext().execute_with(|| {
-// 		let proposal = make_proposal(42);
-// 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
-// 		let proposal_weight = proposal.get_dispatch_info().weight;
-// 		let hash = BlakeTwo256::hash_of(&proposal);
-// 		assert_ok!(Collective::set_members(
-// 			Origin::root(),
-// 			vec![1, 2, 3],
-// 			Some(3),
-// 			MaxMembers::get()
-// 		));
-
-// 		assert_ok!(Collective::propose(
-// 			Origin::signed(1),
-// 			3,
-// 			Box::new(proposal.clone()),
-// 			proposal_len
-// 		));
-// 		assert_ok!(Collective::vote(Origin::signed(1), hash, 0, true));
-// 		assert_ok!(Collective::vote(Origin::signed(2), hash, 0, true));
-
-// 		System::set_block_number(4);
-// 		assert_ok!(Collective::close(Origin::signed(4), hash, 0, proposal_weight, proposal_len));
-
-// 		assert_eq!(
-// 			System::events(),
-// 			vec![
-// 				record(Event::Collective(CollectiveEvent::Proposed(1, 0, hash, 3))),
-// 				record(Event::Collective(CollectiveEvent::Voted(1, hash, true, 1, 0))),
-// 				record(Event::Collective(CollectiveEvent::Voted(2, hash, true, 2, 0))),
-// 				record(Event::Collective(CollectiveEvent::Closed(hash, 2, 1))),
-// 				record(Event::Collective(CollectiveEvent::Disapproved(hash)))
-// 			]
-// 		);
-// 	});
-// }
-
-// #[test]
-// fn close_with_voting_prime_works() {
-// 	new_test_ext().execute_with(|| {
-// 		let proposal = make_proposal(42);
-// 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
-// 		let proposal_weight = proposal.get_dispatch_info().weight;
-// 		let hash = BlakeTwo256::hash_of(&proposal);
-// 		assert_ok!(Collective::set_members(
-// 			Origin::root(),
-// 			vec![1, 2, 3],
-// 			Some(1),
-// 			MaxMembers::get()
-// 		));
-
-// 		assert_ok!(Collective::propose(
-// 			Origin::signed(1),
-// 			3,
-// 			Box::new(proposal.clone()),
-// 			proposal_len
-// 		));
-// 		assert_ok!(Collective::vote(Origin::signed(1), hash, 0, true));
-// 		assert_ok!(Collective::vote(Origin::signed(2), hash, 0, true));
-
-// 		System::set_block_number(4);
-// 		assert_ok!(Collective::close(Origin::signed(4), hash, 0, proposal_weight, proposal_len));
-
-// 		assert_eq!(
-// 			System::events(),
-// 			vec![
-// 				record(Event::Collective(CollectiveEvent::Proposed(1, 0, hash, 3))),
-// 				record(Event::Collective(CollectiveEvent::Voted(1, hash, true, 1, 0))),
-// 				record(Event::Collective(CollectiveEvent::Voted(2, hash, true, 2, 0))),
-// 				record(Event::Collective(CollectiveEvent::Closed(hash, 3, 0))),
-// 				record(Event::Collective(CollectiveEvent::Approved(hash))),
-// 				record(Event::Collective(CollectiveEvent::Executed(
-// 					hash,
-// 					Err(DispatchError::BadOrigin)
-// 				)))
-// 			]
-// 		);
-// 	});
-// }
-
-// #[test]
-// fn close_with_no_prime_but_majority_works() {
-// 	new_test_ext().execute_with(|| {
-// 		let proposal = make_proposal(42);
-// 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
-// 		let proposal_weight = proposal.get_dispatch_info().weight;
-// 		let hash = BlakeTwo256::hash_of(&proposal);
-// 		assert_ok!(CollectiveMajority::set_members(
-// 			Origin::root(),
-// 			vec![1, 2, 3, 4, 5],
-// 			Some(5),
-// 			MaxMembers::get()
-// 		));
-
-// 		assert_ok!(CollectiveMajority::propose(
-// 			Origin::signed(1),
-// 			5,
-// 			Box::new(proposal.clone()),
-// 			proposal_len
-// 		));
-// 		assert_ok!(CollectiveMajority::vote(Origin::signed(1), hash, 0, true));
-// 		assert_ok!(CollectiveMajority::vote(Origin::signed(2), hash, 0, true));
-// 		assert_ok!(CollectiveMajority::vote(Origin::signed(3), hash, 0, true));
-
-// 		System::set_block_number(4);
-// 		assert_ok!(CollectiveMajority::close(
-// 			Origin::signed(4),
-// 			hash,
-// 			0,
-// 			proposal_weight,
-// 			proposal_len
-// 		));
-
-// 		assert_eq!(
-// 			System::events(),
-// 			vec![
-// 				record(Event::CollectiveMajority(CollectiveEvent::Proposed(1, 0, hash, 5))),
-// 				record(Event::CollectiveMajority(CollectiveEvent::Voted(1, hash, true, 1, 0))),
-// 				record(Event::CollectiveMajority(CollectiveEvent::Voted(2, hash, true, 2, 0))),
-// 				record(Event::CollectiveMajority(CollectiveEvent::Voted(3, hash, true, 3, 0))),
-// 				record(Event::CollectiveMajority(CollectiveEvent::Closed(hash, 5, 0))),
-// 				record(Event::CollectiveMajority(CollectiveEvent::Approved(hash))),
-// 				record(Event::CollectiveMajority(CollectiveEvent::Executed(
-// 					hash,
-// 					Err(DispatchError::BadOrigin)
-// 				)))
-// 			]
-// 		);
-// 	});
-// }
+		assert_ok!(pallet_council::Pallet::<Test>::propose(
+			<Test as pallet::Config>::Origin::signed(1),
+			3,
+			Box::new(proposal.clone()),
+			proposal_len
+		));
+		// No votes, this proposal wont pass
+		System::set_block_number(4);
+		assert_ok!(pallet_council::Pallet::<Test>::close(
+			<Test as pallet::Config>::Origin::signed(4),
+			hash,
+			0,
+			proposal_weight - 100,
+			proposal_len
+		));
+	})
+}
 
 // #[test]
 // fn removal_of_old_voters_votes_works() {
@@ -267,12 +163,12 @@ fn motions_basic_environment_works() {
 // 		assert_ok!(Collective::vote(Origin::signed(2), hash, 0, true));
 // 		assert_eq!(
 // 			Collective::voting(&hash),
-// 			Some(Votes { index: 0, threshold: 3, ayes: vec![1, 2], nays: vec![], ayes_power: vec![13, 2], nays_power: vec![],end })
+// 			Some(Votes { index: 0, threshold: 3, ayes: vec![1, 2], nays: vec![], end })
 // 		);
 // 		Collective::change_members_sorted(&[4], &[1], &[2, 3, 4]);
 // 		assert_eq!(
 // 			Collective::voting(&hash),
-// 			Some(Votes { index: 0, threshold: 3, ayes: vec![2], nays: vec![], ayes_power: vec![2], nays_power: vec![],end })
+// 			Some(Votes { index: 0, threshold: 3, ayes: vec![2], nays: vec![], end })
 // 		);
 
 // 		let proposal = make_proposal(69);
@@ -288,12 +184,12 @@ fn motions_basic_environment_works() {
 // 		assert_ok!(Collective::vote(Origin::signed(3), hash, 1, false));
 // 		assert_eq!(
 // 			Collective::voting(&hash),
-// 			Some(Votes { index: 1, threshold: 2, ayes: vec![2], nays: vec![3], ayes_power: vec![2], nays_power: vec![4],end })
+// 			Some(Votes { index: 1, threshold: 2, ayes: vec![2], nays: vec![3], end })
 // 		);
 // 		Collective::change_members_sorted(&[], &[3], &[2, 4]);
 // 		assert_eq!(
 // 			Collective::voting(&hash),
-// 			Some(Votes { index: 1, threshold: 2, ayes: vec![2], nays: vec![], ayes_power: vec![2], nays_power: vec![],end })
+// 			Some(Votes { index: 1, threshold: 2, ayes: vec![2], nays: vec![], end })
 // 		);
 // 	});
 // }
@@ -315,12 +211,12 @@ fn motions_basic_environment_works() {
 // 		assert_ok!(Collective::vote(Origin::signed(2), hash, 0, true));
 // 		assert_eq!(
 // 			Collective::voting(&hash),
-// 			Some(Votes { index: 0, threshold: 3, ayes: vec![1, 2], nays: vec![], ayes_power: vec![13, 2], nays_power: vec![],end })
+// 			Some(Votes { index: 0, threshold: 3, ayes: vec![1, 2], nays: vec![], end })
 // 		);
 // 		assert_ok!(Collective::set_members(Origin::root(), vec![2, 3, 4], None, MaxMembers::get()));
 // 		assert_eq!(
 // 			Collective::voting(&hash),
-// 			Some(Votes { index: 0, threshold: 3, ayes: vec![2], nays: vec![], ayes_power: vec![2], nays_power: vec![],end })
+// 			Some(Votes { index: 0, threshold: 3, ayes: vec![2], nays: vec![], end })
 // 		);
 
 // 		let proposal = make_proposal(69);
@@ -336,12 +232,12 @@ fn motions_basic_environment_works() {
 // 		assert_ok!(Collective::vote(Origin::signed(3), hash, 1, false));
 // 		assert_eq!(
 // 			Collective::voting(&hash),
-// 			Some(Votes { index: 1, threshold: 2, ayes: vec![2], nays: vec![3], ayes_power: vec![2], nays_power: vec![4],end })
+// 			Some(Votes { index: 1, threshold: 2, ayes: vec![2], nays: vec![3], end })
 // 		);
 // 		assert_ok!(Collective::set_members(Origin::root(), vec![2, 4], None, MaxMembers::get()));
 // 		assert_eq!(
 // 			Collective::voting(&hash),
-// 			Some(Votes { index: 1, threshold: 2, ayes: vec![2], nays: vec![], ayes_power: vec![2], nays_power: vec![],end })
+// 			Some(Votes { index: 1, threshold: 2, ayes: vec![2], nays: vec![], end })
 // 		);
 // 	});
 // }
@@ -363,7 +259,7 @@ fn motions_basic_environment_works() {
 // 		assert_eq!(Collective::proposal_of(&hash), Some(proposal));
 // 		assert_eq!(
 // 			Collective::voting(&hash),
-// 			Some(Votes { index: 0, threshold: 3, ayes: vec![], nays: vec![], ayes_power: vec![], nays_power: vec![],end })
+// 			Some(Votes { index: 0, threshold: 3, ayes: vec![], nays: vec![], end })
 // 		);
 
 // 		assert_eq!(
@@ -499,13 +395,13 @@ fn motions_basic_environment_works() {
 // 		// Initially there a no votes when the motion is proposed.
 // 		assert_eq!(
 // 			Collective::voting(&hash),
-// 			Some(Votes { index: 0, threshold: 2, ayes: vec![], nays: vec![], ayes_power: vec![], nays_power: vec![],end })
+// 			Some(Votes { index: 0, threshold: 2, ayes: vec![], nays: vec![], end })
 // 		);
 // 		// Cast first aye vote.
 // 		assert_ok!(Collective::vote(Origin::signed(1), hash, 0, true));
 // 		assert_eq!(
 // 			Collective::voting(&hash),
-// 			Some(Votes { index: 0, threshold: 2, ayes: vec![1], nays: vec![], ayes_power: vec![13], nays_power: vec![],end })
+// 			Some(Votes { index: 0, threshold: 2, ayes: vec![1], nays: vec![], end })
 // 		);
 // 		// Try to cast a duplicate aye vote.
 // 		assert_noop!(
@@ -516,7 +412,7 @@ fn motions_basic_environment_works() {
 // 		assert_ok!(Collective::vote(Origin::signed(1), hash, 0, false));
 // 		assert_eq!(
 // 			Collective::voting(&hash),
-// 			Some(Votes { index: 0, threshold: 2, ayes: vec![], nays: vec![1], ayes_power: vec![], nays_power: vec![13],end })
+// 			Some(Votes { index: 0, threshold: 2, ayes: vec![], nays: vec![1], end })
 // 		);
 // 		// Try to cast a duplicate nay vote.
 // 		assert_noop!(
@@ -550,7 +446,7 @@ fn motions_basic_environment_works() {
 // 		));
 // 		assert_eq!(
 // 			Collective::voting(&hash),
-// 			Some(Votes { index: 0, threshold: 2, ayes: vec![], nays: vec![], ayes_power: vec![], nays_power: vec![], end })
+// 			Some(Votes { index: 0, threshold: 2, ayes: vec![], nays: vec![], end })
 // 		);
 
 // 		// For the motion, acc 2's first vote, expecting Ok with Pays::No.

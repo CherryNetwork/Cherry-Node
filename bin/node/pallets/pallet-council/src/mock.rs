@@ -1,11 +1,11 @@
 use super::*;
-use frame_support::{construct_runtime, parameter_types, traits::GenesisBuild};
+use frame_support::{construct_runtime, parameter_types};
 use frame_system::{EventRecord, Phase};
 use sp_core::H256;
 use sp_io;
 use sp_runtime::{
-    testing::Header,
-    traits::{BlakeTwo256, IdentityLookup},
+	testing::Header,
+	traits::{BlakeTwo256, IdentityLookup}, BuildStorage,
 };
 
 use crate::{self as pallet_council, Config};
@@ -15,16 +15,16 @@ type Block = frame_system::mocking::MockBlock<Test>;
 
 // Configure a mock runtime to test the pallet.
 construct_runtime!(
-    pub enum Test where
-        Block = Block,
-        NodeBlock = Block,
-        UncheckedExtrinsic = UncheckedExtrinsic,
-    {
-        System: frame_system::{Pallet, Call, Config, Storage, Event<T>},
-        Council: pallet_council::{Pallet, Call, Storage, Event<T>, Config<T>, Origin<T>},
-        Assets: pallet_assets::{Pallet, Call, Storage, Event<T>},
+	pub enum Test where
+		Block = Block,
+		NodeBlock = Block,
+		UncheckedExtrinsic = UncheckedExtrinsic,
+	{
+		System: frame_system::{Pallet, Call, Storage, Event<T>},
+		Council: pallet_council::{Pallet, Call, Storage, Event<T>, Config<T>, Origin<T>},
+		Assets: pallet_assets::{Pallet, Call, Storage, Event<T>, Config<T>},
 		Balances: pallet_balances::{Pallet, Call, Storage, Event<T>},
-    }
+	}
 );
 
 parameter_types! {
@@ -113,16 +113,31 @@ impl Config for Test {
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
-	
-	let config: pallet_council::GenesisConfig<Test> = pallet_council::GenesisConfig {	
-			members: vec![1, 2, 3],
-			phantom: Default::default(),
-		};
-
-	config.assimilate_storage(&mut storage).unwrap();
-
-	let mut ext: sp_io::TestExternalities = storage.into();
+	let mut ext: sp_io::TestExternalities = GenesisConfig {
+		assets: pallet_assets::GenesisConfig::<Test> {
+   			assets: vec![
+				// id, owner, is_sufficient, min_balance	
+			   (999, 0, true, 1)
+			],
+    		metadata: vec![
+				// id, name, symbol, decimals
+				(999, "Token Name".into(), "TOKEN".into(), 0),
+			],
+    		accounts: vec![
+				// id, account_id, balance
+				(999, 1, 100),
+				(999, 2, 100),
+				(999, 3, 100)
+			],
+		},
+		council: pallet_council::GenesisConfig::<Test> {
+    		phantom: Default::default(),
+    		members: vec![1, 2, 3],
+		},
+	}
+	.build_storage()
+	.unwrap()
+	.into();
 	ext.execute_with(|| System::set_block_number(1));
 	ext
 }
@@ -133,4 +148,8 @@ pub fn make_proposal(value: u64) -> Call {
 
 pub fn record(event: Event) -> EventRecord<Event, H256> {
 	EventRecord { phase: Phase::Initialization, event, topics: vec![] }
+}
+
+pub fn set_gov_token_id(origin: Origin) -> DispatchResultWithPostInfo {
+	Council::set_gov_token_id(origin, 999)
 }
