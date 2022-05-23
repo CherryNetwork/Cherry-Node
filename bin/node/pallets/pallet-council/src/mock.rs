@@ -5,7 +5,8 @@ use sp_core::H256;
 use sp_io;
 use sp_runtime::{
 	testing::Header,
-	traits::{BlakeTwo256, IdentityLookup}, BuildStorage,
+	traits::{BlakeTwo256, IdentityLookup},
+	BuildStorage,
 };
 
 use crate::{self as pallet_council, Config};
@@ -115,24 +116,24 @@ impl Config for Test {
 pub fn new_test_ext() -> sp_io::TestExternalities {
 	let mut ext: sp_io::TestExternalities = GenesisConfig {
 		assets: pallet_assets::GenesisConfig::<Test> {
-   			assets: vec![
-				// id, owner, is_sufficient, min_balance	
-			   (999, 0, true, 1)
+			assets: vec![
+				// id, owner, is_sufficient, min_balance
+				(999, 0, true, 1),
 			],
-    		metadata: vec![
+			metadata: vec![
 				// id, name, symbol, decimals
 				(999, "Token Name".into(), "TOKEN".into(), 0),
 			],
-    		accounts: vec![
+			accounts: vec![
 				// id, account_id, balance
 				(999, 1, 100),
 				(999, 2, 100),
-				(999, 3, 100)
+				(999, 3, 100),
 			],
 		},
 		council: pallet_council::GenesisConfig::<Test> {
-    		phantom: Default::default(),
-    		members: vec![1, 2, 3],
+			phantom: Default::default(),
+			members: vec![1, 2, 3],
 		},
 	}
 	.build_storage()
