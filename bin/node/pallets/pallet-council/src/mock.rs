@@ -1,13 +1,11 @@
 #![cfg(test)]
 
-use frame_support::parameter_types;
-use frame_system as system;
+use frame_support::{construct_runtime, parameter_types, traits::GenesisBuild};
 use sp_core::H256;
 use sp_io;
 use sp_runtime::{
     testing::Header,
     traits::{BlakeTwo256, IdentityLookup},
-    BuildStorage,
 };
 
 use crate::{self as pallet_council, Config};
@@ -15,9 +13,8 @@ use crate::{self as pallet_council, Config};
 type UncheckedExtrinsic = frame_system::mocking::MockUncheckedExtrinsic<Test>;
 type Block = frame_system::mocking::MockBlock<Test>;
 
-
 // Configure a mock runtime to test the pallet.
-frame_support::construct_runtime!(
+construct_runtime!(
     pub enum Test where
         Block = Block,
         NodeBlock = Block,
@@ -56,7 +53,7 @@ impl frame_system::Config for Test {
 	type BlockHashCount = BlockHashCount;
 	type Version = ();
 	type PalletInfo = PalletInfo;
-	type AccountData = ();
+	type AccountData = pallet_balances::AccountData<u64>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type SystemWeightInfo = ();
@@ -116,18 +113,16 @@ impl Config for Test {
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {
-	let mut ext: sp_io::TestExternalities = GenesisConfig {
-		system: Default::default(),
-		council: pallet_council::GenesisConfig {
+	let mut storage = frame_system::GenesisConfig::default().build_storage::<Test>().unwrap();
+	
+	let config: pallet_council::GenesisConfig<Test> = pallet_council::GenesisConfig {	
 			members: vec![1, 2, 3],
 			phantom: Default::default(),
-		},
-		balances: vec![(0, 100), (1, 98), (2, 1)],
-		
-	}
-	.build_storage()
-	.unwrap()
-	.into();
+		};
+
+	config.assimilate_storage(&mut storage).unwrap();
+
+	let mut ext: sp_io::TestExternalities = storage.into();
 	ext.execute_with(|| System::set_block_number(1));
 	ext
 }

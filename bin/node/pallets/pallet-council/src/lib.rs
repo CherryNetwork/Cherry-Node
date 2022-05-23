@@ -61,6 +61,8 @@ use frame_support::{
 
 #[cfg(test)]
 mod tests;
+#[cfg(test)]
+mod mock;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
