@@ -1,7 +1,6 @@
 use super::*;
 use crate::{self as pallet_council, mock::*, Config};
 use frame_support::{assert_noop, assert_ok, parameter_types};
-use frame_system as system;
 use sp_core::H256;
 use sp_runtime::{
 	testing::Header,
@@ -9,11 +8,13 @@ use sp_runtime::{
 	BuildStorage,
 };
 
+
+
 #[test]
 fn motions_basic_environment_works() {
 	new_test_ext().execute_with(|| {
-		assert_eq!(pallet_council::pallet::Pallet::<Test>::members(), vec![1, 2, 3]);
-		assert_eq!(*pallet_council::pallet::Pallet::<Test>::proposals(), Vec::<H256>::new());
+		assert_eq!(Council::members(), vec![1, 2, 3]);
+		assert_eq!(*Council::proposals(), Vec::<H256>::new());
 	});
 }
 
@@ -25,32 +26,32 @@ fn motions_basic_environment_works() {
 // 		let proposal_weight = proposal.get_dispatch_info().weight;
 // 		let hash = BlakeTwo256::hash_of(&proposal);
 
-// 		assert_ok!(Collective::propose(
+// 		assert_ok!(Council::propose(
 // 			Origin::signed(1),
 // 			3,
 // 			Box::new(proposal.clone()),
 // 			proposal_len
 // 		));
-// 		assert_ok!(Collective::vote(Origin::signed(1), hash, 0, true));
-// 		assert_ok!(Collective::vote(Origin::signed(2), hash, 0, true));
+// 		assert_ok!(Council::vote(Origin::signed(1), hash, 0, true));
+// 		assert_ok!(Council::vote(Origin::signed(2), hash, 0, true));
 
 // 		System::set_block_number(3);
 // 		assert_noop!(
-// 			Collective::close(Origin::signed(4), hash, 0, proposal_weight, proposal_len),
-// 			Error::<Test, Instance1>::TooEarly
+// 			Council::close(Origin::signed(4), hash, 0, proposal_weight, proposal_len),
+// 			Error::<Test>::TooEarly
 // 		);
 
 // 		System::set_block_number(4);
-// 		assert_ok!(Collective::close(Origin::signed(4), hash, 0, proposal_weight, proposal_len));
+// 		assert_ok!(Council::close(Origin::signed(4), hash, 0, proposal_weight, proposal_len));
 
 // 		assert_eq!(
 // 			System::events(),
 // 			vec![
-// 				record(Event::Collective(CollectiveEvent::Proposed(1, 0, hash, 3))),
-// 				record(Event::Collective(CollectiveEvent::Voted(1, hash, true, 1, 0))),
-// 				record(Event::Collective(CollectiveEvent::Voted(2, hash, true, 2, 0))),
-// 				record(Event::Collective(CollectiveEvent::Closed(hash, 2, 1))),
-// 				record(Event::Collective(CollectiveEvent::Disapproved(hash)))
+// 				record(Event::Council(Event::Proposed(1, 0, hash, 3))),
+// 				record(Event::Council(Event::Voted(1, hash, true, 1, 0))),
+// 				record(Event::Council(Event::Voted(2, hash, true, 2, 0))),
+// 				record(Event::Council(Event::Closed(hash, 2, 1))),
+// 				record(Event::Council(Event::Disapproved(hash)))
 // 			]
 // 		);
 // 	});
