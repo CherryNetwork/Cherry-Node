@@ -243,7 +243,7 @@ pub mod pallet {
 			// TODO(charmitro <2022-05-20 Fri>):
 			// increase balance for council members; cc. @zycon91
 			// for member in self.members.iter() {
-			// 	let result = <assets::Pallet<T>>::increase_balance();
+			// let result = <assets::Pallet<T>>::increase_balance();
 			// }
 
 			Pallet::<T, I>::initialize_members(&self.members)
@@ -761,7 +761,7 @@ pub mod pallet {
 
 			let approved = (yes_power + no_power).ge(&actual_threshold) && yes_power.gt(&no_power);
 			let disapproved =
-				no_power.gt(&yes_power) || (yes_power + no_power).lt(&voting.threshold);
+				(yes_power + no_power).ge(&actual_threshold) && no_power.gt(&yes_power);
 			// Allow (dis-)approving the proposal as soon as there are enough votes.
 			if approved {
 				let (proposal, len) = Self::validate_and_get_proposal(
