@@ -23,6 +23,11 @@ frame-system = { version = "4.0.0-dev", default-features = false, path = "../../
 pallet-assets = { version = "4.0.0-dev", default-features = false, path = "../../../../frame/assets" }
 pallet-balances = { version = "4.0.0-dev", default-features = false, path = "../../../../frame/balances" }
 
+[dev-dependencies]
+pallet-assets = { version = "4.0.0-dev", path = "../../../../frame/assets" }
+pallet-balances = { version = "4.0.0-dev", path = "../../../../frame/balances" }
+
+
 [features]
 default = ["std"]
 std = [
