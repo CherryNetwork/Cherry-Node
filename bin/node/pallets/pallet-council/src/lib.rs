@@ -157,11 +157,11 @@ pub struct Votes<AccountId, BlockNumber> {
 	/// The current set of voters that approved it.
 	ayes: Vec<AccountId>,
 	/// The current power of voters that approved it.
-	ayes_power: Vec<u32>,
+	ayes_power: Vec<(AccountId, u32)>,
 	/// The current set of voters that rejected it.
 	nays: Vec<AccountId>,
 	/// The current power of voters that rejected it.
-	nays_power: Vec<u32>,
+	nays_power: Vec<(AccountId, u32)>,
 	/// The hard end time of this vote.
 	end: BlockNumber,
 }
@@ -634,9 +634,9 @@ pub mod pallet {
 			if approve {
 				if position_yes.is_none() {
 					voting.ayes.push(who.clone());
-					voting.ayes_power.push(vote_power);
+					voting.ayes_power.push((who.clone(), vote_power));
 				} else {
-					return Err(Error::<T, I>::DuplicateVote.into())
+					return Err(Error::<T, I>::DuplicateVote.into());
 				}
 				if let Some(pos) = position_no {
 					voting.nays.swap_remove(pos);
@@ -645,9 +645,9 @@ pub mod pallet {
 			} else {
 				if position_no.is_none() {
 					voting.nays.push(who.clone());
-					voting.nays_power.push(vote_power);
+					voting.nays_power.push((who.clone(), vote_power));
 				} else {
-					return Err(Error::<T, I>::DuplicateVote.into())
+					return Err(Error::<T, I>::DuplicateVote.into());
 				}
 				if let Some(pos) = position_yes {
 					voting.ayes.swap_remove(pos);
@@ -661,10 +661,10 @@ pub mod pallet {
 			let mut yes_power = 0;
 			let mut no_power = 0;
 			for voting_power in voting.ayes_power.clone() {
-				yes_power = yes_power + voting_power;
+				yes_power = yes_power + voting_power.1;
 			}
 			for voting_power in voting.nays_power.clone() {
-				no_power = no_power + voting_power;
+				no_power = no_power + voting_power.1;
 			}
 			Self::deposit_event(Event::Voted(who, proposal, approve, yes_power, no_power));
 
@@ -750,10 +750,10 @@ pub mod pallet {
 			let mut yes_power = 0;
 			let mut no_power = 0;
 			for voting_power in voting.ayes_power.clone() {
-				yes_power = yes_power + voting_power;
+				yes_power = yes_power + voting_power.1;
 			}
 			for voting_power in voting.nays_power.clone() {
-				no_power = no_power + voting_power;
+				no_power = no_power + voting_power.1;
 			}
 
 			let max_gov_tokens = Self::calculate_max_gov_tokens();
@@ -783,7 +783,7 @@ pub mod pallet {
 					),
 					Pays::Yes,
 				)
-					.into())
+					.into());
 			} else if disapproved {
 				Self::deposit_event(Event::Closed(proposal_hash, yes_power, no_power));
 				let proposal_count = Self::do_disapprove_proposal(proposal_hash);
@@ -794,7 +794,7 @@ pub mod pallet {
 					)),
 					Pays::No,
 				)
-					.into())
+					.into());
 			}
 
 			// Only allow actual closing of the proposal after the voting period has ended.
@@ -992,7 +992,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			max_gov_tokens += vote_power;
 		}
 
-		return max_gov_tokens
+		return max_gov_tokens;
 	}
 }
 
@@ -1042,6 +1042,16 @@ impl<T: Config<I>, I: 'static> ChangeMembers<T::AccountId> for Pallet<T, I> {
 						.nays
 						.into_iter()
 						.filter(|i| outgoing.binary_search(i).is_err())
+						.collect();
+					votes.ayes_power = votes
+						.ayes_power
+						.into_iter()
+						.filter(|i| outgoing.binary_search(&i.0).is_err())
+						.collect();
+					votes.nays_power = votes
+						.nays_power
+						.into_iter()
+						.filter(|i| outgoing.binary_search(&i.0).is_err())
 						.collect();
 					*v = Some(votes);
 				}
