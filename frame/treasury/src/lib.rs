@@ -496,6 +496,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 		let mut missed_any = false;
 		let mut imbalance = <PositiveImbalanceOf<T, I>>::zero();
+
 		let proposals_len = Approvals::<T, I>::mutate(|v| {
 			let proposals_approvals_len = v.len() as u32;
 			v.retain(|&index| {
@@ -521,6 +522,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 						false
 					} else {
 						log::info!("qewrasdfa");
+						p.remaining_occurs -= 1;
 						missed_any = true;
 						true
 					}

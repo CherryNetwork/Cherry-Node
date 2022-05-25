@@ -380,8 +380,8 @@ pub fn testnet_genesis(
 		vesting: Default::default(),
 		assets: AssetsConfig {
 			assets: vec![(999, root_key.clone(), true, 1)],
-			metadata: vec![(999, "Governance Token".into(), "tGov".into(), 8)],
-			accounts: vec![(999, root_key.clone(), 1_000_000_000)],
+			metadata: vec![(999, "Governance Token".into(), "tGov".into(), 0)],
+			accounts: vec![(999, root_key.clone(), 10)],
 		},
 		transaction_storage: Default::default(),
 	}
