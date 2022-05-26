@@ -636,7 +636,7 @@ pub mod pallet {
 					voting.ayes.push(who.clone());
 					voting.ayes_power.push((who.clone(), vote_power));
 				} else {
-					return Err(Error::<T, I>::DuplicateVote.into());
+					return Err(Error::<T, I>::DuplicateVote.into())
 				}
 				if let Some(pos) = position_no {
 					voting.nays.swap_remove(pos);
@@ -647,7 +647,7 @@ pub mod pallet {
 					voting.nays.push(who.clone());
 					voting.nays_power.push((who.clone(), vote_power));
 				} else {
-					return Err(Error::<T, I>::DuplicateVote.into());
+					return Err(Error::<T, I>::DuplicateVote.into())
 				}
 				if let Some(pos) = position_yes {
 					voting.ayes.swap_remove(pos);
@@ -783,7 +783,7 @@ pub mod pallet {
 					),
 					Pays::Yes,
 				)
-					.into());
+					.into())
 			} else if disapproved {
 				Self::deposit_event(Event::Closed(proposal_hash, yes_power, no_power));
 				let proposal_count = Self::do_disapprove_proposal(proposal_hash);
@@ -794,7 +794,7 @@ pub mod pallet {
 					)),
 					Pays::No,
 				)
-					.into());
+					.into())
 			}
 
 			// Only allow actual closing of the proposal after the voting period has ended.
@@ -992,7 +992,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 			max_gov_tokens += vote_power;
 		}
 
-		return max_gov_tokens;
+		return max_gov_tokens
 	}
 }
 
