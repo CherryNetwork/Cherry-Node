@@ -516,7 +516,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 							p.remaining_occurs = p.remaining_occurs - 1;
 						}
 
-						if p.remaining_occurs.le(&0) {
+						if p.remaining_occurs.le(&0) && p.segments.gt(&0) {
 							<Proposals<T, I>>::remove(index);
 						} else {
 							<Proposals<T, I>>::remove(index);
@@ -532,8 +532,21 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 						Self::deposit_event(Event::Awarded(index, p.value, p.beneficiary.clone()));
 						false
 					} else {
+						if p.remaining_occurs.gt(&0) {
+							p.remaining_occurs = p.remaining_occurs - 1;
+							<Proposals<T, I>>::remove(index);
+							<Proposals<T, I>>::insert(index, p.clone());
+						} else {
+							<Proposals<T, I>>::remove(index);
+							<Proposals<T, I>>::insert(index, p.clone());
+						}
+
+						if p.remaining_occurs.eq(&0) && p.segments.gt(&0) {
+							<Proposals<T, I>>::remove(index);
+						}
+
 						missed_any = true;
-						true
+						false
 					}
 				} else {
 					false
