@@ -130,9 +130,11 @@ pub struct Proposal<AccountId, Balance> {
 	/// The amount held on deposit (reserved) for making this proposal.
 	bond: Balance,
 	/// How many times should this be repeated.
-	occurs: u32,
+	segments: u32,
 	/// How many times left to be repeated.
 	remaining_occurs: u32,
+	/// In which cycle the proposal will be active (True = current cycle, False = next cycle).
+	cycle: bool,
 }
 
 #[frame_support::pallet]
@@ -350,19 +352,22 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			#[pallet::compact] value: BalanceOf<T, I>,
 			beneficiary: <T::Lookup as StaticLookup>::Source,
-			occurs: u32,
+			segments: u32,
+			cycle: bool,
 		) -> DispatchResult {
 			let proposer = ensure_signed(origin)?;
 			let beneficiary = T::Lookup::lookup(beneficiary)?;
 
 			let current_block = <frame_system::Pallet<T>>::block_number();
 
-			if (current_block % T::SpendPeriod::get()).lt(&T::AllowedProposalPeriod::get()) {
+			if (current_block % T::SpendPeriod::get()).lt(&T::AllowedProposalPeriod::get()) &&
+				cycle == true
+			{
 				let chunk: <<T as Config<I>>::Currency as Currency<
 					<T as frame_system::Config>::AccountId,
 				>>::Balance;
-				if occurs.gt(&0) {
-					chunk = value / occurs.into();
+				if segments.gt(&0) {
+					chunk = value / segments.into();
 				} else {
 					chunk = value;
 				}
@@ -380,8 +385,9 @@ pub mod pallet {
 						value: chunk.clone(),
 						beneficiary: beneficiary.clone(),
 						bond,
-						occurs,
-						remaining_occurs: occurs,
+						segments,
+						remaining_occurs: segments,
+						cycle,
 					},
 				);
 
@@ -390,8 +396,8 @@ pub mod pallet {
 				let chunk: <<T as Config<I>>::Currency as Currency<
 					<T as frame_system::Config>::AccountId,
 				>>::Balance;
-				if occurs.gt(&0) {
-					chunk = value / occurs.into();
+				if segments.gt(&0) {
+					chunk = value / segments.into();
 				} else {
 					chunk = value;
 				}
@@ -408,8 +414,9 @@ pub mod pallet {
 						value: chunk.clone(),
 						beneficiary: beneficiary.clone(),
 						bond,
-						occurs,
-						remaining_occurs: occurs,
+						segments,
+						remaining_occurs: segments,
+						cycle,
 					},
 				);
 
@@ -509,7 +516,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 							p.remaining_occurs = p.remaining_occurs - 1;
 						}
 
-						if p.remaining_occurs.le(&0) {
+						if p.remaining_occurs.le(&0) && p.segments.gt(&0) {
 							<Proposals<T, I>>::remove(index);
 						} else {
 							<Proposals<T, I>>::remove(index);
@@ -525,8 +532,21 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 						Self::deposit_event(Event::Awarded(index, p.value, p.beneficiary.clone()));
 						false
 					} else {
+						if p.remaining_occurs.gt(&0) {
+							p.remaining_occurs = p.remaining_occurs - 1;
+							<Proposals<T, I>>::remove(index);
+							<Proposals<T, I>>::insert(index, p.clone());
+						} else {
+							<Proposals<T, I>>::remove(index);
+							<Proposals<T, I>>::insert(index, p.clone());
+						}
+
+						if p.remaining_occurs.eq(&0) && p.segments.gt(&0) {
+							<Proposals<T, I>>::remove(index);
+						}
+
 						missed_any = true;
-						true
+						false
 					}
 				} else {
 					false
