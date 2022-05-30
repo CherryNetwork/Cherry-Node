@@ -516,7 +516,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 							p.remaining_occurs = p.remaining_occurs - 1;
 						}
 
-						if p.remaining_occurs.le(&0) && p.segments.gt(&0) {
+						if p.remaining_occurs.le(&0) {
 							<Proposals<T, I>>::remove(index);
 						} else {
 							<Proposals<T, I>>::remove(index);
