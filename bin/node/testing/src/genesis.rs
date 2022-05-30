@@ -100,6 +100,5 @@ pub fn config_endowed(
 		vesting: Default::default(),
 		assets: Default::default(),
 		transaction_storage: Default::default(),
-		updater: Default::default(),
 	}
 }
