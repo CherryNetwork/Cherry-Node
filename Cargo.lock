@@ -4964,7 +4964,6 @@ dependencies = [
  "pallet-transaction-payment-rpc-runtime-api",
  "pallet-transaction-storage",
  "pallet-treasury",
- "pallet-updater",
  "pallet-utility",
  "pallet-vesting",
  "parity-scale-codec",
@@ -6353,23 +6352,6 @@ dependencies = [
  "frame-support",
  "frame-system",
  "pallet-balances",
- "parity-scale-codec",
- "scale-info",
- "sp-core",
- "sp-io",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-updater"
-version = "0.1.0"
-dependencies = [
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "hex-literal",
- "log 0.4.14",
  "parity-scale-codec",
  "scale-info",
  "sp-core",
