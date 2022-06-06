@@ -42,6 +42,7 @@
 #![cfg_attr(not(feature = "std"), no_std)]
 #![recursion_limit = "128"]
 
+use pallet_assets as assets;
 use scale_info::TypeInfo;
 use sp_core::u32_trait::Value as U32;
 use sp_io::storage;
@@ -59,11 +60,12 @@ use frame_support::{
 };
 
 #[cfg(test)]
+mod mock;
+#[cfg(test)]
 mod tests;
 
 #[cfg(feature = "runtime-benchmarks")]
 mod benchmarking;
-pub mod migrations;
 pub mod weights;
 
 pub use pallet::*;
@@ -88,20 +90,20 @@ pub trait DefaultVote {
 	/// - Total number of member count.
 	fn default_vote(
 		prime_vote: Option<bool>,
-		yes_votes: MemberCount,
-		no_votes: MemberCount,
+		yes_power: u32,
+		no_power: u32,
 		len: MemberCount,
 	) -> bool;
 }
 
 /// Set the prime member's vote as the default vote.
-pub struct PrimeDefaultVote;
+pub struct PrimeDefaultVote; // all this prime vote stuff need deletion @zycon91 cc. @charmitro
 
 impl DefaultVote for PrimeDefaultVote {
 	fn default_vote(
 		prime_vote: Option<bool>,
-		_yes_votes: MemberCount,
-		_no_votes: MemberCount,
+		_yes_power: u32,
+		_no_power: u32,
 		_len: MemberCount,
 	) -> bool {
 		prime_vote.unwrap_or(false)
@@ -110,16 +112,16 @@ impl DefaultVote for PrimeDefaultVote {
 
 /// First see if yes vote are over majority of the whole collective. If so, set the default vote
 /// as yes. Otherwise, use the prime member's vote as the default vote.
-pub struct MoreThanMajorityThenPrimeDefaultVote;
+pub struct MoreThanMajorityThenPrimeDefaultVote; // all this prime vote stuff need deletion @zycon91 cc. @charmitro
 
 impl DefaultVote for MoreThanMajorityThenPrimeDefaultVote {
 	fn default_vote(
 		prime_vote: Option<bool>,
-		yes_votes: MemberCount,
-		_no_votes: MemberCount,
+		yes_power: u32,
+		_no_power: u32,
 		len: MemberCount,
 	) -> bool {
-		let more_than_majority = yes_votes * 2 > len;
+		let more_than_majority = yes_power * 2 > len;
 		more_than_majority || prime_vote.unwrap_or(false)
 	}
 }
@@ -154,8 +156,12 @@ pub struct Votes<AccountId, BlockNumber> {
 	threshold: MemberCount,
 	/// The current set of voters that approved it.
 	ayes: Vec<AccountId>,
+	/// The current power of voters that approved it.
+	ayes_power: Vec<(AccountId, u32)>,
 	/// The current set of voters that rejected it.
 	nays: Vec<AccountId>,
+	/// The current power of voters that rejected it.
+	nays_power: Vec<(AccountId, u32)>,
 	/// The hard end time of this vote.
 	end: BlockNumber,
 }
@@ -164,7 +170,7 @@ pub struct Votes<AccountId, BlockNumber> {
 pub mod pallet {
 	use super::*;
 	use frame_support::pallet_prelude::*;
-	use frame_system::pallet_prelude::*;
+	use frame_system::pallet_prelude::{OriginFor, *};
 
 	/// The current storage version.
 	const STORAGE_VERSION: StorageVersion = StorageVersion::new(4);
@@ -175,7 +181,7 @@ pub mod pallet {
 	pub struct Pallet<T, I = ()>(PhantomData<(T, I)>);
 
 	#[pallet::config]
-	pub trait Config<I: 'static = ()>: frame_system::Config {
+	pub trait Config<I: 'static = ()>: frame_system::Config + assets::Config {
 		/// The outer origin type.
 		type Origin: From<RawOrigin<Self::AccountId, I>>;
 
@@ -234,6 +240,12 @@ pub mod pallet {
 				"Members cannot contain duplicate accounts."
 			);
 
+			// TODO(charmitro <2022-05-20 Fri>):
+			// increase balance for council members; cc. @zycon91
+			// for member in self.members.iter() {
+			// let result = <assets::Pallet<T>>::increase_balance();
+			// }
+
 			Pallet::<T, I>::initialize_members(&self.members)
 		}
 	}
@@ -241,6 +253,14 @@ pub mod pallet {
 	/// Origin for the collective pallet.
 	#[pallet::origin]
 	pub type Origin<T, I = ()> = RawOrigin<<T as frame_system::Config>::AccountId, I>;
+
+	// GovToken Specifications;
+
+	/// Governance TokenID
+	#[pallet::storage]
+	#[pallet::getter(fn govtokenid)]
+	pub type GovTokenId<T: Config<I>, I: 'static = ()> =
+		StorageValue<_, <T as assets::Config>::AssetId, ValueQuery>;
 
 	/// The hashes of the active proposals.
 	#[pallet::storage]
@@ -259,6 +279,12 @@ pub mod pallet {
 	#[pallet::getter(fn voting)]
 	pub type Voting<T: Config<I>, I: 'static = ()> =
 		StorageMap<_, Identity, T::Hash, Votes<T::AccountId, T::BlockNumber>, OptionQuery>;
+
+	/// The voting power of council members
+	#[pallet::storage]
+	#[pallet::getter(fn voting_power)]
+	pub type VotingPower<T: Config<I>, I: 'static = ()> =
+		StorageMap<_, Identity, T::AccountId, u32, OptionQuery>;
 
 	/// Proposals so far.
 	#[pallet::storage]
@@ -286,7 +312,7 @@ pub mod pallet {
 		/// A motion (given hash) has been voted on by given account, leaving
 		/// a tally (yes votes and no votes given respectively as `MemberCount`).
 		/// \[account, proposal_hash, voted, yes, no\]
-		Voted(T::AccountId, T::Hash, bool, MemberCount, MemberCount),
+		Voted(T::AccountId, T::Hash, bool, u32, u32),
 		/// A motion was approved by the required threshold.
 		/// \[proposal_hash\]
 		Approved(T::Hash),
@@ -301,7 +327,7 @@ pub mod pallet {
 		MemberExecuted(T::Hash, DispatchResult),
 		/// A proposal was closed because its threshold was reached or after its duration was up.
 		/// \[proposal_hash, yes, no\]
-		Closed(T::Hash, MemberCount, MemberCount),
+		Closed(T::Hash, u32, u32),
 	}
 
 	/// Old name generated by `decl_event`.
@@ -361,7 +387,7 @@ pub mod pallet {
 		///   - 1 storage write (codec `O(1)`) for deleting the old `prime` and setting the new one
 		/// # </weight>
 		#[pallet::weight((
-			T::WeightInfo::set_members(
+			<T as pallet::Config<I>>::WeightInfo::set_members(
 				*old_count, // M
 				new_members.len() as u32, // N
 				T::MaxProposals::get() // P
@@ -398,7 +424,7 @@ pub mod pallet {
 			<Self as ChangeMembers<T::AccountId>>::set_members_sorted(&new_members, &old);
 			Prime::<T, I>::set(prime);
 
-			Ok(Some(T::WeightInfo::set_members(
+			Ok(Some(<T as pallet::Config<I>>::WeightInfo::set_members(
 				old.len() as u32,         // M
 				new_members.len() as u32, // N
 				T::MaxProposals::get(),   // P
@@ -418,7 +444,7 @@ pub mod pallet {
 		/// - 1 event
 		/// # </weight>
 		#[pallet::weight((
-			T::WeightInfo::execute(
+			<T as pallet::Config<I>>::WeightInfo::execute(
 				*length_bound, // B
 				T::MaxMembers::get(), // M
 			).saturating_add(proposal.get_dispatch_info().weight), // P
@@ -444,7 +470,7 @@ pub mod pallet {
 
 			Ok(get_result_weight(result)
 				.map(|w| {
-					T::WeightInfo::execute(
+					<T as pallet::Config<I>>::WeightInfo::execute(
 						proposal_len as u32,  // B
 						members.len() as u32, // M
 					)
@@ -482,12 +508,12 @@ pub mod pallet {
 		/// # </weight>
 		#[pallet::weight((
 			if *threshold < 2 {
-				T::WeightInfo::propose_execute(
+				<T as pallet::Config<I>>::WeightInfo::propose_execute(
 					*length_bound, // B
 					T::MaxMembers::get(), // M
 				).saturating_add(proposal.get_dispatch_info().weight) // P1
 			} else {
-				T::WeightInfo::propose_proposed(
+				<T as pallet::Config<I>>::WeightInfo::propose_proposed(
 					*length_bound, // B
 					T::MaxMembers::get(), // M
 					T::MaxProposals::get(), // P2
@@ -523,7 +549,7 @@ pub mod pallet {
 
 				Ok(get_result_weight(result)
 					.map(|w| {
-						T::WeightInfo::propose_execute(
+						<T as pallet::Config<I>>::WeightInfo::propose_execute(
 							proposal_len as u32,  // B
 							members.len() as u32, // M
 						)
@@ -543,13 +569,21 @@ pub mod pallet {
 				<ProposalOf<T, I>>::insert(proposal_hash, *proposal);
 				let votes = {
 					let end = frame_system::Pallet::<T>::block_number() + T::MotionDuration::get();
-					Votes { index, threshold, ayes: vec![], nays: vec![], end }
+					Votes {
+						index,
+						threshold,
+						ayes: vec![],
+						nays: vec![],
+						ayes_power: vec![],
+						nays_power: vec![],
+						end,
+					}
 				};
 				<Voting<T, I>>::insert(proposal_hash, votes);
 
 				Self::deposit_event(Event::Proposed(who, index, proposal_hash, threshold));
 
-				Ok(Some(T::WeightInfo::propose_proposed(
+				Ok(Some(<T as pallet::Config<I>>::WeightInfo::propose_proposed(
 					proposal_len as u32,     // B
 					members.len() as u32,    // M
 					active_proposals as u32, // P2
@@ -573,7 +607,7 @@ pub mod pallet {
 		///   - 1 storage mutation `Voting` (codec `O(M)`)
 		/// - 1 event
 		/// # </weight>
-		#[pallet::weight((T::WeightInfo::vote(T::MaxMembers::get()), DispatchClass::Operational))]
+		#[pallet::weight((<T as pallet::Config<I>>::WeightInfo::vote(T::MaxMembers::get()), DispatchClass::Operational))]
 		pub fn vote(
 			origin: OriginFor<T>,
 			proposal: T::Hash,
@@ -583,6 +617,10 @@ pub mod pallet {
 			let who = ensure_signed(origin)?;
 			let members = Self::members();
 			ensure!(members.contains(&who), Error::<T, I>::NotMember);
+
+			let power = <assets::Pallet<T>>::balance(<GovTokenId<T, I>>::get(), who.clone());
+			let vote_power = TryInto::<u32>::try_into(power).ok().unwrap();
+			VotingPower::<T, I>::insert(&who, vote_power);
 
 			let mut voting = Self::voting(&proposal).ok_or(Error::<T, I>::ProposalMissing)?;
 			ensure!(voting.index == index, Error::<T, I>::WrongIndex);
@@ -596,33 +634,54 @@ pub mod pallet {
 			if approve {
 				if position_yes.is_none() {
 					voting.ayes.push(who.clone());
+					voting.ayes_power.push((who.clone(), vote_power));
 				} else {
 					return Err(Error::<T, I>::DuplicateVote.into())
 				}
 				if let Some(pos) = position_no {
 					voting.nays.swap_remove(pos);
+					voting.nays_power.swap_remove(pos);
 				}
 			} else {
 				if position_no.is_none() {
 					voting.nays.push(who.clone());
+					voting.nays_power.push((who.clone(), vote_power));
 				} else {
 					return Err(Error::<T, I>::DuplicateVote.into())
 				}
 				if let Some(pos) = position_yes {
 					voting.ayes.swap_remove(pos);
+					voting.ayes_power.swap_remove(pos);
 				}
 			}
 
-			let yes_votes = voting.ayes.len() as MemberCount;
-			let no_votes = voting.nays.len() as MemberCount;
-			Self::deposit_event(Event::Voted(who, proposal, approve, yes_votes, no_votes));
+			// let yes_votes = voting.ayes.len() as MemberCount;
+			// let no_votes = voting.nays.len() as MemberCount;
+
+			let mut yes_power = 0;
+			let mut no_power = 0;
+			for voting_power in voting.ayes_power.clone() {
+				yes_power = yes_power + voting_power.1;
+			}
+			for voting_power in voting.nays_power.clone() {
+				no_power = no_power + voting_power.1;
+			}
+			Self::deposit_event(Event::Voted(who, proposal, approve, yes_power, no_power));
 
 			Voting::<T, I>::insert(&proposal, voting);
 
 			if is_account_voting_first_time {
-				Ok((Some(T::WeightInfo::vote(members.len() as u32)), Pays::No).into())
+				Ok((
+					Some(<T as pallet::Config<I>>::WeightInfo::vote(members.len() as u32)),
+					Pays::No,
+				)
+					.into())
 			} else {
-				Ok((Some(T::WeightInfo::vote(members.len() as u32)), Pays::Yes).into())
+				Ok((
+					Some(<T as pallet::Config<I>>::WeightInfo::vote(members.len() as u32)),
+					Pays::Yes,
+				)
+					.into())
 			}
 		}
 
@@ -664,10 +723,10 @@ pub mod pallet {
 				let m = T::MaxMembers::get();
 				let p1 = *proposal_weight_bound;
 				let p2 = T::MaxProposals::get();
-				T::WeightInfo::close_early_approved(b, m, p2)
-					.max(T::WeightInfo::close_early_disapproved(m, p2))
-					.max(T::WeightInfo::close_approved(b, m, p2))
-					.max(T::WeightInfo::close_disapproved(m, p2))
+				<T as pallet::Config<I>>::WeightInfo::close_early_approved(b, m, p2)
+					.max(<T as pallet::Config<I>>::WeightInfo::close_early_disapproved(m, p2))
+					.max(<T as pallet::Config<I>>::WeightInfo::close_approved(b, m, p2))
+					.max(<T as pallet::Config<I>>::WeightInfo::close_disapproved(m, p2))
 					.saturating_add(p1)
 			},
 			DispatchClass::Operational
@@ -684,11 +743,25 @@ pub mod pallet {
 			let voting = Self::voting(&proposal_hash).ok_or(Error::<T, I>::ProposalMissing)?;
 			ensure!(voting.index == index, Error::<T, I>::WrongIndex);
 
-			let mut no_votes = voting.nays.len() as MemberCount;
-			let mut yes_votes = voting.ayes.len() as MemberCount;
+			// let mut no_votes = voting.nays_power.len() as MemberCount;
+			// let mut yes_votes = voting.ayes.len() as MemberCount;
 			let seats = Self::members().len() as MemberCount;
-			let approved = yes_votes >= voting.threshold;
-			let disapproved = seats.saturating_sub(no_votes) < voting.threshold;
+
+			let mut yes_power = 0;
+			let mut no_power = 0;
+			for voting_power in voting.ayes_power.clone() {
+				yes_power = yes_power + voting_power.1;
+			}
+			for voting_power in voting.nays_power.clone() {
+				no_power = no_power + voting_power.1;
+			}
+
+			let max_gov_tokens = Self::calculate_max_gov_tokens();
+			let actual_threshold = max_gov_tokens * 30 / 100;
+
+			let approved = (yes_power + no_power).ge(&actual_threshold) && yes_power.gt(&no_power);
+			let disapproved =
+				(yes_power + no_power).ge(&actual_threshold) && no_power.gt(&yes_power);
 			// Allow (dis-)approving the proposal as soon as there are enough votes.
 			if approved {
 				let (proposal, len) = Self::validate_and_get_proposal(
@@ -696,22 +769,29 @@ pub mod pallet {
 					length_bound,
 					proposal_weight_bound,
 				)?;
-				Self::deposit_event(Event::Closed(proposal_hash, yes_votes, no_votes));
+				Self::deposit_event(Event::Closed(proposal_hash, yes_power, no_power));
 				let (proposal_weight, proposal_count) =
 					Self::do_approve_proposal(proposal_hash, proposal);
 				return Ok((
 					Some(
-						T::WeightInfo::close_early_approved(len as u32, seats, proposal_count)
-							.saturating_add(proposal_weight),
+						<T as pallet::Config<I>>::WeightInfo::close_early_approved(
+							len as u32,
+							seats,
+							proposal_count,
+						)
+						.saturating_add(proposal_weight),
 					),
 					Pays::Yes,
 				)
 					.into())
 			} else if disapproved {
-				Self::deposit_event(Event::Closed(proposal_hash, yes_votes, no_votes));
+				Self::deposit_event(Event::Closed(proposal_hash, yes_power, no_power));
 				let proposal_count = Self::do_disapprove_proposal(proposal_hash);
 				return Ok((
-					Some(T::WeightInfo::close_early_disapproved(seats, proposal_count)),
+					Some(<T as pallet::Config<I>>::WeightInfo::close_early_disapproved(
+						seats,
+						proposal_count,
+					)),
 					Pays::No,
 				)
 					.into())
@@ -719,21 +799,21 @@ pub mod pallet {
 
 			// Only allow actual closing of the proposal after the voting period has ended.
 			ensure!(
-				frame_system::Pallet::<T>::block_number() >= voting.end,
+				frame_system::Pallet::<T>::block_number().ge(&voting.end),
 				Error::<T, I>::TooEarly
 			);
 
-			let prime_vote = Self::prime().map(|who| voting.ayes.iter().any(|a| a == &who));
+			let prime_vote = Self::prime().map(|who| voting.ayes.iter().any(|a| a == &who)); // all this prime vote stuff need deletion @zycon91 cc. @charmitro
 
 			// default voting strategy.
-			let default = T::DefaultVote::default_vote(prime_vote, yes_votes, no_votes, seats);
+			let default = T::DefaultVote::default_vote(prime_vote, yes_power, no_power, seats);
 
-			let abstentions = seats - (yes_votes + no_votes);
+			let abstentions = seats - (yes_power + no_power);
 			match default {
-				true => yes_votes += abstentions,
-				false => no_votes += abstentions,
+				true => yes_power += abstentions,
+				false => no_power += abstentions,
 			}
-			let approved = yes_votes >= voting.threshold;
+			let approved = yes_power >= actual_threshold;
 
 			if approved {
 				let (proposal, len) = Self::validate_and_get_proposal(
@@ -741,21 +821,32 @@ pub mod pallet {
 					length_bound,
 					proposal_weight_bound,
 				)?;
-				Self::deposit_event(Event::Closed(proposal_hash, yes_votes, no_votes));
+				Self::deposit_event(Event::Closed(proposal_hash, yes_power, no_power));
 				let (proposal_weight, proposal_count) =
 					Self::do_approve_proposal(proposal_hash, proposal);
 				Ok((
 					Some(
-						T::WeightInfo::close_approved(len as u32, seats, proposal_count)
-							.saturating_add(proposal_weight),
+						<T as pallet::Config<I>>::WeightInfo::close_approved(
+							len as u32,
+							seats,
+							proposal_count,
+						)
+						.saturating_add(proposal_weight),
 					),
 					Pays::Yes,
 				)
 					.into())
 			} else {
-				Self::deposit_event(Event::Closed(proposal_hash, yes_votes, no_votes));
+				Self::deposit_event(Event::Closed(proposal_hash, yes_power, no_power));
 				let proposal_count = Self::do_disapprove_proposal(proposal_hash);
-				Ok((Some(T::WeightInfo::close_disapproved(seats, proposal_count)), Pays::No).into())
+				Ok((
+					Some(<T as pallet::Config<I>>::WeightInfo::close_disapproved(
+						seats,
+						proposal_count,
+					)),
+					Pays::No,
+				)
+					.into())
 			}
 		}
 
@@ -773,14 +864,28 @@ pub mod pallet {
 		/// * Reads: Proposals
 		/// * Writes: Voting, Proposals, ProposalOf
 		/// # </weight>
-		#[pallet::weight(T::WeightInfo::disapprove_proposal(T::MaxProposals::get()))]
+		#[pallet::weight(<T as pallet::Config<I>>::WeightInfo::disapprove_proposal(T::MaxProposals::get()))]
 		pub fn disapprove_proposal(
 			origin: OriginFor<T>,
 			proposal_hash: T::Hash,
 		) -> DispatchResultWithPostInfo {
 			ensure_root(origin)?;
 			let proposal_count = Self::do_disapprove_proposal(proposal_hash);
-			Ok(Some(T::WeightInfo::disapprove_proposal(proposal_count)).into())
+			Ok(Some(<T as pallet::Config<I>>::WeightInfo::disapprove_proposal(proposal_count))
+				.into())
+		}
+
+		/// !SUDO call to set the Governance Token Asset ID
+		#[pallet::weight(0)]
+		pub fn set_gov_token_id(
+			origin: OriginFor<T>,
+			token_id: <T as assets::Config>::AssetId,
+		) -> DispatchResultWithPostInfo {
+			let _who = ensure_root(origin)?;
+
+			<GovTokenId<T, I>>::put(token_id);
+
+			Ok(None.into())
 		}
 	}
 }
@@ -876,6 +981,19 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		});
 		num_proposals as u32
 	}
+
+	fn calculate_max_gov_tokens() -> u32 {
+		let members = Self::members();
+
+		let mut max_gov_tokens: u32 = 0;
+		for member in members {
+			let power = <assets::Pallet<T>>::balance(<GovTokenId<T, I>>::get(), member.clone());
+			let vote_power = TryInto::<u32>::try_into(power).ok().unwrap();
+			max_gov_tokens += vote_power;
+		}
+
+		return max_gov_tokens
+	}
 }
 
 impl<T: Config<I>, I: 'static> ChangeMembers<T::AccountId> for Pallet<T, I> {
@@ -924,6 +1042,16 @@ impl<T: Config<I>, I: 'static> ChangeMembers<T::AccountId> for Pallet<T, I> {
 						.nays
 						.into_iter()
 						.filter(|i| outgoing.binary_search(i).is_err())
+						.collect();
+					votes.ayes_power = votes
+						.ayes_power
+						.into_iter()
+						.filter(|i| outgoing.binary_search(&i.0).is_err())
+						.collect();
+					votes.nays_power = votes
+						.nays_power
+						.into_iter()
+						.filter(|i| outgoing.binary_search(&i.0).is_err())
 						.collect();
 					*v = Some(votes);
 				}

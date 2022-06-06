@@ -24,7 +24,7 @@ use node_runtime::{
 	constants::currency::*, wasm_binary_unwrap, AssetsConfig, AuthorityDiscoveryConfig, BabeConfig,
 	BalancesConfig, Block, CouncilConfig, ElectionsConfig, GrandpaConfig, ImOnlineConfig,
 	IndicesConfig, SessionConfig, SessionKeys, SocietyConfig, StakerStatus, StakingConfig,
-	SudoConfig, SystemConfig, TechnicalCommitteeConfig, UpdaterConfig, MAX_NOMINATIONS,
+	SystemConfig, TechnicalCommitteeConfig, MAX_NOMINATIONS,
 };
 use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
 use sc_chain_spec::ChainSpecExtension;
@@ -41,7 +41,7 @@ use sp_runtime::{
 
 pub use node_primitives::{AccountId, Balance, Signature};
 pub use node_runtime::GenesisConfig;
-use sp_core::crypto::Ss58Codec;
+
 type AccountPublic = <Signature as Verify>::Signer;
 
 const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
@@ -335,6 +335,7 @@ pub fn testnet_genesis(
 				.map(|member| (member, STASH))
 				.collect(),
 		},
+		// council: CouncilConfig::default(),
 		council: CouncilConfig::default(),
 		technical_committee: TechnicalCommitteeConfig {
 			members: endowed_accounts
@@ -344,7 +345,7 @@ pub fn testnet_genesis(
 				.collect(),
 			phantom: Default::default(),
 		},
-		sudo: SudoConfig { key: root_key.clone() },
+		// sudo: SudoConfig { key: root_key.clone() },
 		babe: BabeConfig {
 			authorities: vec![],
 			epoch_config: Some(node_runtime::BABE_GENESIS_EPOCH_CONFIG),
@@ -354,19 +355,6 @@ pub fn testnet_genesis(
 		grandpa: GrandpaConfig { authorities: vec![] },
 		technical_membership: Default::default(),
 		treasury: Default::default(),
-		updater: UpdaterConfig {
-			phantom: Default::default(),
-			members: vec![
-				AccountId::from_ss58check("5GrwvaEF5zXb26Fz9rcQpDWS57CtERHpNehXCPcNoHGKutQY")
-					.unwrap(),
-				AccountId::from_ss58check("5FHneW46xGXgs5mUiveU4sbTyGBzmstUspZC92UhjJM694ty")
-					.unwrap(),
-				AccountId::from_ss58check("5FLSigC9HGRKVhB9FiEo4Y3koPsNmBmLJbpXg2mp1hXcS59Y")
-					.unwrap(),
-				AccountId::from_ss58check("5DAAnrj7VHTznn2AWBemMuyBwZWs6FNFjdyVXUeYum3PTXFy")
-					.unwrap(),
-			],
-		},
 		society: SocietyConfig {
 			members: endowed_accounts
 				.iter()
@@ -379,8 +367,8 @@ pub fn testnet_genesis(
 		vesting: Default::default(),
 		assets: AssetsConfig {
 			assets: vec![(999, root_key.clone(), true, 1)],
-			metadata: vec![(999, "Governance Token".into(), "tGov".into(), 8)],
-			accounts: vec![(999, root_key.clone(), 1_000_000_000)],
+			metadata: vec![(999, "Governance Token".into(), "tGov".into(), 0)],
+			accounts: vec![(999, root_key.clone(), 10)],
 		},
 		transaction_storage: Default::default(),
 	}

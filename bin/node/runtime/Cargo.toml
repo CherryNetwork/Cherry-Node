@@ -90,7 +90,8 @@ pallet-transaction-payment = { version = "4.0.0-dev", default-features = false, 
 pallet-transaction-payment-rpc-runtime-api = { version = "4.0.0-dev", default-features = false, path = "../../../frame/transaction-payment/rpc/runtime-api/" }
 pallet-transaction-storage = { version = "4.0.0-dev", default-features = false, path = "../../../frame/transaction-storage" }
 pallet-vesting = { version = "4.0.0-dev", default-features = false, path = "../../../frame/vesting" }
-pallet-updater = { version = "0.1.0", default-features = false, path = "../pallets/pallet-updater" }
+pallet-council = { version = "0.1.0", default-features = false, path = "../pallets/pallet-council" }
+
 
 [build-dependencies]
 substrate-wasm-builder = { version = "5.0.0-dev", path = "../../../utils/wasm-builder" }
@@ -155,7 +156,6 @@ std = [
 	"pallet-society/std",
 	"pallet-recovery/std",
 	"pallet-vesting/std",
-	"pallet-updater/std",
 	"log/std",
 	"frame-try-runtime/std",
 	"sp-npos-elections/std",
@@ -190,7 +190,6 @@ runtime-benchmarks = [
 	"pallet-treasury/runtime-benchmarks",
 	"pallet-utility/runtime-benchmarks",
 	"pallet-vesting/runtime-benchmarks",
-	"pallet-updater/runtime-benchmarks",
 	"pallet-offences-benchmarking",
 	"pallet-session-benchmarking",
 	"frame-system-benchmarking",
