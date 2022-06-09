@@ -24,7 +24,7 @@ use node_runtime::{
 	constants::currency::*, wasm_binary_unwrap, AssetsConfig, AuthorityDiscoveryConfig, BabeConfig,
 	BalancesConfig, Block, CouncilConfig, ElectionsConfig, GrandpaConfig, ImOnlineConfig,
 	IndicesConfig, SessionConfig, SessionKeys, SocietyConfig, StakerStatus, StakingConfig,
-	SystemConfig, TechnicalCommitteeConfig, MAX_NOMINATIONS,
+	SystemConfig, TechnicalCommitteeConfig, TechnicalMembershipConfig, MAX_NOMINATIONS,
 };
 use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
 use sc_chain_spec::ChainSpecExtension;
@@ -337,14 +337,7 @@ pub fn testnet_genesis(
 		},
 		// council: CouncilConfig::default(),
 		council: CouncilConfig::default(),
-		technical_committee: TechnicalCommitteeConfig {
-			members: endowed_accounts
-				.iter()
-				.take((num_endowed_accounts + 1) / 2)
-				.cloned()
-				.collect(),
-			phantom: Default::default(),
-		},
+		technical_committee: Default::default(),
 		// sudo: SudoConfig { key: root_key.clone() },
 		babe: BabeConfig {
 			authorities: vec![],
@@ -353,7 +346,14 @@ pub fn testnet_genesis(
 		im_online: ImOnlineConfig { keys: vec![] },
 		authority_discovery: AuthorityDiscoveryConfig { keys: vec![] },
 		grandpa: GrandpaConfig { authorities: vec![] },
-		technical_membership: Default::default(),
+		technical_membership: TechnicalMembershipConfig {
+			members: endowed_accounts
+				.iter()
+				.take((num_endowed_accounts + 1) / 2)
+				.cloned()
+				.collect(),
+			phantom: Default::default(),
+		},
 		treasury: Default::default(),
 		society: SocietyConfig {
 			members: endowed_accounts
