@@ -23,8 +23,8 @@ use hex_literal::hex;
 use node_runtime::{
 	constants::currency::*, wasm_binary_unwrap, AssetsConfig, AuthorityDiscoveryConfig, BabeConfig,
 	BalancesConfig, Block, CouncilConfig, ElectionsConfig, GrandpaConfig, ImOnlineConfig,
-	IndicesConfig, SessionConfig, SessionKeys, SocietyConfig, StakerStatus, StakingConfig,
-	SystemConfig, TechnicalCommitteeConfig, TechnicalMembershipConfig, MAX_NOMINATIONS,
+	IndicesConfig, SessionConfig, SessionKeys, StakerStatus, StakingConfig, SystemConfig,
+	TechnicalCommitteeConfig, TechnicalMembershipConfig, MAX_NOMINATIONS,
 };
 use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
 use sc_chain_spec::ChainSpecExtension;
@@ -355,15 +355,6 @@ pub fn testnet_genesis(
 			phantom: Default::default(),
 		},
 		treasury: Default::default(),
-		society: SocietyConfig {
-			members: endowed_accounts
-				.iter()
-				.take((num_endowed_accounts + 1) / 2)
-				.cloned()
-				.collect(),
-			pot: 0,
-			max_members: 999,
-		},
 		vesting: Default::default(),
 		assets: AssetsConfig {
 			assets: vec![(999, root_key.clone(), true, 1)],
