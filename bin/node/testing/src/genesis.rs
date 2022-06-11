@@ -94,7 +94,6 @@ pub fn config_endowed(
 		technical_membership: Default::default(),
 		elections: Default::default(),
 		treasury: Default::default(),
-		vesting: Default::default(),
 		assets: Default::default(),
 		transaction_storage: Default::default(),
 	}
