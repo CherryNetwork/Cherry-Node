@@ -65,9 +65,7 @@ pallet-grandpa = { version = "4.0.0-dev", default-features = false, path = "../.
 pallet-im-online = { version = "4.0.0-dev", default-features = false, path = "../../../frame/im-online" }
 pallet-indices = { version = "4.0.0-dev", default-features = false, path = "../../../frame/indices" }
 pallet-identity = { version = "4.0.0-dev", default-features = false, path = "../../../frame/identity" }
-pallet-lottery = { version = "4.0.0-dev", default-features = false, path = "../../../frame/lottery" }
 pallet-membership = { version = "4.0.0-dev", default-features = false, path = "../../../frame/membership" }
-pallet-mmr = { version = "4.0.0-dev", default-features = false, path = "../../../frame/merkle-mountain-range" }
 pallet-multisig = { version = "4.0.0-dev", default-features = false, path = "../../../frame/multisig" }
 pallet-offences = { version = "4.0.0-dev", default-features = false, path = "../../../frame/offences" }
 pallet-offences-benchmarking = { version = "4.0.0-dev", path = "../../../frame/offences/benchmarking", default-features = false, optional = true }
@@ -89,7 +87,6 @@ pallet-utility = { version = "4.0.0-dev", default-features = false, path = "../.
 pallet-transaction-payment = { version = "4.0.0-dev", default-features = false, path = "../../../frame/transaction-payment" }
 pallet-transaction-payment-rpc-runtime-api = { version = "4.0.0-dev", default-features = false, path = "../../../frame/transaction-payment/rpc/runtime-api/" }
 pallet-transaction-storage = { version = "4.0.0-dev", default-features = false, path = "../../../frame/transaction-storage" }
-pallet-vesting = { version = "4.0.0-dev", default-features = false, path = "../../../frame/vesting" }
 pallet-council = { version = "0.1.0", default-features = false, path = "../pallets/pallet-council" }
 
 
@@ -120,9 +117,7 @@ std = [
 	"pallet-im-online/std",
 	"pallet-indices/std",
 	"sp-inherents/std",
-	"pallet-lottery/std",
 	"pallet-membership/std",
-	"pallet-mmr/std",
 	"pallet-multisig/std",
 	"pallet-identity/std",
 	"pallet-scheduler/std",
@@ -155,7 +150,6 @@ std = [
 	"sp-version/std",
 	"pallet-society/std",
 	"pallet-recovery/std",
-	"pallet-vesting/std",
 	"log/std",
 	"frame-try-runtime/std",
 	"sp-npos-elections/std",
@@ -178,9 +172,7 @@ runtime-benchmarks = [
 	"pallet-identity/runtime-benchmarks",
 	"pallet-im-online/runtime-benchmarks",
 	"pallet-indices/runtime-benchmarks",
-	"pallet-lottery/runtime-benchmarks",
 	"pallet-membership/runtime-benchmarks",
-	"pallet-mmr/runtime-benchmarks",
 	"pallet-multisig/runtime-benchmarks",
 	"pallet-scheduler/runtime-benchmarks",
 	"pallet-society/runtime-benchmarks",
@@ -189,7 +181,6 @@ runtime-benchmarks = [
 	"pallet-transaction-storage/runtime-benchmarks",
 	"pallet-treasury/runtime-benchmarks",
 	"pallet-utility/runtime-benchmarks",
-	"pallet-vesting/runtime-benchmarks",
 	"pallet-offences-benchmarking",
 	"pallet-session-benchmarking",
 	"frame-system-benchmarking",
@@ -210,9 +201,7 @@ try-runtime = [
 	"pallet-grandpa/try-runtime",
 	"pallet-im-online/try-runtime",
 	"pallet-indices/try-runtime",
-	"pallet-lottery/try-runtime",
 	"pallet-membership/try-runtime",
-	"pallet-mmr/try-runtime",
 	"pallet-multisig/try-runtime",
 	"pallet-identity/try-runtime",
 	"pallet-scheduler/try-runtime",
@@ -228,5 +217,4 @@ try-runtime = [
 	"pallet-utility/try-runtime",
 	"pallet-society/try-runtime",
 	"pallet-recovery/try-runtime",
-	"pallet-vesting/try-runtime",
 ]

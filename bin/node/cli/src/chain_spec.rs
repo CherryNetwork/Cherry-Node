@@ -23,8 +23,8 @@ use hex_literal::hex;
 use node_runtime::{
 	constants::currency::*, wasm_binary_unwrap, AssetsConfig, AuthorityDiscoveryConfig, BabeConfig,
 	BalancesConfig, Block, CouncilConfig, ElectionsConfig, GrandpaConfig, ImOnlineConfig,
-	IndicesConfig, SessionConfig, SessionKeys, SocietyConfig, StakerStatus, StakingConfig,
-	SystemConfig, TechnicalCommitteeConfig, MAX_NOMINATIONS,
+	IndicesConfig, SessionConfig, SessionKeys, StakerStatus, StakingConfig, SystemConfig,
+	TechnicalMembershipConfig, MAX_NOMINATIONS,
 };
 use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
 use sc_chain_spec::ChainSpecExtension;
@@ -204,6 +204,11 @@ pub fn cherry_testnet_config() -> Result<ChainSpec, String> {
 	ChainSpec::from_json_bytes(&include_bytes!("../../../../customSpecRaw.json")[..])
 }
 
+/// Cherry testnet config.
+pub fn cherry_mainnet_config() -> Result<ChainSpec, String> {
+	ChainSpec::from_json_bytes(&include_bytes!("../../../../customSpecRaw_mainnet.json")[..])
+}
+
 /// Helper function to generate a crypto pair from seed
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
 	TPublic::Pair::from_string(&format!("//{}", seed), None)
@@ -337,14 +342,7 @@ pub fn testnet_genesis(
 		},
 		// council: CouncilConfig::default(),
 		council: CouncilConfig::default(),
-		technical_committee: TechnicalCommitteeConfig {
-			members: endowed_accounts
-				.iter()
-				.take((num_endowed_accounts + 1) / 2)
-				.cloned()
-				.collect(),
-			phantom: Default::default(),
-		},
+		technical_committee: Default::default(),
 		// sudo: SudoConfig { key: root_key.clone() },
 		babe: BabeConfig {
 			authorities: vec![],
@@ -353,18 +351,15 @@ pub fn testnet_genesis(
 		im_online: ImOnlineConfig { keys: vec![] },
 		authority_discovery: AuthorityDiscoveryConfig { keys: vec![] },
 		grandpa: GrandpaConfig { authorities: vec![] },
-		technical_membership: Default::default(),
-		treasury: Default::default(),
-		society: SocietyConfig {
+		technical_membership: TechnicalMembershipConfig {
 			members: endowed_accounts
 				.iter()
 				.take((num_endowed_accounts + 1) / 2)
 				.cloned()
 				.collect(),
-			pot: 0,
-			max_members: 999,
+			phantom: Default::default(),
 		},
-		vesting: Default::default(),
+		treasury: Default::default(),
 		assets: AssetsConfig {
 			assets: vec![(999, root_key.clone(), true, 1)],
 			metadata: vec![(999, "Governance Token".into(), "tGov".into(), 0)],
