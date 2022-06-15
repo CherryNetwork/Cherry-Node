@@ -73,7 +73,7 @@ impl frame_system::Config for Test {
 	type BlockHashCount = BlockHashCount;
 	type Version = ();
 	type PalletInfo = PalletInfo;
-	type AccountData = pallet_balances::AccountData<u64>;
+	type AccountData = pallet_balances::AccountData<u128>;
 	type OnNewAccount = ();
 	type OnKilledAccount = ();
 	type SystemWeightInfo = ();
@@ -87,7 +87,7 @@ impl pallet_balances::Config for Test {
 	type MaxLocks = ();
 	type MaxReserves = ();
 	type ReserveIdentifier = [u8; 8];
-	type Balance = u64;
+	type Balance = u128;
 	type Event = Event;
 	type DustRemoval = ();
 	type ExistentialDeposit = ExistentialDeposit;
@@ -142,7 +142,7 @@ pub fn new_test_ext() -> sp_io::TestExternalities {
 #[test]
 fn genesis_config_works() {
 	new_test_ext().execute_with(|| {
-		assert_eq!(Treasury::pot(), 0);
+		assert_eq!(Treasury::pot(), 1999999999999999999999999);
 		assert_eq!(Treasury::proposal_count(), 0);
 	});
 }
@@ -375,8 +375,8 @@ fn genesis_funding_works() {
 #[test]
 fn max_approvals_limited() {
 	new_test_ext().execute_with(|| {
-		Balances::make_free_balance_be(&Treasury::account_id(), u64::MAX);
-		Balances::make_free_balance_be(&0, u64::MAX);
+		Balances::make_free_balance_be(&Treasury::account_id(), u128::MAX);
+		Balances::make_free_balance_be(&0, u128::MAX);
 
 		for _ in 0..MaxApprovals::get() {
 			assert_ok!(Treasury::propose_spend(Origin::signed(0), 100, 3, 1, true));
