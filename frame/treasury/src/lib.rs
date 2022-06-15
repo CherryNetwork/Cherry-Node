@@ -83,6 +83,7 @@ use frame_support::{
 
 pub use pallet::*;
 pub use weights::WeightInfo;
+use sp_runtime::SaturatedConversion;
 
 pub type BalanceOf<T, I = ()> =
 	<<T as Config<I>>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
@@ -271,10 +272,9 @@ pub mod pallet {
 		fn build(&self) {
 			// Create Treasury account
 			let account_id = <Pallet<T, I>>::account_id();
-			let initial_supply: u32 = 2000000;
-			let mut min = T::Currency::minimum_balance();
-			min = min * initial_supply.into();
-			let _ = T::Currency::make_free_balance_be(&account_id, min);
+			let initial_supply: u128 = 2000000000000000000000000;
+			let supply = initial_supply.saturated_into::<BalanceOf<T, I>>();
+			let _ = T::Currency::make_free_balance_be(&account_id, supply);
 		}
 	}
 
