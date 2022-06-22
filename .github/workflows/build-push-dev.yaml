@@ -18,7 +18,18 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Set up Docker Buildx
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-3
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Set up Docker Build
         uses: docker/setup-buildx-action@v1
 
       - name: Build and push
@@ -28,3 +39,11 @@ jobs:
           file: ./docker/Dockerfile.dev
           push: true
           tags: cherrylabsorg/cherry-node:dev
+
+      - name: Push Docker Image to ECR
+        env:
+          ECS_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: cherry-node
+          IMAGE_TAG: dev
+        run: |
+          docker push $ECS_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
