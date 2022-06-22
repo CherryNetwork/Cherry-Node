@@ -46,4 +46,5 @@ jobs:
           ECR_REPOSITORY: cherry-node
           IMAGE_TAG: dev
         run: |
+          docker tag cherrylabsorg/cherry-node:$IMAGE_TAG $ECS_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECS_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
