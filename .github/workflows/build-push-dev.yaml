@@ -47,5 +47,5 @@ jobs:
           ECR_REPOSITORY: cherry-node
           IMAGE_TAG: dev
         run: |
-          docker tag ${{ steps.docker-io.outputs.digest }} $ECS_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          docker tag ${{ steps.docker-io.outputs.imageid }} $ECS_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           docker push $ECS_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
