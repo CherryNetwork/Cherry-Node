@@ -279,7 +279,6 @@ fn accepted_spend_proposal_enacted_on_spend_period() {
 #[test]
 fn pot_underflow_should_not_diminish() {
 	new_test_ext().execute_with(|| {
-		
 		Balances::make_free_balance_be(&Treasury::account_id(), 101);
 		assert_eq!(Treasury::pot(), 100);
 
