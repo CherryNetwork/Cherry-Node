@@ -303,31 +303,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Create a new unique IPFS.
-		#[pallet::weight(T::WeightInfo::create_ipfs_asset())]
-		pub fn create_ipfs_asset_raw(
-			origin: OriginFor<T>,
-			addr: Vec<u8>,
-			data: Vec<u8>,
-		) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
-
-			ensure!(
-				!<IpfsAssetOwned<T>>::get(&sender).contains(&data),
-				<Error<T>>::IpfsAlreadyOwned
-			);
-
-			let multiaddr = OpaqueMultiaddr(addr);
-
-			<DataQueue<T>>::mutate(|queue| {
-				queue.push(DataCommand::AddBytesRaw(multiaddr, data.clone(), sender.clone(), true))
-			});
-
-			Self::deposit_event(Event::QueuedDataToAdd(sender.clone()));
-
-			Ok(())
-		}
-
 		/// Extends the duration of an Ipfs asset
 		#[pallet::weight(0)]
 		pub fn extend_duration(
