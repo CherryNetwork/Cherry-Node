@@ -207,6 +207,7 @@ pub mod pallet {
 		AddPin(T::AccountId, Vec<u8>),
 		DeleteIpfsAsset(T::AccountId, Vec<u8>),
 		UnpinIpfsAsset(T::AccountId, Vec<u8>),
+		ExtendIpfsStorageDuration(T::AccountId, Vec<u8>),
 	}
 
 	// Storage items.
@@ -325,6 +326,8 @@ pub mod pallet {
 				ipfs_asset.deleting_at += extra_duration.into();
 				<IpfsAsset<T>>::insert(cid.clone(), ipfs_asset);
 			}
+
+			Self::deposit_event(Event::ExtendIpfsStorageDuration(sender.clone(), cid.clone()));
 
 			Ok(())
 		}
