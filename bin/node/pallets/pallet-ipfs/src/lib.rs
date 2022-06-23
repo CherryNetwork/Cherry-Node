@@ -207,6 +207,7 @@ pub mod pallet {
 		AddPin(T::AccountId, Vec<u8>),
 		DeleteIpfsAsset(T::AccountId, Vec<u8>),
 		UnpinIpfsAsset(T::AccountId, Vec<u8>),
+		ExtendIpfsStorageDuration(T::AccountId, Vec<u8>),
 	}
 
 	// Storage items.
@@ -303,31 +304,6 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Create a new unique IPFS.
-		#[pallet::weight(T::WeightInfo::create_ipfs_asset())]
-		pub fn create_ipfs_asset_raw(
-			origin: OriginFor<T>,
-			addr: Vec<u8>,
-			data: Vec<u8>,
-		) -> DispatchResult {
-			let sender = ensure_signed(origin)?;
-
-			ensure!(
-				!<IpfsAssetOwned<T>>::get(&sender).contains(&data),
-				<Error<T>>::IpfsAlreadyOwned
-			);
-
-			let multiaddr = OpaqueMultiaddr(addr);
-
-			<DataQueue<T>>::mutate(|queue| {
-				queue.push(DataCommand::AddBytesRaw(multiaddr, data.clone(), sender.clone(), true))
-			});
-
-			Self::deposit_event(Event::QueuedDataToAdd(sender.clone()));
-
-			Ok(())
-		}
-
 		/// Extends the duration of an Ipfs asset
 		#[pallet::weight(0)]
 		pub fn extend_duration(
@@ -350,6 +326,8 @@ pub mod pallet {
 				ipfs_asset.deleting_at += extra_duration.into();
 				<IpfsAsset<T>>::insert(cid.clone(), ipfs_asset);
 			}
+
+			Self::deposit_event(Event::ExtendIpfsStorageDuration(sender.clone(), cid.clone()));
 
 			Ok(())
 		}
