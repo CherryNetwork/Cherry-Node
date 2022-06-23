@@ -478,7 +478,7 @@ impl<T: Config> Pallet<T> {
 	// Housekeeping is for us to delete `ipfs_assets` according to their
 	// `deleting_at` attritube.
 	// Needs to run everyblock via `#[pallet::hooks]`
-	pub fn ipfs_garbage_collector(block_no: BlockNumberFor<T>) -> DispatchResult {
+	pub fn ipfs_garbage_collector(block_no: BlockNumberFor<T>) -> Result<(), Error<T>> {
 		for mut ipfs_asset in IpfsAsset::<T>::iter() {
 			let deleting_at = ipfs_asset.1.deleting_at;
 			if block_no.eq(&deleting_at) {
