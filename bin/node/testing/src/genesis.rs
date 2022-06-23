@@ -21,8 +21,8 @@
 use crate::keyring::*;
 use node_runtime::{
 	constants::currency::*, wasm_binary_unwrap, AccountId, BabeConfig, BalancesConfig,
-	GenesisConfig, GrandpaConfig, IndicesConfig, SessionConfig, SocietyConfig, StakerStatus,
-	StakingConfig, SystemConfig, BABE_GENESIS_EPOCH_CONFIG,
+	GenesisConfig, GrandpaConfig, IndicesConfig, SessionConfig, StakerStatus, StakingConfig,
+	SystemConfig, BABE_GENESIS_EPOCH_CONFIG,
 };
 use sp_core::ChangesTrieConfiguration;
 use sp_keyring::{Ed25519Keyring, Sr25519Keyring};
@@ -89,17 +89,12 @@ pub fn config_endowed(
 		grandpa: GrandpaConfig { authorities: vec![] },
 		im_online: Default::default(),
 		authority_discovery: Default::default(),
-		democracy: Default::default(),
 		council: Default::default(),
 		technical_committee: Default::default(),
 		technical_membership: Default::default(),
 		elections: Default::default(),
-		sudo: Default::default(),
 		treasury: Default::default(),
-		society: SocietyConfig { members: vec![alice(), bob()], pot: 0, max_members: 999 },
-		vesting: Default::default(),
 		assets: Default::default(),
-		gilt: Default::default(),
 		transaction_storage: Default::default(),
 	}
 }

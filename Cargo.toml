@@ -3,8 +3,9 @@ resolver = "2"
 
 members = [
 	"bin/node/pallets/pallet-ipfs",
-        "bin/node/pallets/pallet-ipfs/rpc",
-        "bin/node/pallets/pallet-ipfs/rpc/runtime-api",
+	"bin/node/pallets/pallet-ipfs/rpc",
+    "bin/node/pallets/pallet-ipfs/rpc/runtime-api",
+	"bin/node/pallets/pallet-council",
 	"bin/node/bench",
 	"bin/node/cli",
 	"bin/node/test-runner-example",

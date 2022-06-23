@@ -22,9 +22,9 @@ use grandpa_primitives::AuthorityId as GrandpaId;
 use hex_literal::hex;
 use node_runtime::{
 	constants::currency::*, wasm_binary_unwrap, AssetsConfig, AuthorityDiscoveryConfig, BabeConfig,
-	BalancesConfig, Block, CouncilConfig, DemocracyConfig, ElectionsConfig, GrandpaConfig,
-	ImOnlineConfig, IndicesConfig, SessionConfig, SessionKeys, SocietyConfig, StakerStatus,
-	StakingConfig, SudoConfig, SystemConfig, TechnicalCommitteeConfig, MAX_NOMINATIONS,
+	BalancesConfig, Block, CouncilConfig, ElectionsConfig, GrandpaConfig, ImOnlineConfig,
+	IndicesConfig, SessionConfig, SessionKeys, StakerStatus, StakingConfig, SystemConfig,
+	TechnicalMembershipConfig, MAX_NOMINATIONS,
 };
 use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
 use sc_chain_spec::ChainSpecExtension;
@@ -67,7 +67,6 @@ pub type ChainSpec = sc_service::GenericChainSpec<GenesisConfig, Extensions>;
 pub fn flaming_fir_config() -> Result<ChainSpec, String> {
 	ChainSpec::from_json_bytes(&include_bytes!("../res/flaming-fir.json")[..])
 }
-
 fn session_keys(
 	grandpa: GrandpaId,
 	babe: BabeId,
@@ -205,6 +204,11 @@ pub fn cherry_testnet_config() -> Result<ChainSpec, String> {
 	ChainSpec::from_json_bytes(&include_bytes!("../../../../customSpecRaw.json")[..])
 }
 
+/// Cherry testnet config.
+pub fn cherry_mainnet_config() -> Result<ChainSpec, String> {
+	ChainSpec::from_json_bytes(&include_bytes!("../../../../customSpecRaw_mainnet.json")[..])
+}
+
 /// Helper function to generate a crypto pair from seed
 pub fn get_from_seed<TPublic: Public>(seed: &str) -> <TPublic::Pair as Pair>::Public {
 	TPublic::Pair::from_string(&format!("//{}", seed), None)
@@ -328,7 +332,6 @@ pub fn testnet_genesis(
 			stakers,
 			..Default::default()
 		},
-		democracy: DemocracyConfig::default(),
 		elections: ElectionsConfig {
 			members: endowed_accounts
 				.iter()
@@ -337,16 +340,10 @@ pub fn testnet_genesis(
 				.map(|member| (member, STASH))
 				.collect(),
 		},
+		// council: CouncilConfig::default(),
 		council: CouncilConfig::default(),
-		technical_committee: TechnicalCommitteeConfig {
-			members: endowed_accounts
-				.iter()
-				.take((num_endowed_accounts + 1) / 2)
-				.cloned()
-				.collect(),
-			phantom: Default::default(),
-		},
-		sudo: SudoConfig { key: root_key.clone() },
+		technical_committee: Default::default(),
+		// sudo: SudoConfig { key: root_key.clone() },
 		babe: BabeConfig {
 			authorities: vec![],
 			epoch_config: Some(node_runtime::BABE_GENESIS_EPOCH_CONFIG),
@@ -354,24 +351,20 @@ pub fn testnet_genesis(
 		im_online: ImOnlineConfig { keys: vec![] },
 		authority_discovery: AuthorityDiscoveryConfig { keys: vec![] },
 		grandpa: GrandpaConfig { authorities: vec![] },
-		technical_membership: Default::default(),
-		treasury: Default::default(),
-		society: SocietyConfig {
+		technical_membership: TechnicalMembershipConfig {
 			members: endowed_accounts
 				.iter()
 				.take((num_endowed_accounts + 1) / 2)
 				.cloned()
 				.collect(),
-			pot: 0,
-			max_members: 999,
+			phantom: Default::default(),
 		},
-		vesting: Default::default(),
+		treasury: Default::default(),
 		assets: AssetsConfig {
 			assets: vec![(999, root_key.clone(), true, 1)],
-			metadata: vec![(999, "Governance Token".into(), "tGov".into(), 8)],
-			accounts: vec![(999, root_key.clone(), 1_000_000_000)],
+			metadata: vec![(999, "Governance Token".into(), "tGov".into(), 0)],
+			accounts: vec![(999, root_key.clone(), 10)],
 		},
-		gilt: Default::default(),
 		transaction_storage: Default::default(),
 	}
 }

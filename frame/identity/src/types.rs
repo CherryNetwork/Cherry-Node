@@ -1,6 +1,6 @@
 // This file is part of Substrate.
 
-// Copyright (C) 2021 Parity Technologies (UK) Ltd.
+// Copyright (C) 2021-2022 Parity Technologies (UK) Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -27,7 +27,7 @@ use scale_info::{
 	meta_type, Path, Type, TypeInfo, TypeParameter,
 };
 use sp_runtime::{traits::Zero, RuntimeDebug};
-use sp_std::{fmt::Debug, iter::once, ops::Add, prelude::*};
+use sp_std::{convert::TryInto, fmt::Debug, iter::once, ops::Add, prelude::*};
 
 /// Either underlying data blob if it is at most 32 bytes, or a hash of it. If the data is greater
 /// than 32-bytes then it will be truncated when encoding.
@@ -233,19 +233,21 @@ impl<Balance: Encode + Decode + MaxEncodedLen + Copy + Clone + Debug + Eq + Part
 #[repr(u64)]
 #[derive(Clone, Copy, PartialEq, Eq, BitFlags, RuntimeDebug, TypeInfo)]
 pub enum IdentityField {
-	Display = 0b0000000000000000000000000000000000000000000000000000000000000001,
-	Legal = 0b0000000000000000000000000000000000000000000000000000000000000010,
-	Web = 0b0000000000000000000000000000000000000000000000000000000000000100,
-	Discord = 0b0000000000000000000000000000000000000000000000000000000000001000,
-	Email = 0b0000000000000000000000000000000000000000000000000000000000010000,
-	PgpFingerprint = 0b0000000000000000000000000000000000000000000000000000000000100000,
-	Image = 0b0000000000000000000000000000000000000000000000000000000001000000,
-	Twitter = 0b0000000000000000000000000000000000000000000000000000000010000000,
+	Display = 0b0000000000000000000000000000000000000000000000000000000000000001u64, // 1
+	Legal = 0b0000000000000000000000000000000000000000000000000000000000000010u64,   // 2
+	Web = 0b0000000000000000000000000000000000000000000000000000000000000100u64,     // 4
+	Riot = 0b0000000000000000000000000000000000000000000000000000000000001000u64,    // 8
+	Email = 0b0000000000000000000000000000000000000000000000000000000000010000u64,   // 16
+	PgpFingerprint = 0b0000000000000000000000000000000000000000000000000000000000100000u64, // 32
+	Image = 0b0000000000000000000000000000000000000000000000000000000001000000u64,   // 64
+	Twitter = 0b0000000000000000000000000000000000000000000000000000000010000000u64, // 128
+	Discord = 0b0000000000000000000000000000000000000000000000000000000100000000u64, // 256
+	Telegram = 0b0000000000000000000000000000000000000000000000000000001000000000u64, // 512
 }
 
 /// Wrapper type for `BitFlags<IdentityField>` that implements `Codec`.
 #[derive(Clone, Copy, PartialEq, Default, RuntimeDebug)]
-pub struct IdentityFields(pub(crate) BitFlags<IdentityField>);
+pub struct IdentityFields(pub BitFlags<IdentityField>);
 
 impl MaxEncodedLen for IdentityFields {
 	fn max_encoded_len() -> usize {
@@ -283,7 +285,7 @@ impl TypeInfo for IdentityFields {
 #[derive(
 	CloneNoBound, Encode, Decode, Eq, MaxEncodedLen, PartialEqNoBound, RuntimeDebugNoBound, TypeInfo,
 )]
-#[codec(mel_bound(FieldLimit: Get<u32>))]
+#[codec(mel_bound())]
 #[cfg_attr(test, derive(frame_support::DefaultNoBound))]
 #[scale_info(skip_type_params(FieldLimit))]
 pub struct IdentityInfo<FieldLimit: Get<u32>> {
@@ -311,10 +313,10 @@ pub struct IdentityInfo<FieldLimit: Get<u32>> {
 	/// Stored as UTF-8.
 	pub web: Data,
 
-	/// The Discord handle held by the controller of the account.
+	/// The Riot/Matrix handle held by the controller of the account.
 	///
 	/// Stored as UTF-8.
-	pub discord: Data,
+	pub riot: Data,
 
 	/// The email address of the controller of the account.
 	///
@@ -330,6 +332,12 @@ pub struct IdentityInfo<FieldLimit: Get<u32>> {
 
 	/// The Twitter identity. The leading `@` character may be elided.
 	pub twitter: Data,
+
+	/// The Discord identity.
+	pub discord: Data,
+
+	/// The telegram identity. The leading `@` character may be elided.
+	pub telegram: Data,
 }
 
 /// Information concerning the identity of the controller of an account.
@@ -339,11 +347,7 @@ pub struct IdentityInfo<FieldLimit: Get<u32>> {
 #[derive(
 	CloneNoBound, Encode, Eq, MaxEncodedLen, PartialEqNoBound, RuntimeDebugNoBound, TypeInfo,
 )]
-#[codec(mel_bound(
-	Balance: Encode + Decode + MaxEncodedLen + Copy + Clone + Debug + Eq + PartialEq + Zero + Add,
-	MaxJudgements: Get<u32>,
-	MaxAdditionalFields: Get<u32>,
-))]
+#[codec(mel_bound())]
 #[scale_info(skip_type_params(MaxJudgements, MaxAdditionalFields))]
 pub struct Registration<
 	Balance: Encode + Decode + MaxEncodedLen + Copy + Clone + Debug + Eq + PartialEq,
@@ -407,6 +411,8 @@ pub struct RegistrarInfo<
 
 #[cfg(test)]
 mod tests {
+	use std::convert::TryInto;
+
 	use super::*;
 
 	#[test]

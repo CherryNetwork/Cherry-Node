@@ -42,10 +42,10 @@ type Lookup<T> = <<T as frame_system::Config>::Lookup as StaticLookup>::Source;
 fn endowed_account<T: Config>(name: &'static str, index: u32) -> T::AccountId {
 	let account: T::AccountId = account(name, index, 0);
 	let amount = default_stake::<T>(BALANCE_FACTOR);
-	let _ = T::Currency::make_free_balance_be(&account, amount);
+	let _ = <T as pallet::Config>::Currency::make_free_balance_be(&account, amount);
 	// important to increase the total issuance since T::CurrencyToVote will need it to be sane for
 	// phragmen to work.
-	T::Currency::issue(amount);
+	<T as pallet::Config>::Currency::issue(amount);
 
 	account
 }
@@ -58,7 +58,7 @@ fn as_lookup<T: Config>(account: T::AccountId) -> Lookup<T> {
 /// Get a reasonable amount of stake based on the execution trait's configuration
 fn default_stake<T: Config>(factor: u32) -> BalanceOf<T> {
 	let factor = BalanceOf::<T>::from(factor);
-	T::Currency::minimum_balance() * factor
+	<T as pallet::Config>::Currency::minimum_balance() * factor
 }
 
 /// Get the current number of candidates.
