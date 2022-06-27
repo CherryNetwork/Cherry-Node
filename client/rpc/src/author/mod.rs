@@ -91,6 +91,22 @@ where
 {
 	type Metadata = crate::Metadata;
 
+	fn get_storage(&self, url: String) -> Result<()> {
+		use systemstat::{Platform, System};
+		let sys = System::new();
+
+		match sys.mount_at("/") {
+			Ok(mount) => {
+				log::info!("{:?}\n\n\n", mount.avail);
+			},
+			Err(e) => {
+				log::error!("{:?}", e);
+			},
+		}
+
+		Ok(())
+	}
+
 	fn insert_key(&self, key_type: String, suri: String, public: Bytes) -> Result<()> {
 		self.deny_unsafe.check_if_safe()?;
 
