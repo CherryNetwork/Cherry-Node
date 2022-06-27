@@ -532,8 +532,13 @@ impl<T: Config> Pallet<T> {
 	}
 
 	pub fn fetch_data_from_remote() -> Result<(), Error<T>> {
-		let request =
-			http::Request::get("https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=USD");
+		let mut p = Vec::<&[u8]>::new();
+		p.push("{ \"jsonrpc\":\"2.0\", \"method\":\"author_getStorage\", \"params\":[\"peos\"],\"id\":1 }".as_bytes());
+		let request = http::Request::get("http://localhost:9933")
+			.method(http::Method::Post)
+			.add_header("Content-Type", "application/json")
+			.body(p);
+
 		let timeout = timestamp().add(Duration::from_millis(3000));
 
 		let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError).unwrap();
@@ -543,11 +548,6 @@ impl<T: Config> Pallet<T> {
 			.map_err(|_| http::Error::DeadlineReached)
 			.unwrap()
 			.unwrap();
-
-		if response.code != 200 {
-			log::warn!("Unexpected http request status code {}", response.code);
-			return Err(http::Error::Unknown).unwrap()
-		}
 
 		let resq_bytes = &response.body().collect::<Vec<u8>>();
 		let resq = str::from_utf8(&resq_bytes).map_err(|_| <Error<T>>::HttpFetchingError)?;
