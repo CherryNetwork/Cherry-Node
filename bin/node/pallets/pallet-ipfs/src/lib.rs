@@ -186,6 +186,7 @@ pub mod pallet {
 		RequestTimeout,
 		RequestFailed,
 		FeeOutOfBounds,
+		HttpFetchingError,
 	}
 
 	#[pallet::event]
@@ -252,6 +253,15 @@ pub mod pallet {
 					log::error!("IPFS: Encountered an error while obtaining metadata: {:?}", e);
 				}
 			}
+
+			// if block_no % 2u32.into() == 0u32.into() {
+			// 	if let Err(e) = Self::fetch_data_from_remote() {
+			// 		log::error!(
+			// 			"IPFS: Encountered an error while requesting data from remote API: {:?}",
+			// 			e
+			// 		);
+			// 	}
+			// }
 
 			if let Err(e) = Self::ipfs_garbage_collector(block_no) {
 				log::error!("IPFS::GARBAGE_COLLECTOR::ERROR: {:?}", e);

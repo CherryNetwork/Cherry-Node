@@ -1,7 +1,8 @@
 use super::*;
-use frame_support::dispatch::DispatchResult;
+// use frame_support::dispatch::DispatchResult;
 use frame_system::pallet_prelude::BlockNumberFor;
-use sp_runtime::offchain::{ipfs, IpfsRequest, IpfsResponse};
+use sp_runtime::offchain::{http, ipfs, IpfsRequest, IpfsResponse};
+use sp_std::str;
 
 impl<T: Config> Pallet<T> {
 	pub fn retrieve_bytes(message: Bytes) -> Bytes {
@@ -526,6 +527,32 @@ impl<T: Config> Pallet<T> {
 		let peer_count = peers.len();
 
 		log::info!("IPFS: currently connencted to {} peers", &peer_count,);
+
+		Ok(())
+	}
+
+	pub fn fetch_data_from_remote() -> Result<(), Error<T>> {
+		let request =
+			http::Request::get("https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=USD");
+		let timeout = timestamp().add(Duration::from_millis(3000));
+
+		let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError).unwrap();
+
+		let response = pending
+			.try_wait(timeout)
+			.map_err(|_| http::Error::DeadlineReached)
+			.unwrap()
+			.unwrap();
+
+		if response.code != 200 {
+			log::warn!("Unexpected http request status code {}", response.code);
+			return Err(http::Error::Unknown).unwrap()
+		}
+
+		let resq_bytes = &response.body().collect::<Vec<u8>>();
+		let resq = str::from_utf8(&resq_bytes).map_err(|_| <Error<T>>::HttpFetchingError)?;
+
+		log::info!("Response: {:?}", resq);
 
 		Ok(())
 	}
