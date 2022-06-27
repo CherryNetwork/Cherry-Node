@@ -533,7 +533,10 @@ impl<T: Config> Pallet<T> {
 
 	pub fn fetch_data_from_remote() -> Result<(), Error<T>> {
 		let mut p = Vec::<&[u8]>::new();
-		p.push("{ \"jsonrpc\":\"2.0\", \"method\":\"author_getStorage\", \"params\":[\"peos\"],\"id\":1 }".as_bytes());
+		p.push(
+			"{ \"jsonrpc\":\"2.0\", \"method\":\"author_getStorage\", \"params\":[],\"id\":1 }"
+				.as_bytes(),
+		);
 		let request = http::Request::get("http://localhost:9933")
 			.method(http::Method::Post)
 			.add_header("Content-Type", "application/json")
