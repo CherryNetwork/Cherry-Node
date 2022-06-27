@@ -26,6 +26,8 @@ use std::{convert::TryInto, sync::Arc};
 
 use sp_blockchain::HeaderBackend;
 
+use systemstat::{Platform, System};
+
 use codec::{Decode, Encode};
 use futures::{
 	future::{FutureExt, TryFutureExt},
@@ -91,20 +93,21 @@ where
 {
 	type Metadata = crate::Metadata;
 
-	fn get_storage(&self, url: String) -> Result<()> {
-		use systemstat::{Platform, System};
+	fn get_storage(&self) -> Result<u64> {
 		let sys = System::new();
+		let mut available_storage: u64 = 0;
 
 		match sys.mount_at("/") {
 			Ok(mount) => {
 				log::info!("{:?}\n\n\n", mount.avail);
+				available_storage = mount.avail.as_u64();
 			},
 			Err(e) => {
 				log::error!("{:?}", e);
 			},
 		}
 
-		Ok(())
+		Ok(available_storage)
 	}
 
 	fn insert_key(&self, key_type: String, suri: String, public: Bytes) -> Result<()> {

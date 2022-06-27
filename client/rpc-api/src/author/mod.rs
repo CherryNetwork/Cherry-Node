@@ -41,7 +41,7 @@ pub trait AuthorApi<Hash, BlockHash> {
 
 	/// Get availabe node storage;
 	#[rpc(name = "author_getStorage")]
-	fn get_storage(&self, url: String) -> Result<()>;
+	fn get_storage(&self) -> Result<u64>;
 
 	/// Insert a key into the keystore.
 	#[rpc(name = "author_insertKey")]
