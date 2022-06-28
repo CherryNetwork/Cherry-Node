@@ -103,6 +103,14 @@ pub mod pallet {
 
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
 	#[scale_info(skip_type_params(T))]
+	pub struct IpfsNode {
+		pub multiaddress: Vec<OpaqueMultiaddr>,
+		pub public_key: Vec<u8>,
+		pub avail_storage: u64,
+	}
+
+	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
+	#[scale_info(skip_type_params(T))]
 	pub enum OwnershipLayer {
 		Owner,
 		Editor,
@@ -121,8 +129,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn ipfs_nodes)]
-	pub(super) type IPFSNodes<T: Config> =
-		StorageMap<_, Twox64Concat, Vec<u8>, Vec<OpaqueMultiaddr>, ValueQuery>;
+	pub(super) type IPFSNodes<T: Config> = StorageMap<_, Twox64Concat, Vec<u8>, IpfsNode>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn data_queue)]
@@ -459,7 +466,9 @@ pub mod pallet {
 		) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
 
-			<IPFSNodes<T>>::insert(public_key.clone(), multiaddress.clone());
+			let ipfs_node: IpfsNode =
+				IpfsNode { multiaddress, public_key: public_key.clone(), avail_storage: 0 };
+			<IPFSNodes<T>>::insert(public_key.clone(), ipfs_node.clone());
 
 			Self::deposit_event(Event::PublishedIdentity(signer.clone()));
 

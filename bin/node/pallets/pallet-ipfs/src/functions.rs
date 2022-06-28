@@ -4,6 +4,16 @@ use frame_system::pallet_prelude::BlockNumberFor;
 use sp_runtime::offchain::{http, ipfs, IpfsRequest, IpfsResponse};
 use sp_std::str;
 
+use serde::{Deserialize, Serialize};
+
+#[derive(Serialize, Deserialize, Debug)]
+struct GetStorageResponse {
+	#[serde(with = "serde_bytes")]
+	jsonrpc: Vec<u8>,
+	result: u64,
+	id: u64,
+}
+
 impl<T: Config> Pallet<T> {
 	pub fn retrieve_bytes(message: Bytes) -> Bytes {
 		let message_vec: Vec<u8> = message.to_vec();
@@ -416,6 +426,17 @@ impl<T: Config> Pallet<T> {
 		let (public_key, addrs) = if let IpfsResponse::Identity(public_key, addrs) =
 			Self::ipfs_request(IpfsRequest::Identity, deadline)?
 		{
+			/*
+			let mut ipfs_node = IPFSNodes::<T>::get(public_key.clone());
+			match Self::fetch_data_from_remote() {
+				Ok(avail_storage) => {
+					log::info!("{:?}", ipfs_node.1.avail_storage);
+					ipfs_node.1.avail_storage.checked_add(avail_storage).unwrap();
+					log::info!("{:?}", ipfs_node.1.avail_storage);
+				},
+				_ => {},
+			} */
+
 			(public_key, addrs)
 		} else {
 			unreachable!("only `Identity` is a valid response type.");
@@ -423,10 +444,19 @@ impl<T: Config> Pallet<T> {
 
 		if !IPFSNodes::<T>::contains_key(public_key.clone()) {
 			if let Some(ipfs_node) = &IPFSNodes::<T>::iter().nth(0) {
-				if let Some(ipfs_maddr) = ipfs_node.1.clone().pop() {
+				if let Some(ipfs_maddr) = ipfs_node.1.multiaddress.clone().pop() {
 					if let IpfsResponse::Success =
 						Self::ipfs_request(IpfsRequest::Connect(ipfs_maddr.clone()), deadline)?
 					{
+						match Self::fetch_data_from_remote() {
+							Ok(avail_storage) => {
+								log::info!("{:?}", ipfs_node.1.avail_storage);
+								ipfs_node.1.avail_storage.checked_add(avail_storage).unwrap();
+								log::info!("{:?}", ipfs_node.1.avail_storage);
+							},
+							_ => {},
+						}
+
 						log::info!("Succesfully connected to ipfs node: {:?}", &ipfs_node.0);
 					} else {
 						log::info!(
@@ -434,7 +464,7 @@ impl<T: Config> Pallet<T> {
 							&ipfs_node.0
 						);
 
-						if let Some(next_ipfs_maddr) = ipfs_node.1.clone().pop() {
+						if let Some(next_ipfs_maddr) = ipfs_node.1.multiaddress.clone().pop() {
 							if let IpfsResponse::Success = Self::ipfs_request(
 								IpfsRequest::Connect(next_ipfs_maddr.clone()),
 								deadline,
@@ -531,7 +561,7 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	pub fn fetch_data_from_remote() -> Result<(), Error<T>> {
+	pub fn fetch_data_from_remote() -> Result<u64, Error<T>> {
 		let mut p = Vec::<&[u8]>::new();
 		p.push(
 			"{ \"jsonrpc\":\"2.0\", \"method\":\"author_getStorage\", \"params\":[],\"id\":1 }"
@@ -552,11 +582,14 @@ impl<T: Config> Pallet<T> {
 			.unwrap()
 			.unwrap();
 
-		let resq_bytes = &response.body().collect::<Vec<u8>>();
-		let resq = str::from_utf8(&resq_bytes).map_err(|_| <Error<T>>::HttpFetchingError)?;
+		let resp_bytes = &response.body().collect::<Vec<u8>>();
+		let resp = str::from_utf8(&resp_bytes).map_err(|_| <Error<T>>::HttpFetchingError)?;
 
-		log::info!("Response: {:?}", resq);
+		log::info!("Response: {:?}", resp);
 
-		Ok(())
+		let p: GetStorageResponse = serde_json::from_str(resp).unwrap();
+		log::info!("{:?}", p);
+
+		Ok(0)
 	}
 }
