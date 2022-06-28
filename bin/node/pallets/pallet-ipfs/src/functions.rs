@@ -1,5 +1,5 @@
 use super::*;
-// use frame_support::dispatch::DispatchResult;
+
 use frame_system::pallet_prelude::BlockNumberFor;
 use sp_runtime::offchain::{http, ipfs, IpfsRequest, IpfsResponse};
 use sp_std::str;
@@ -7,7 +7,7 @@ use sp_std::str;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
-struct GetStorageResponse {
+pub struct GetStorageResponse {
 	#[serde(with = "serde_bytes")]
 	jsonrpc: Vec<u8>,
 	result: u64,
@@ -448,14 +448,14 @@ impl<T: Config> Pallet<T> {
 					if let IpfsResponse::Success =
 						Self::ipfs_request(IpfsRequest::Connect(ipfs_maddr.clone()), deadline)?
 					{
-						match Self::fetch_data_from_remote() {
-							Ok(avail_storage) => {
-								log::info!("{:?}", ipfs_node.1.avail_storage);
-								ipfs_node.1.avail_storage.checked_add(avail_storage).unwrap();
-								log::info!("{:?}", ipfs_node.1.avail_storage);
-							},
-							_ => {},
-						}
+						// match Self::fetch_data_from_remote() {
+						// 	Ok(avail_storage) => {
+						// 		log::info!("{:?}", ipfs_node.1.avail_storage);
+						// 		ipfs_node.1.avail_storage.checked_add(avail_storage.result).unwrap();
+						// 		log::info!("{:?}", ipfs_node.1.avail_storage);
+						// 	},
+						// 	_ => {},
+						// }
 
 						log::info!("Succesfully connected to ipfs node: {:?}", &ipfs_node.0);
 					} else {
@@ -489,9 +489,12 @@ impl<T: Config> Pallet<T> {
 				log::error!("No local accounts available. Consider adding one via `author_insertKey` RPC method.");
 			}
 
+			let avail_storage = Self::fetch_data_from_remote().unwrap().result;
+
 			let results = signer.send_signed_transaction(|_account| Call::submit_ipfs_identity {
 				public_key: public_key.clone(),
 				multiaddress: addrs.clone(),
+				storage_size: avail_storage.clone(),
 			});
 
 			for (_, res) in &results {
@@ -561,7 +564,7 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	pub fn fetch_data_from_remote() -> Result<u64, Error<T>> {
+	pub fn fetch_data_from_remote() -> Result<GetStorageResponse, Error<T>> {
 		let mut p = Vec::<&[u8]>::new();
 		p.push(
 			"{ \"jsonrpc\":\"2.0\", \"method\":\"author_getStorage\", \"params\":[],\"id\":1 }"
@@ -590,6 +593,6 @@ impl<T: Config> Pallet<T> {
 		let p: GetStorageResponse = serde_json::from_str(resp).unwrap();
 		log::info!("{:?}", p);
 
-		Ok(0)
+		Ok(p)
 	}
 }

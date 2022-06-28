@@ -463,11 +463,15 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			public_key: Vec<u8>,
 			multiaddress: Vec<OpaqueMultiaddr>,
+			storage_size: u64,
 		) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
 
-			let ipfs_node: IpfsNode =
-				IpfsNode { multiaddress, public_key: public_key.clone(), avail_storage: 0 };
+			let ipfs_node: IpfsNode = IpfsNode {
+				multiaddress,
+				public_key: public_key.clone(),
+				avail_storage: storage_size,
+			};
 			<IPFSNodes<T>>::insert(public_key.clone(), ipfs_node.clone());
 
 			Self::deposit_event(Event::PublishedIdentity(signer.clone()));

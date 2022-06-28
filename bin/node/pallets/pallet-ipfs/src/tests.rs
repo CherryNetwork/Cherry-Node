@@ -674,6 +674,7 @@ fn cherry_ipfs_can_submit_identity() {
 			Origin::signed(p.clone().public()),
 			cid_vec,
 			multiaddr,
+			size,
 		));
 	});
 }
