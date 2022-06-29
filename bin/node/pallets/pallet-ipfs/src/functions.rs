@@ -585,4 +585,12 @@ impl<T: Config> Pallet<T> {
 
 		Ok(resp)
 	}
+
+	// pub fn check_for_unpaid_validators() -> Result<(), Error<T>> {
+
+	// 	// check if there are unpaid validators every X blocks (probably add a bool to the validator?
+	// paid: true/false). 	// if there are, pay them (call submit results).
+
+	// 	Ok(())
+	// }
 }

@@ -10,7 +10,7 @@ mod tests;
 pub mod weights;
 
 use codec::{Decode, Encode};
-use frame_support::RuntimeDebug;
+use frame_support::{traits::ExistenceRequirement::KeepAlive, RuntimeDebug};
 use frame_system::{
 	self,
 	offchain::{SendSignedTransaction, Signer},
@@ -75,6 +75,7 @@ pub mod pallet {
 		ensure,
 		pallet_prelude::{ValueQuery, *},
 		traits::Currency,
+		Twox64Concat,
 	};
 	use frame_system::{
 		offchain::{AppCrypto, CreateSignedTransaction},
@@ -128,15 +129,6 @@ pub mod pallet {
 	#[pallet::pallet]
 	#[pallet::generate_store(pub(super) trait Store)]
 	pub struct Pallet<T>(_);
-
-	#[pallet::storage]
-	#[pallet::getter(fn ipfs_nodes)]
-	pub(super) type IPFSNodes<T: Config> = StorageMap<_, Twox64Concat, Vec<u8>, IpfsNode>;
-
-	#[pallet::storage]
-	#[pallet::getter(fn data_queue)]
-	pub(super) type DataQueue<T: Config> =
-		StorageValue<_, Vec<DataCommand<T::AccountId>>, ValueQuery>;
 
 	#[pallet::config]
 	pub trait Config: CreateSignedTransaction<Call<Self>> + frame_system::Config {
@@ -196,6 +188,10 @@ pub mod pallet {
 		RequestFailed,
 		FeeOutOfBounds,
 		HttpFetchingError,
+		/// Ensures that the account belongs to a storage validator.
+		NotStorageValidator,
+		/// Ensures that the account is not already a storage validator.
+		AlreadyStorageValidator,
 	}
 
 	#[pallet::event]
@@ -218,6 +214,8 @@ pub mod pallet {
 		DeleteIpfsAsset(T::AccountId, Vec<u8>),
 		UnpinIpfsAsset(T::AccountId, Vec<u8>),
 		ExtendIpfsStorageDuration(T::AccountId, Vec<u8>),
+		StorageValidatorAdded(T::AccountId),
+		StorageValidatorPaid(T::AccountId, BalanceOf<T>),
 	}
 
 	// Storage items.
@@ -237,6 +235,19 @@ pub mod pallet {
 	#[pallet::getter(fn ipfs_asset_owned)]
 	pub(super) type IpfsAssetOwned<T: Config> =
 		StorageMap<_, Twox64Concat, T::AccountId, BoundedVec<Vec<u8>, T::MaxIpfsOwned>, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn ipfs_nodes)]
+	pub(super) type IPFSNodes<T: Config> = StorageMap<_, Twox64Concat, Vec<u8>, IpfsNode>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn data_queue)]
+	pub(super) type DataQueue<T: Config> =
+		StorageValue<_, Vec<DataCommand<T::AccountId>>, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn storage_validators)]
+	pub(super) type StorageValidators<T: Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
 
 	#[pallet::hooks]
 	impl<T: Config> Hooks<BlockNumberFor<T>> for Pallet<T> {
@@ -677,6 +688,47 @@ pub mod pallet {
 			.map_err(|_| <Error<T>>::ExceedMaxIpfsOwned)?;
 
 			Self::deposit_event(Event::ChangeOwnershipLayer(signer, cid, acct_to_change));
+
+			Ok(())
+		}
+
+		#[pallet::weight(0)]
+		pub fn become_storage_validator(
+			origin: OriginFor<T>,
+			acct_to_add: T::AccountId,
+		) -> DispatchResult {
+			ensure_signed(origin)?;
+
+			let mut validators = Self::storage_validators();
+
+			ensure!(!validators.contains(&acct_to_add), <Error<T>>::AlreadyStorageValidator);
+			validators.push(acct_to_add.clone());
+
+			<StorageValidators<T>>::put(&validators);
+
+			Self::deposit_event(Event::StorageValidatorAdded(acct_to_add));
+
+			Ok(())
+		}
+
+		#[pallet::weight(0)]
+		pub fn submit_reward_validator_result(
+			origin: OriginFor<T>,
+			acct_to_pay: T::AccountId,
+			validator: T::AccountId,
+			reward: BalanceOf<T>,
+		) -> DispatchResult {
+			ensure_signed(origin)?;
+
+			// acct_to_pay would probably be a hardcoded account of ours.
+			let _payment = T::Currency::transfer(&acct_to_pay, &validator, reward, KeepAlive);
+
+			let _payment = match _payment {
+				Ok(_payment) => _payment,
+				Err(e) => panic!("Error transfering funds to storage validator: {:?}", e),
+			};
+
+			Self::deposit_event(Event::StorageValidatorPaid(validator, reward));
 
 			Ok(())
 		}
