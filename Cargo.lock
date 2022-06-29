@@ -5860,13 +5860,17 @@ dependencies = [
  "jsonrpc-core",
  "jsonrpc-core-client",
  "jsonrpc-derive",
+ "log 0.4.14",
  "pallet-ipfs-rpc-runtime-api",
  "parity-scale-codec",
+ "serde",
+ "serde_json",
  "sp-api",
  "sp-blockchain",
  "sp-core",
  "sp-rpc",
  "sp-runtime",
+ "systemstat",
 ]
 
 [[package]]
@@ -8554,7 +8558,6 @@ dependencies = [
  "sp-session",
  "sp-version",
  "substrate-test-runtime-client",
- "systemstat",
 ]
 
 [[package]]
