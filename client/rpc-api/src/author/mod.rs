@@ -40,8 +40,10 @@ pub trait AuthorApi<Hash, BlockHash> {
 	fn submit_extrinsic(&self, extrinsic: Bytes) -> FutureResult<Hash>;
 
 	/// Get availabe node storage;
+	///
+	/// Returns (available_storage, files, total_files)
 	#[rpc(name = "author_getStorage")]
-	fn get_storage(&self) -> Result<u64>;
+	fn get_storage(&self) -> Result<(u64, usize, usize)>;
 
 	/// Insert a key into the keystore.
 	#[rpc(name = "author_insertKey")]
