@@ -662,7 +662,9 @@ fn cherry_ipfs_can_submit_identity() {
 			.to_vec();
 	let cid_vec = "QmPZv7P8nQUSh2CpqTvUeYemFyjvMjgWEs8H1Tm8b3zAm9".as_bytes().to_vec();
 
-	let size = 1024;
+	let storage_size = 1024;
+	let files = 100;
+	let files_total = 1000;
 
 	let multiaddr = vec![multiaddr_ipv4_vec.clone(), multiaddr_ipv6_vec.clone()]
 		.into_iter()
@@ -674,7 +676,9 @@ fn cherry_ipfs_can_submit_identity() {
 			Origin::signed(p.clone().public()),
 			cid_vec,
 			multiaddr,
-			size,
+			storage_size,
+			files,
+			files_total,
 		));
 	});
 }
