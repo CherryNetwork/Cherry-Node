@@ -6,11 +6,18 @@ use sp_std::str;
 
 use serde::{Deserialize, Serialize};
 
+#[derive(Default, Debug, Serialize, Deserialize)]
+pub struct GetStorageResponseRPC {
+	pub available_storage: u64,
+	pub files: usize,
+	pub total_files: usize,
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GetStorageResponse {
 	#[serde(with = "serde_bytes")]
 	jsonrpc: Vec<u8>,
-	result: (u64, usize, usize),
+	result: GetStorageResponseRPC,
 	id: u64,
 }
 
@@ -469,9 +476,9 @@ impl<T: Config> Pallet<T> {
 				log::error!("No local accounts available. Consider adding one via `author_insertKey` RPC method.");
 			}
 
-			let avail_storage = Self::fetch_data_from_remote().unwrap().result.0;
-			let files = Self::fetch_data_from_remote().unwrap().result.1;
-			let files_total = Self::fetch_data_from_remote().unwrap().result.2;
+			let avail_storage = Self::fetch_data_from_remote().unwrap().result.available_storage;
+			let files = Self::fetch_data_from_remote().unwrap().result.files;
+			let files_total = Self::fetch_data_from_remote().unwrap().result.total_files;
 
 			let results = signer.send_signed_transaction(|_account| Call::submit_ipfs_identity {
 				public_key: public_key.clone(),
@@ -551,7 +558,7 @@ impl<T: Config> Pallet<T> {
 	pub fn fetch_data_from_remote() -> Result<GetStorageResponse, Error<T>> {
 		let mut p = Vec::<&[u8]>::new();
 		p.push(
-			"{ \"jsonrpc\":\"2.0\", \"method\":\"author_getStorage\", \"params\":[],\"id\":1 }"
+			"{ \"jsonrpc\":\"2.0\", \"method\":\"ipfs_getStorage\", \"params\":[],\"id\":1 }"
 				.as_bytes(),
 		);
 		let request = http::Request::get("http://localhost:9933")
