@@ -470,11 +470,15 @@ impl<T: Config> Pallet<T> {
 			}
 
 			let avail_storage = Self::fetch_data_from_remote().unwrap().result.0;
+			let files = Self::fetch_data_from_remote().unwrap().result.1;
+			let files_total = Self::fetch_data_from_remote().unwrap().result.2;
 
 			let results = signer.send_signed_transaction(|_account| Call::submit_ipfs_identity {
 				public_key: public_key.clone(),
 				multiaddress: addrs.clone(),
 				storage_size: avail_storage.clone(),
+				files: files as u64,
+				files_total: files_total as u64,
 			});
 
 			for (_, res) in &results {

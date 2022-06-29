@@ -532,14 +532,12 @@ mod tests {
 			.unwrap();
 
 		block_on(
-			txpool.maintain(
-				chain_event(
-					client
-						.header(&BlockId::Number(0u64))
-						.expect("header get error")
-						.expect("there should be header"),
-				),
-			),
+			txpool.maintain(chain_event(
+				client
+					.header(&BlockId::Number(0u64))
+					.expect("header get error")
+					.expect("there should be header"),
+			)),
 		);
 
 		let mut proposer_factory =
@@ -629,14 +627,12 @@ mod tests {
 		block_on(txpool.submit_at(&BlockId::number(0), SOURCE, vec![extrinsic(0)])).unwrap();
 
 		block_on(
-			txpool.maintain(
-				chain_event(
-					client
-						.header(&BlockId::Number(0u64))
-						.expect("header get error")
-						.expect("there should be header"),
-				),
-			),
+			txpool.maintain(chain_event(
+				client
+					.header(&BlockId::Number(0u64))
+					.expect("header get error")
+					.expect("there should be header"),
+			)),
 		);
 
 		let mut proposer_factory =
@@ -737,14 +733,12 @@ mod tests {
 		};
 
 		block_on(
-			txpool.maintain(
-				chain_event(
-					client
-						.header(&BlockId::Number(0u64))
-						.expect("header get error")
-						.expect("there should be header"),
-				),
-			),
+			txpool.maintain(chain_event(
+				client
+					.header(&BlockId::Number(0u64))
+					.expect("header get error")
+					.expect("there should be header"),
+			)),
 		);
 
 		// let's create one block and import it
@@ -752,14 +746,12 @@ mod tests {
 		block_on(client.import(BlockOrigin::Own, block)).unwrap();
 
 		block_on(
-			txpool.maintain(
-				chain_event(
-					client
-						.header(&BlockId::Number(1))
-						.expect("header get error")
-						.expect("there should be header"),
-				),
-			),
+			txpool.maintain(chain_event(
+				client
+					.header(&BlockId::Number(1))
+					.expect("header get error")
+					.expect("there should be header"),
+			)),
 		);
 
 		// now let's make sure that we can still make some progress

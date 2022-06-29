@@ -107,6 +107,8 @@ pub mod pallet {
 		pub multiaddress: Vec<OpaqueMultiaddr>,
 		pub public_key: Vec<u8>,
 		pub avail_storage: u64,
+		pub files: u64,
+		pub files_total: u64,
 	}
 
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
@@ -464,6 +466,8 @@ pub mod pallet {
 			public_key: Vec<u8>,
 			multiaddress: Vec<OpaqueMultiaddr>,
 			storage_size: u64,
+			files: u64,
+			files_total: u64,
 		) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
 
@@ -471,6 +475,8 @@ pub mod pallet {
 				multiaddress,
 				public_key: public_key.clone(),
 				avail_storage: storage_size,
+				files,
+				files_total,
 			};
 			<IPFSNodes<T>>::insert(public_key.clone(), ipfs_node.clone());
 
