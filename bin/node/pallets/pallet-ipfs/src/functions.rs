@@ -564,15 +564,14 @@ impl<T: Config> Pallet<T> {
 			.map_err(|_| http::Error::DeadlineReached)
 			.unwrap()
 			.unwrap();
+		let resp = serde_json::from_str(
+			str::from_utf8(&response.body().collect::<Vec<u8>>())
+				.map_err(|_| <Error<T>>::HttpFetchingError)?,
+		)
+		.unwrap();
 
-		let resp_bytes = &response.body().collect::<Vec<u8>>();
-		let resp = str::from_utf8(&resp_bytes).map_err(|_| <Error<T>>::HttpFetchingError)?;
+		log::info!("{:?}", resp);
 
-		log::info!("Response: {:?}", resp);
-
-		let p: GetStorageResponse = serde_json::from_str(resp).unwrap();
-		log::info!("{:?}", p);
-
-		Ok(p)
+		Ok(resp)
 	}
 }
