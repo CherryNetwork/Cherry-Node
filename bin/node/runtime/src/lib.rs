@@ -1263,6 +1263,7 @@ impl pallet_ipfs::Config for Runtime {
 	type MaxDeadSessions = MaxDeadSessions;
 	type DefaultAssetLifetime = DefaultAssetLifetime;
 	type WeightInfo = pallet_ipfs::weights::SubstrateWeight<Runtime>;
+	type AddRemoveOrigin = EnsureRoot<AccountId>;
 }
 
 construct_runtime!(

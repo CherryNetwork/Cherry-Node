@@ -10,7 +10,10 @@ mod tests;
 pub mod weights;
 
 use codec::{Decode, Encode};
-use frame_support::RuntimeDebug;
+use frame_support::{
+	traits::{EstimateNextSessionRotation, Get, ValidatorSet, ValidatorSetWithIdentification},
+	RuntimeDebug, LOG_TARGET,
+};
 use frame_system::{
 	self,
 	offchain::{SendSignedTransaction, Signer},
@@ -22,6 +25,8 @@ use sp_core::{
 	Bytes,
 };
 use sp_io::offchain::timestamp;
+use sp_runtime::traits::{Convert, Zero};
+use sp_staking::offence::{Offence, OffenceError, ReportOffence};
 use sp_std::{convert::TryInto, vec::Vec};
 
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"chfs");
@@ -183,7 +188,9 @@ pub mod pallet {
 		StorageValue<_, Vec<DataCommand<T::AccountId>>, ValueQuery>;
 
 	#[pallet::config]
-	pub trait Config: CreateSignedTransaction<Call<Self>> + frame_system::Config {
+	pub trait Config:
+		CreateSignedTransaction<Call<Self>> + frame_system::Config + pallet_session::Config
+	{
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -203,6 +210,8 @@ pub mod pallet {
 
 		type Call: From<Call<Self>>;
 
+		type AddRemoveOrigin: EnsureOrigin<Self::Origin>;
+
 		type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
 
 		type WeightInfo: WeightInfo;
@@ -210,6 +219,7 @@ pub mod pallet {
 
 	#[pallet::error]
 	pub enum Error<T> {
+		Duplicate,
 		/// Handles arithmetic overflow when incrementing the IPFS counter.
 		IpfsCntOverflow,
 		/// An account cannot own more IPFS Assets than `MaxIPFSCount`.
@@ -248,6 +258,7 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// A request to add bytes was queued
+		ValidatorAdditionInitiated(T::AccountId),
 		QueuedDataToAdd(T::AccountId),
 		QueuedDataToCat(T::AccountId),
 		PublishedIdentity(T::AccountId),
@@ -335,8 +346,17 @@ pub mod pallet {
 
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		#[pallet::weight(100)]
+		pub fn add_validator(origin: OriginFor<T>, validator_id: T::AccountId) -> DispatchResult {
+			T::AddRemoveOrigin::ensure_origin(origin)?;
+			Self::do_add_validator(validator_id.clone())?;
+			Self::approve_validator(validator_id)?;
+
+			Ok(())
+		}
+
 		/// Create a new unique IPFS.
-		#[pallet::weight(T::WeightInfo::create_ipfs_asset())]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_ipfs_asset())]
 		pub fn create_ipfs_asset(
 			origin: OriginFor<T>,
 			addr: Vec<u8>,
@@ -379,7 +399,7 @@ pub mod pallet {
 		}
 
 		/// Create a new unique IPFS.
-		#[pallet::weight(T::WeightInfo::create_ipfs_asset())]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_ipfs_asset())]
 		pub fn create_ipfs_asset_raw(
 			origin: OriginFor<T>,
 			addr: Vec<u8>,
@@ -765,7 +785,7 @@ impl<T: Config> pallet_session::SessionManager<T::AccountId> for Pallet<T> {
 		Self::remove_offline_validators();
 
 		// TODO(charmitro <2022-05-19 Thu>): Select new candidates;
-		// log::debug!(target: LOG_TARGET, "New session called; updated validator set provided.");
+		log::debug!(target: LOG_TARGET, "New session called; updated validator set provided.");
 
 		Some(Self::validators())
 	}
@@ -778,5 +798,70 @@ impl<T: Config> pallet_session::SessionManager<T::AccountId> for Pallet<T> {
 	fn start_session(start_index: u32) {
 		log::info!("Starting session with index: {:?}", start_index);
 		ActiveEra::<T>::mutate(|s| *s = Some(start_index));
+	}
+}
+
+impl<T: Config> EstimateNextSessionRotation<T::BlockNumber> for Pallet<T> {
+	fn average_session_length() -> T::BlockNumber {
+		Zero::zero()
+	}
+
+	fn estimate_current_session_progress(
+		_now: T::BlockNumber,
+	) -> (Option<sp_runtime::Permill>, frame_support::dispatch::Weight) {
+		(None, Zero::zero())
+	}
+
+	fn estimate_next_session_rotation(
+		_now: T::BlockNumber,
+	) -> (Option<T::BlockNumber>, frame_support::dispatch::Weight) {
+		(None, Zero::zero())
+	}
+}
+
+pub struct ValidatorOf<T>(sp_std::marker::PhantomData<T>);
+
+impl<T: Config> Convert<T::ValidatorId, Option<T::ValidatorId>> for ValidatorOf<T> {
+	fn convert(account: T::ValidatorId) -> Option<T::ValidatorId> {
+		Some(account)
+	}
+}
+
+impl<T: Config> ValidatorSet<T::AccountId> for Pallet<T> {
+	type ValidatorId = T::ValidatorId;
+	type ValidatorIdOf = T::ValidatorIdOf;
+
+	fn session_index() -> sp_staking::SessionIndex {
+		pallet_session::Pallet::<T>::current_index()
+	}
+
+	fn validators() -> Vec<Self::ValidatorId> {
+		pallet_session::Pallet::<T>::validators()
+	}
+}
+
+impl<T: Config> ValidatorSetWithIdentification<T::AccountId> for Pallet<T> {
+	type Identification = T::ValidatorId;
+	type IdentificationOf = ValidatorOf<T>;
+}
+
+impl<T: Config, O: Offence<(T::AccountId, T::AccountId)>>
+	ReportOffence<T::AccountId, (T::AccountId, T::AccountId), O> for Pallet<T>
+{
+	fn report_offence(_reporters: Vec<T::AccountId>, offence: O) -> Result<(), OffenceError> {
+		let offenders = offence.offenders();
+
+		for (v, _) in offenders.into_iter() {
+			Self::mark_for_removal(v);
+		}
+
+		Ok(())
+	}
+
+	fn is_known_offence(
+		_offenders: &[(T::AccountId, T::AccountId)],
+		_time_slot: &O::TimeSlot,
+	) -> bool {
+		false
 	}
 }

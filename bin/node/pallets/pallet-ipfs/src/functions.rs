@@ -1,7 +1,8 @@
 use super::*;
-use frame_support::{dispatch::DispatchResult, traits::Get};
+use frame_support::{dispatch::DispatchResult, ensure, traits::Get};
 use frame_system::pallet_prelude::BlockNumberFor;
 use sp_runtime::offchain::{ipfs, IpfsRequest, IpfsResponse};
+use sp_std::collections::btree_set::BTreeSet;
 
 impl<T: Config> Pallet<T> {
 	pub fn retrieve_bytes(message: Bytes) -> Bytes {
@@ -22,12 +23,26 @@ impl<T: Config> Pallet<T> {
 		<ApprovedValidators<T>>::put(validators);
 	}
 
-	pub fn add_validator(acct: &T::AccountId) {
-		if !Self::validators().contains(acct) {
-			Validators::<T>::mutate(|validators| validators.push(acct.clone()));
-		} else {
-			log::info!("The AccountId {:?} is already a Validator", acct)
-		}
+	pub fn approve_validator(validator_id: T::AccountId) -> DispatchResult {
+		let approved_set: BTreeSet<_> = <ApprovedValidators<T>>::get().into_iter().collect();
+
+		ensure!(!approved_set.contains(&validator_id), Error::<T>::Duplicate);
+		<ApprovedValidators<T>>::mutate(|v| v.push(validator_id.clone()));
+		Ok(())
+	}
+
+	pub fn do_add_validator(validator_id: T::AccountId) -> DispatchResult {
+		let validator_set: BTreeSet<_> = <Validators<T>>::get().into_iter().collect();
+		ensure!(!validator_set.contains(&validator_id), Error::<T>::Duplicate);
+		<Validators<T>>::mutate(|v| v.push(validator_id.clone()));
+		UnproductiveSessions::<T>::mutate(validator_id.clone(), |v| {
+			*v = 0;
+		});
+
+		Self::deposit_event(Event::ValidatorAdditionInitiated(validator_id.clone()));
+		log::debug!(target: LOG_TARGET, "Validator addition initiated.");
+
+		Ok(())
 	}
 
 	pub fn add_approve_validator(acct: &T::AccountId) {
@@ -38,6 +53,11 @@ impl<T: Config> Pallet<T> {
 		} else {
 			log::info!("The AccountId {:?} is already an approved Validator", acct)
 		}
+	}
+
+	pub fn mark_for_removal(validator_id: T::AccountId) {
+		<OfflineValidators<T>>::mutate(|v| v.push(validator_id));
+		log::debug!(target: LOG_TARGET, "Offline validator marked for auto removal.");
 	}
 
 	pub fn remove_validator(acct: &T::AccountId) {
