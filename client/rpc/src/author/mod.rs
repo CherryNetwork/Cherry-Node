@@ -26,8 +26,6 @@ use std::{convert::TryInto, sync::Arc};
 
 use sp_blockchain::HeaderBackend;
 
-use systemstat::{Platform, System};
-
 use codec::{Decode, Encode};
 use futures::{
 	future::{FutureExt, TryFutureExt},
@@ -92,25 +90,6 @@ where
 	<P::Block as BlockT>::Hash: Unpin,
 {
 	type Metadata = crate::Metadata;
-
-	fn get_storage(&self) -> Result<(u64, usize, usize)> {
-		let sys = System::new();
-		let mut resp: (u64, usize, usize) = (0, 0, 0);
-
-		match sys.mount_at("/") {
-			// TODO: this should change the IPFS partition path.
-			Ok(mount) => {
-				resp.0 = mount.avail.as_u64();
-				resp.1 = mount.files;
-				resp.2 = mount.files_total;
-			},
-			Err(e) => {
-				log::error!("{:?}", e);
-			},
-		}
-
-		Ok(resp)
-	}
 
 	fn insert_key(&self, key_type: String, suri: String, public: Bytes) -> Result<()> {
 		self.deny_unsafe.check_if_safe()?;
