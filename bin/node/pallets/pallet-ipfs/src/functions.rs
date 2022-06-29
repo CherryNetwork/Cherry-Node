@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 pub struct GetStorageResponse {
 	#[serde(with = "serde_bytes")]
 	jsonrpc: Vec<u8>,
-	result: u64,
+	result: (u64, usize, usize),
 	id: u64,
 }
 
@@ -426,17 +426,6 @@ impl<T: Config> Pallet<T> {
 		let (public_key, addrs) = if let IpfsResponse::Identity(public_key, addrs) =
 			Self::ipfs_request(IpfsRequest::Identity, deadline)?
 		{
-			/*
-			let mut ipfs_node = IPFSNodes::<T>::get(public_key.clone());
-			match Self::fetch_data_from_remote() {
-				Ok(avail_storage) => {
-					log::info!("{:?}", ipfs_node.1.avail_storage);
-					ipfs_node.1.avail_storage.checked_add(avail_storage).unwrap();
-					log::info!("{:?}", ipfs_node.1.avail_storage);
-				},
-				_ => {},
-			} */
-
 			(public_key, addrs)
 		} else {
 			unreachable!("only `Identity` is a valid response type.");
@@ -448,15 +437,6 @@ impl<T: Config> Pallet<T> {
 					if let IpfsResponse::Success =
 						Self::ipfs_request(IpfsRequest::Connect(ipfs_maddr.clone()), deadline)?
 					{
-						// match Self::fetch_data_from_remote() {
-						// 	Ok(avail_storage) => {
-						// 		log::info!("{:?}", ipfs_node.1.avail_storage);
-						// 		ipfs_node.1.avail_storage.checked_add(avail_storage.result).unwrap();
-						// 		log::info!("{:?}", ipfs_node.1.avail_storage);
-						// 	},
-						// 	_ => {},
-						// }
-
 						log::info!("Succesfully connected to ipfs node: {:?}", &ipfs_node.0);
 					} else {
 						log::info!(
@@ -489,7 +469,7 @@ impl<T: Config> Pallet<T> {
 				log::error!("No local accounts available. Consider adding one via `author_insertKey` RPC method.");
 			}
 
-			let avail_storage = Self::fetch_data_from_remote().unwrap().result;
+			let avail_storage = Self::fetch_data_from_remote().unwrap().result.0;
 
 			let results = signer.send_signed_transaction(|_account| Call::submit_ipfs_identity {
 				public_key: public_key.clone(),
