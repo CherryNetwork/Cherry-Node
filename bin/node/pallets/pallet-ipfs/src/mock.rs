@@ -137,7 +137,6 @@ impl Config for Test {
 	type MaxIpfsOwned = MaxIpfsOwned;
 	type DefaultAssetLifetime = DefaultAssetLifetime;
 	type WeightInfo = pallet_cherry::weights::SubstrateWeight<Test>;
-	type StorageValidatorPaymentId = ();
 }
 
 pub fn new_test_ext() -> sp_io::TestExternalities {

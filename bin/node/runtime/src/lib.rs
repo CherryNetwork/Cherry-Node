@@ -918,7 +918,6 @@ impl pallet_transaction_storage::Config for Runtime {
 parameter_types! {
 	pub const MaxIpfsOwned: u32 = 5;
 	pub const DefaultAssetLifetime: BlockNumber = DEFAULT_ASSET_LIFETIME;
-	pub StorageValidatorPaymentId: AccountId = hex_literal::hex!["dcaf99c3e65679d926d52e072da93751f750f60003f6c905c789261876747e73"].into();
 }
 
 impl pallet_ipfs::Config for Runtime {
@@ -929,7 +928,6 @@ impl pallet_ipfs::Config for Runtime {
 	type MaxIpfsOwned = MaxIpfsOwned;
 	type DefaultAssetLifetime = DefaultAssetLifetime;
 	type WeightInfo = pallet_ipfs::weights::SubstrateWeight<Runtime>;
-	type StorageValidatorPaymentId = StorageValidatorPaymentId;
 }
 
 construct_runtime!(

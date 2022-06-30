@@ -1,6 +1,5 @@
 use super::*;
 
-use frame_support::traits::Get;
 use frame_system::pallet_prelude::BlockNumberFor;
 use sp_runtime::{
 	offchain::{http, ipfs, IpfsRequest, IpfsResponse},
