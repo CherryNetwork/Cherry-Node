@@ -479,9 +479,9 @@ impl<T: Config> Pallet<T> {
 				log::error!("No local accounts available. Consider adding one via `author_insertKey` RPC method.");
 			}
 
-			let avail_storage = Self::fetch_data_from_remote().unwrap().result.available_storage;
-			let files = Self::fetch_data_from_remote().unwrap().result.files;
-			let files_total = Self::fetch_data_from_remote().unwrap().result.total_files;
+			let avail_storage = Self::get_validator_storage().unwrap().result.available_storage;
+			let files = Self::get_validator_storage().unwrap().result.files;
+			let files_total = Self::get_validator_storage().unwrap().result.total_files;
 
 			let results = signer.send_signed_transaction(|_account| Call::submit_ipfs_identity {
 				public_key: public_key.clone(),
@@ -558,7 +558,7 @@ impl<T: Config> Pallet<T> {
 		Ok(())
 	}
 
-	pub fn fetch_data_from_remote() -> Result<GetStorageResponse, Error<T>> {
+	pub fn get_validator_storage() -> Result<GetStorageResponse, Error<T>> {
 		let mut p = Vec::<&[u8]>::new();
 		p.push(
 			"{ \"jsonrpc\":\"2.0\", \"method\":\"ipfs_getStorage\", \"params\":[],\"id\":1 }"
@@ -583,8 +583,6 @@ impl<T: Config> Pallet<T> {
 				.map_err(|_| <Error<T>>::HttpFetchingError)?,
 		)
 		.unwrap();
-
-		log::info!("{:?}", resp);
 
 		Ok(resp)
 	}

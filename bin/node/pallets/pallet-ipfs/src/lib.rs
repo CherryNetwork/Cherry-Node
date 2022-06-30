@@ -264,7 +264,7 @@ pub mod pallet {
 			}
 
 			if block_no % 2u32.into() == 0u32.into() {
-				if let Err(e) = Self::fetch_data_from_remote() {
+				if let Err(e) = Self::get_validator_storage() {
 					log::error!(
 						"IPFS: Encountered an error while requesting data from remote API: {:?}",
 						e
