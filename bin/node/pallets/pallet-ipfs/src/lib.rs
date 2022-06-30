@@ -25,7 +25,7 @@ use sp_io::offchain::timestamp;
 use sp_std::{convert::TryInto, vec::Vec};
 
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"chfs");
-
+pub const VALIDATOR_DEFAULT_PAYMENT: u64 = 1000000000000000000;
 pub mod crypto {
 	use crate::KEY_TYPE;
 	use sp_core::sr25519::Signature as Sr25519Signature;
@@ -86,7 +86,7 @@ pub mod pallet {
 	use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
 	pub type AccountOf<T> = <T as frame_system::Config>::AccountId;
-	type BalanceOf<T> =
+	pub type BalanceOf<T> =
 		<<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 	///  Struct for holding IPFS information.
@@ -137,6 +137,9 @@ pub mod pallet {
 
 		/// The Currency handler for the IPFS pallet.
 		type Currency: Currency<Self::AccountId>;
+
+		// A type that can deliver a single account id value to the pallet.
+		type StorageValidatorPaymentId: Get<<Self as frame_system::Config>::AccountId>;
 
 		/// The maximum amount of IPFS Assets a single account can own.
 		#[pallet::constant]
@@ -285,6 +288,15 @@ pub mod pallet {
 
 			if let Err(e) = Self::ipfs_garbage_collector(block_no) {
 				log::error!("IPFS::GARBAGE_COLLECTOR::ERROR: {:?}", e);
+			}
+
+			// 10 blocks for testing. This should probably check every new session.
+			if block_no % 10u32.into() == 0u32.into() {
+				if let Err(e) = Self::check_for_unpaid_validators() {
+					log::error!(
+						"IPFS: Encountered an error while checking for unpaid storage validators: {:?}", e
+					);
+				}
 			}
 		}
 	}
