@@ -589,36 +589,4 @@ impl<T: Config> Pallet<T> {
 
 		Ok(resp)
 	}
-
-	pub fn check_for_unpaid_validators() -> Result<(), Error<T>> {
-		// check if there are unpaid validators every X blocks (probably add a bool to the
-		// validator? paid: true/false). if there are, pay them (call submit results).
-
-		let signer = Signer::<T, T::AuthorityId>::all_accounts();
-		if !signer.can_sign() {
-			log::error!("No local accounts available. Consider adding one via `author_insertKey` RPC method.");
-		}
-
-		// local test accounts
-		let acct_to_pay = T::StorageValidatorPaymentId::get();
-		let validators = Self::storage_validators();
-		let validator = validators[0].clone();
-		let payment: BalanceOf<T> = VALIDATOR_DEFAULT_PAYMENT.saturated_into();
-
-		let results =
-			signer.send_signed_transaction(|_account| Call::submit_reward_validator_result {
-				acct_to_pay: acct_to_pay.clone(),
-				validator: validator.clone(),
-				reward: payment,
-			});
-
-		for (_, res) in &results {
-			match res {
-				Ok(()) => log::info!("Submitted validator reward results\n\npay_from: {:?}\npay_to: {:?}\nvalue: {:?}\n\n", acct_to_pay, validator, payment),
-				Err(e) => log::error!("Failed to submit tx: {:?}", e),
-			}
-		}
-
-		Ok(())
-	}
 }
