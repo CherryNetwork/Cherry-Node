@@ -81,7 +81,7 @@ use futures::{
 use log::{debug, info, log, trace, warn};
 use parking_lot::Mutex;
 use prometheus_endpoint::Registry;
-use retain_mut::RetainMut;
+// use retain_mut::RetainMut;
 use schnorrkel::SignatureError;
 
 use sc_client_api::{backend::AuxStore, BlockchainEvents, ProvideUncles, UsageProvider};

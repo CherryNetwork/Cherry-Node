@@ -615,7 +615,7 @@ mod tests {
 	use codec::Encode;
 	use node_primitives::{Block, DigestItem, Signature};
 	use node_runtime::{
-		constants::{currency::CENTS, time::SLOT_DURATION},
+		constants::{currency::CENTS, time_dev::SLOT_DURATION},
 		Address, BalancesCall, Call, UncheckedExtrinsic,
 	};
 	use sc_client_api::BlockBackend;

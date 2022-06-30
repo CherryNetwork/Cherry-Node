@@ -370,16 +370,16 @@ mod tests {
 		}
 	}
 
-	fn offchain_api() -> (Api, AsyncApi) {
+	fn offchain_api<I: ::ipfs::IpfsTypes>() -> (Api, AsyncApi<I>) {
 		sp_tracing::try_init_simple();
 		let mock = Arc::new(TestNetwork());
 		let shared_client = SharedClient::new();
 
-		let options = ::ipfs::IpfsOptions::default();
+		let options = ::ipfs::IpfsOptions::inmemory_with_generated_keys();
 		let mut rt = tokio::runtime::Runtime::new().unwrap();
 		let ipfs_node = rt.block_on(async move {
 			let (ipfs, fut) =
-				::ipfs::UninitializedIpfs::new(options, None).await.start().await.unwrap();
+				::ipfs::UninitializedIpfs::new(options).start().unwrap().await;
 			tokio::task::spawn(fut);
 			ipfs
 		});
