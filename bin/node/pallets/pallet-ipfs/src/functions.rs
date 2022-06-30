@@ -2,7 +2,10 @@ use super::*;
 
 use frame_support::traits::Get;
 use frame_system::pallet_prelude::BlockNumberFor;
-use sp_runtime::{offchain::{http, ipfs, IpfsRequest, IpfsResponse}, SaturatedConversion};
+use sp_runtime::{
+	offchain::{http, ipfs, IpfsRequest, IpfsResponse},
+	SaturatedConversion,
+};
 use sp_std::str;
 
 use serde::{Deserialize, Serialize};
@@ -588,10 +591,8 @@ impl<T: Config> Pallet<T> {
 	}
 
 	pub fn check_for_unpaid_validators() -> Result<(), Error<T>> {
-		// check if there are unpaid validators every X blocks (probably add a bool to the validator? paid: true/false).
-		// if there are, pay them (call submit results).
-		
-
+		// check if there are unpaid validators every X blocks (probably add a bool to the
+		// validator? paid: true/false). if there are, pay them (call submit results).
 
 		let signer = Signer::<T, T::AuthorityId>::all_accounts();
 		if !signer.can_sign() {
@@ -604,11 +605,12 @@ impl<T: Config> Pallet<T> {
 		let validator = validators[0].clone();
 		let payment: BalanceOf<T> = VALIDATOR_DEFAULT_PAYMENT.saturated_into();
 
-		let results = signer.send_signed_transaction(|_account| Call::submit_reward_validator_result {
-			acct_to_pay: acct_to_pay.clone(),
-			validator: validator.clone(),
-			reward: payment,
-		});
+		let results =
+			signer.send_signed_transaction(|_account| Call::submit_reward_validator_result {
+				acct_to_pay: acct_to_pay.clone(),
+				validator: validator.clone(),
+				reward: payment,
+			});
 
 		for (_, res) in &results {
 			match res {
