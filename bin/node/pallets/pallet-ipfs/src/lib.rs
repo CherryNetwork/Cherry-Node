@@ -103,6 +103,16 @@ pub mod pallet {
 
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
 	#[scale_info(skip_type_params(T))]
+	pub struct IpfsNode {
+		pub multiaddress: Vec<OpaqueMultiaddr>,
+		pub public_key: Vec<u8>,
+		pub avail_storage: u64,
+		pub files: u64,
+		pub files_total: u64,
+	}
+
+	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
+	#[scale_info(skip_type_params(T))]
 	pub enum OwnershipLayer {
 		Owner,
 		Editor,
@@ -121,8 +131,7 @@ pub mod pallet {
 
 	#[pallet::storage]
 	#[pallet::getter(fn ipfs_nodes)]
-	pub(super) type IPFSNodes<T: Config> =
-		StorageMap<_, Twox64Concat, Vec<u8>, Vec<OpaqueMultiaddr>, ValueQuery>;
+	pub(super) type IPFSNodes<T: Config> = StorageMap<_, Twox64Concat, Vec<u8>, IpfsNode>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn data_queue)]
@@ -186,6 +195,7 @@ pub mod pallet {
 		RequestTimeout,
 		RequestFailed,
 		FeeOutOfBounds,
+		HttpFetchingError,
 	}
 
 	#[pallet::event]
@@ -250,6 +260,15 @@ pub mod pallet {
 
 				if let Err(e) = Self::ipfs_nodes_housekeeping() {
 					log::error!("IPFS: Encountered an error while obtaining metadata: {:?}", e);
+				}
+			}
+
+			if block_no % 2u32.into() == 0u32.into() {
+				if let Err(e) = Self::get_validator_storage() {
+					log::error!(
+						"IPFS: Encountered an error while requesting data from remote API: {:?}",
+						e
+					);
 				}
 			}
 
@@ -446,10 +465,20 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			public_key: Vec<u8>,
 			multiaddress: Vec<OpaqueMultiaddr>,
+			storage_size: u64,
+			files: u64,
+			files_total: u64,
 		) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
 
-			<IPFSNodes<T>>::insert(public_key.clone(), multiaddress.clone());
+			let ipfs_node: IpfsNode = IpfsNode {
+				multiaddress,
+				public_key: public_key.clone(),
+				avail_storage: storage_size,
+				files,
+				files_total,
+			};
+			<IPFSNodes<T>>::insert(public_key.clone(), ipfs_node.clone());
 
 			Self::deposit_event(Event::PublishedIdentity(signer.clone()));
 

@@ -1,7 +1,28 @@
 use super::*;
-use frame_support::dispatch::DispatchResult;
+
 use frame_system::pallet_prelude::BlockNumberFor;
-use sp_runtime::offchain::{ipfs, IpfsRequest, IpfsResponse};
+use sp_runtime::{
+	offchain::{http, ipfs, IpfsRequest, IpfsResponse},
+	SaturatedConversion,
+};
+use sp_std::str;
+
+use serde::{Deserialize, Serialize};
+
+#[derive(Default, Debug, Serialize, Deserialize)]
+pub struct GetStorageResponseRPC {
+	pub available_storage: u64,
+	pub files: usize,
+	pub total_files: usize,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GetStorageResponse {
+	#[serde(with = "serde_bytes")]
+	jsonrpc: Vec<u8>,
+	result: GetStorageResponseRPC,
+	id: u64,
+}
 
 impl<T: Config> Pallet<T> {
 	pub fn retrieve_bytes(message: Bytes) -> Bytes {
@@ -422,7 +443,7 @@ impl<T: Config> Pallet<T> {
 
 		if !IPFSNodes::<T>::contains_key(public_key.clone()) {
 			if let Some(ipfs_node) = &IPFSNodes::<T>::iter().nth(0) {
-				if let Some(ipfs_maddr) = ipfs_node.1.clone().pop() {
+				if let Some(ipfs_maddr) = ipfs_node.1.multiaddress.clone().pop() {
 					if let IpfsResponse::Success =
 						Self::ipfs_request(IpfsRequest::Connect(ipfs_maddr.clone()), deadline)?
 					{
@@ -433,7 +454,7 @@ impl<T: Config> Pallet<T> {
 							&ipfs_node.0
 						);
 
-						if let Some(next_ipfs_maddr) = ipfs_node.1.clone().pop() {
+						if let Some(next_ipfs_maddr) = ipfs_node.1.multiaddress.clone().pop() {
 							if let IpfsResponse::Success = Self::ipfs_request(
 								IpfsRequest::Connect(next_ipfs_maddr.clone()),
 								deadline,
@@ -458,9 +479,16 @@ impl<T: Config> Pallet<T> {
 				log::error!("No local accounts available. Consider adding one via `author_insertKey` RPC method.");
 			}
 
+			let avail_storage = Self::get_validator_storage().unwrap().result.available_storage;
+			let files = Self::get_validator_storage().unwrap().result.files;
+			let files_total = Self::get_validator_storage().unwrap().result.total_files;
+
 			let results = signer.send_signed_transaction(|_account| Call::submit_ipfs_identity {
 				public_key: public_key.clone(),
 				multiaddress: addrs.clone(),
+				storage_size: avail_storage.clone(),
+				files: files as u64,
+				files_total: files_total as u64,
 			});
 
 			for (_, res) in &results {
@@ -528,5 +556,34 @@ impl<T: Config> Pallet<T> {
 		log::info!("IPFS: currently connencted to {} peers", &peer_count,);
 
 		Ok(())
+	}
+
+	pub fn get_validator_storage() -> Result<GetStorageResponse, Error<T>> {
+		let mut p = Vec::<&[u8]>::new();
+		p.push(
+			"{ \"jsonrpc\":\"2.0\", \"method\":\"ipfs_getStorage\", \"params\":[],\"id\":1 }"
+				.as_bytes(),
+		);
+		let request = http::Request::get("http://localhost:9933")
+			.method(http::Method::Post)
+			.add_header("Content-Type", "application/json")
+			.body(p);
+
+		let timeout = timestamp().add(Duration::from_millis(3000));
+
+		let pending = request.deadline(timeout).send().map_err(|_| http::Error::IoError).unwrap();
+
+		let response = pending
+			.try_wait(timeout)
+			.map_err(|_| http::Error::DeadlineReached)
+			.unwrap()
+			.unwrap();
+		let resp = serde_json::from_str(
+			str::from_utf8(&response.body().collect::<Vec<u8>>())
+				.map_err(|_| <Error<T>>::HttpFetchingError)?,
+		)
+		.unwrap();
+
+		Ok(resp)
 	}
 }
