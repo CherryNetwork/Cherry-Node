@@ -292,9 +292,9 @@ pub mod pallet {
 
 			// 10 blocks for testing. This should probably check every new session.
 			if block_no % 10u32.into() == 0u32.into() {
-				if let Err(e) = Self::check_for_unpaid_validators() {
+				if let Err(e) = Self::pay_current_storage_validators() {
 					log::error!(
-						"IPFS: Encountered an error while checking for unpaid storage validators: {:?}", e
+						"IPFS: Encountered an error while paying the current storage validators: {:?}", e
 					);
 				}
 			}
