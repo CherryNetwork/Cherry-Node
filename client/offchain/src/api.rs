@@ -379,7 +379,7 @@ mod tests {
 		let mut rt = tokio::runtime::Runtime::new().unwrap();
 		let ipfs_node = rt.block_on(async move {
 			let (ipfs, fut) =
-				::ipfs::UninitializedIpfs::new(options).start().unwrap().await;
+				::ipfs::UninitializedIpfs::new(options).start().await;
 			tokio::task::spawn(fut);
 			ipfs
 		});
