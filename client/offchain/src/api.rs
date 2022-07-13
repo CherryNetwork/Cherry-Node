@@ -379,12 +379,12 @@ mod tests {
 		let mut rt = tokio::runtime::Runtime::new().unwrap();
 		let ipfs_node = rt.block_on(async move {
 			let (ipfs, fut) =
-				::ipfs::UninitializedIpfs::new(options).start().await;
+				::ipfs::UninitializedIpfs::new(options).start().await.unwrap();
 			tokio::task::spawn(fut);
 			ipfs
 		});
 
-		AsyncApi::new(ipfs_node, mock, false, shared_client)
+		AsyncApi::new(mock, false, shared_client, ipfs_node)
 	}
 
 	fn offchain_db() -> Db<LocalStorage> {
@@ -393,7 +393,7 @@ mod tests {
 
 	#[test]
 	fn should_get_timestamp() {
-		let mut api = offchain_api().0;
+		let mut api: (_, AsyncApi<::ipfs::TestTypes>) = offchain_api();
 
 		// Get timestamp from std.
 		let now = SystemTime::now();
@@ -405,7 +405,7 @@ mod tests {
 			.unwrap();
 
 		// Get timestamp from offchain api.
-		let timestamp = api.timestamp();
+		let timestamp = api.0.timestamp();
 
 		// Compare.
 		assert!(timestamp.unix_millis() > 0);
@@ -414,16 +414,16 @@ mod tests {
 
 	#[test]
 	fn should_sleep() {
-		let mut api = offchain_api().0;
+		let mut api: (_, AsyncApi<::ipfs::TestTypes>) = offchain_api();
 
 		// Arrange.
-		let now = api.timestamp();
+		let now = api.0.timestamp();
 		let delta = sp_core::offchain::Duration::from_millis(100);
 		let deadline = now.add(delta);
 
 		// Act.
-		api.sleep_until(deadline);
-		let new_now = api.timestamp();
+		api.0.sleep_until(deadline);
+		let new_now = api.0.timestamp();
 
 		// Assert.
 		// The diff could be more than the sleep duration.
