@@ -370,21 +370,20 @@ mod tests {
 		}
 	}
 
-	fn offchain_api() -> (Api, AsyncApi) {
+	fn offchain_api<I: ::ipfs::IpfsTypes>() -> (Api, AsyncApi<I>) {
 		sp_tracing::try_init_simple();
 		let mock = Arc::new(TestNetwork());
 		let shared_client = SharedClient::new();
 
-		let options = ::ipfs::IpfsOptions::default();
-		let mut rt = tokio::runtime::Runtime::new().unwrap();
+		let options = ::ipfs::IpfsOptions::inmemory_with_generated_keys();
+		let rt = tokio::runtime::Runtime::new().unwrap();
 		let ipfs_node = rt.block_on(async move {
-			let (ipfs, fut) =
-				::ipfs::UninitializedIpfs::new(options, None).await.start().await.unwrap();
+			let (ipfs, fut) = ::ipfs::UninitializedIpfs::new(options).start().await.unwrap();
 			tokio::task::spawn(fut);
 			ipfs
 		});
 
-		AsyncApi::new(ipfs_node, mock, false, shared_client)
+		AsyncApi::new(mock, false, shared_client, ipfs_node)
 	}
 
 	fn offchain_db() -> Db<LocalStorage> {
@@ -393,7 +392,7 @@ mod tests {
 
 	#[test]
 	fn should_get_timestamp() {
-		let mut api = offchain_api().0;
+		let mut api: (_, AsyncApi<::ipfs::TestTypes>) = offchain_api();
 
 		// Get timestamp from std.
 		let now = SystemTime::now();
@@ -405,7 +404,7 @@ mod tests {
 			.unwrap();
 
 		// Get timestamp from offchain api.
-		let timestamp = api.timestamp();
+		let timestamp = api.0.timestamp();
 
 		// Compare.
 		assert!(timestamp.unix_millis() > 0);
@@ -414,16 +413,16 @@ mod tests {
 
 	#[test]
 	fn should_sleep() {
-		let mut api = offchain_api().0;
+		let mut api: (_, AsyncApi<::ipfs::TestTypes>) = offchain_api();
 
 		// Arrange.
-		let now = api.timestamp();
+		let now = api.0.timestamp();
 		let delta = sp_core::offchain::Duration::from_millis(100);
 		let deadline = now.add(delta);
 
 		// Act.
-		api.sleep_until(deadline);
-		let new_now = api.timestamp();
+		api.0.sleep_until(deadline);
+		let new_now = api.0.timestamp();
 
 		// Assert.
 		// The diff could be more than the sleep duration.
@@ -499,8 +498,8 @@ mod tests {
 	#[test]
 	fn should_get_random_seed() {
 		// given
-		let mut api = offchain_api().0;
-		let seed = api.random_seed();
+		let mut api: (_, AsyncApi<::ipfs::TestTypes>) = offchain_api();
+		let seed = api.0.random_seed();
 		// then
 		assert_ne!(seed, [0; 32]);
 	}

@@ -85,7 +85,8 @@ async fn run_background_task_blocking(duration: Duration, _keep_alive: impl Any)
 }
 
 fn new_task_manager(tokio_handle: tokio::runtime::Handle) -> TaskManager {
-	TaskManager::new(tokio_handle, None).unwrap()
+	let runtime = tokio::runtime::Runtime::new().unwrap();
+	TaskManager::new(tokio_handle, runtime, None).unwrap()
 }
 
 #[test]

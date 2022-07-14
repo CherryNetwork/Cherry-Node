@@ -147,14 +147,14 @@ impl Response {
 #[cfg(test)]
 mod tests {
 	use super::*;
-	use sp_core::offchain::{testing, OffchainExt};
+	use sp_core::offchain::{testing, OffchainDbExt};
 	use sp_io::TestExternalities;
 
 	#[test]
 	fn basic_metadata_request_and_response() {
 		let (offchain, _state) = testing::TestOffchainExt::new();
 		let mut t = TestExternalities::default();
-		t.register_extension(OffchainExt::new(offchain));
+		t.register_extension(OffchainDbExt::new(offchain));
 
 		t.execute_with(|| {
 			let identity_request = PendingRequest::new(IpfsRequest::Identity).unwrap();

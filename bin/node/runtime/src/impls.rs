@@ -37,7 +37,7 @@ mod multiplier_tests {
 	};
 
 	use crate::{
-		constants::{currency::*, time::*},
+		constants::{currency::*, time_dev::*},
 		AdjustmentVariable, MinimumMultiplier, Runtime, RuntimeBlockWeights as BlockWeights,
 		System, TargetBlockFullness, TransactionPayment,
 	};

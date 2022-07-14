@@ -24,7 +24,7 @@ use frame_support::{
 };
 use node_primitives::Balance;
 use node_runtime::{
-	constants::{currency::*, time::SLOT_DURATION},
+	constants::{currency::*, time_dev::SLOT_DURATION},
 	Balances, Call, CheckedExtrinsic, Multiplier, Runtime, TransactionByteFee, TransactionPayment,
 };
 use node_testing::keyring::*;

@@ -28,7 +28,7 @@ use sp_runtime::{
 
 use node_primitives::{Balance, Hash};
 use node_runtime::{
-	constants::{currency::*, time::SLOT_DURATION},
+	constants::{currency::*, time_dev::SLOT_DURATION},
 	Balances, Block, Call, CheckedExtrinsic, Event, Header, Runtime, System, TransactionPayment,
 	UncheckedExtrinsic,
 };

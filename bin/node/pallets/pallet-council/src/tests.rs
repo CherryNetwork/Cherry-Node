@@ -524,7 +524,7 @@ fn motions_ignoring_bad_index_collective_vote_works() {
 		System::set_block_number(3);
 		let proposal = make_proposal(42);
 		let proposal_len: u32 = proposal.using_encoded(|p| p.len() as u32);
-		let hash: H256 = BlakeTwo256::hash_of(&proposal);
+		let _hash: H256 = BlakeTwo256::hash_of(&proposal);
 		assert_ok!(pallet_council::Pallet::<Test>::propose(
 			<Test as pallet::Config>::Origin::signed(1),
 			3,
