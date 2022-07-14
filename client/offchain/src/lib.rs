@@ -323,7 +323,7 @@ mod tests {
 
 		let ipfs_rt = tokio::runtime::Runtime::new().unwrap();
 
-      let runtime_m = Arc::new(Mutex::new(ipfs_rt));
+		let runtime_m = Arc::new(Mutex::new(ipfs_rt));
 
 		// when
 		let offchain: OffchainWorkers<_, _> = OffchainWorkers::new(client, runtime_m);

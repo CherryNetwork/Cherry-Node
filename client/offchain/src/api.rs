@@ -378,8 +378,7 @@ mod tests {
 		let options = ::ipfs::IpfsOptions::inmemory_with_generated_keys();
 		let rt = tokio::runtime::Runtime::new().unwrap();
 		let ipfs_node = rt.block_on(async move {
-			let (ipfs, fut) =
-				::ipfs::UninitializedIpfs::new(options).start().await.unwrap();
+			let (ipfs, fut) = ::ipfs::UninitializedIpfs::new(options).start().await.unwrap();
 			tokio::task::spawn(fut);
 			ipfs
 		});
