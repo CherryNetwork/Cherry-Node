@@ -321,10 +321,12 @@ mod tests {
 		let network = Arc::new(TestNetwork());
 		let header = client.header(&BlockId::number(0)).unwrap().unwrap();
 
-		let mut ipfs_rt = tokio::runtime::Runtime::new().unwrap();
+		let ipfs_rt = tokio::runtime::Runtime::new().unwrap();
+
+      let runtime_m = Arc::new(Mutex::new(ipfs_rt));
 
 		// when
-		let offchain: OffchainWorkers<_, _> = OffchainWorkers::new(client, &mut ipfs_rt);
+		let offchain: OffchainWorkers<_, _> = OffchainWorkers::new(client, runtime_m);
 		futures::executor::block_on(offchain.on_block_imported(&header, network, false));
 
 		// then

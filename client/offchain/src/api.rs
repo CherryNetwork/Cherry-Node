@@ -376,7 +376,7 @@ mod tests {
 		let shared_client = SharedClient::new();
 
 		let options = ::ipfs::IpfsOptions::inmemory_with_generated_keys();
-		let mut rt = tokio::runtime::Runtime::new().unwrap();
+		let rt = tokio::runtime::Runtime::new().unwrap();
 		let ipfs_node = rt.block_on(async move {
 			let (ipfs, fut) =
 				::ipfs::UninitializedIpfs::new(options).start().await.unwrap();
@@ -499,8 +499,8 @@ mod tests {
 	#[test]
 	fn should_get_random_seed() {
 		// given
-		let mut api = offchain_api().0;
-		let seed = api.random_seed();
+		let mut api: (_, AsyncApi<::ipfs::TestTypes>) = offchain_api();
+		let seed = api.0.random_seed();
 		// then
 		assert_ne!(seed, [0; 32]);
 	}
