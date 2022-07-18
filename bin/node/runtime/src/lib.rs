@@ -467,18 +467,20 @@ impl_opaque_keys! {
 
 parameter_types! {
 	pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(17);
+	pub const PeriodSession: u32 = 1 * MINUTES;
+	pub const Offset: u32 = 0;
 }
 
 impl pallet_session::Config for Runtime {
 	type Event = Event;
 	type ValidatorId = <Self as frame_system::Config>::AccountId;
-	type ValidatorIdOf = pallet_staking::StashOf<Self>;
-	type ShouldEndSession = Babe;
-	type NextSessionRotation = Babe;
-	type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
+	type ValidatorIdOf = pallet_ipfs::ValidatorOf<Self>;
+	type ShouldEndSession = pallet_session::PeriodicSessions<PeriodSession, Offset>;
+	type NextSessionRotation = pallet_session::PeriodicSessions<PeriodSession, Offset>;
+	type SessionManager = Ipfs;
 	type SessionHandler = <SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
 	type Keys = SessionKeys;
-	type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
+	type DisabledValidatorsThreshold = ();
 	type WeightInfo = pallet_session::weights::SubstrateWeight<Runtime>;
 }
 
