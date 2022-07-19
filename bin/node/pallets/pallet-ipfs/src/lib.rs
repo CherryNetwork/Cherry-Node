@@ -90,8 +90,9 @@ pub mod pallet {
 	use frame_support::{
 		dispatch::DispatchResult,
 		ensure,
-		pallet_prelude::{ValueQuery, *},
+		pallet_prelude::{InvalidTransaction, ValueQuery, *},
 		traits::Currency,
+		unsigned::{TransactionSource, TransactionValidity, ValidateUnsigned},
 	};
 	use frame_system::{
 		offchain::{AppCrypto, CreateSignedTransaction},
@@ -215,6 +216,22 @@ pub mod pallet {
 		type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
 
 		type WeightInfo: WeightInfo;
+	}
+
+	#[pallet::validate_unsigned]
+	impl<T: Config> ValidateUnsigned for Pallet<T> {
+		type Call = Call<T>;
+
+		/// Validate unsigned call to this module.
+		fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
+			// if let Call::submit_rpc_ready { .. } = call {
+			// 	Self::validate_transaction_parameters()
+			// } else if let Call::submit_ipfs_identity { .. } = call {
+			// 	Self::validate_transaction_parameters()
+			// } else {
+			InvalidTransaction::Call.into()
+			// }
+		}
 	}
 
 	#[pallet::error]
