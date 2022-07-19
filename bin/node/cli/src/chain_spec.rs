@@ -25,7 +25,7 @@ use node_runtime::{
 	BalancesConfig, Block, CouncilConfig, DemocracyConfig, ElectionsConfig, GrandpaConfig,
 	ImOnlineConfig, IndicesConfig, IpfsConfig, SessionConfig, SessionKeys, SocietyConfig,
 	StakerStatus, StakingConfig, SudoConfig, SystemConfig, TechnicalCommitteeConfig,
-	MAX_NOMINATIONS,
+	MAX_NOMINATIONS, opaque,
 };
 use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
 use sc_chain_spec::ChainSpecExtension;
@@ -74,8 +74,8 @@ fn session_keys(
 	babe: BabeId,
 	im_online: ImOnlineId,
 	authority_discovery: AuthorityDiscoveryId,
-) -> SessionKeys {
-	SessionKeys { grandpa, babe, im_online, authority_discovery }
+) -> opaque::SessionKeys {
+	opaque::SessionKeys { grandpa, babe, im_online, authority_discovery }
 }
 
 fn staging_testnet_config_genesis() -> GenesisConfig {

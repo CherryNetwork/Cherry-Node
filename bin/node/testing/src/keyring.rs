@@ -20,9 +20,10 @@
 
 use codec::Encode;
 use node_primitives::{AccountId, Balance, Index};
-use node_runtime::{CheckedExtrinsic, SessionKeys, SignedExtra, UncheckedExtrinsic};
+use node_runtime::{CheckedExtrinsic, SessionKeys, SignedExtra, UncheckedExtrinsic, opaque};
 use sp_keyring::{AccountKeyring, Ed25519Keyring, Sr25519Keyring};
 use sp_runtime::generic::Era;
+
 
 /// Alice's account id.
 pub fn alice() -> AccountId {
@@ -58,8 +59,8 @@ pub fn ferdie() -> AccountId {
 pub fn to_session_keys(
 	ed25519_keyring: &Ed25519Keyring,
 	sr25519_keyring: &Sr25519Keyring,
-) -> SessionKeys {
-	SessionKeys {
+) -> opaque::SessionKeys {
+	opaque::SessionKeys {
 		grandpa: ed25519_keyring.to_owned().public().into(),
 		babe: sr25519_keyring.to_owned().public().into(),
 		im_online: sr25519_keyring.to_owned().public().into(),
