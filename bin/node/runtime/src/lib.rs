@@ -90,6 +90,26 @@ use impls::Author;
 /// Constant values used within the runtime.
 pub mod constants;
 
+pub mod opaque {
+	use super::*;
+
+	pub use sp_runtime::OpaqueExtrinsic as UncheckedExtrinsic;
+
+	pub type Header = generic::Header<BlockNumber, BlakeTwo256>;
+
+	pub type Block = generic::Block<Header, UncheckedExtrinsic>;
+	pub type BlockId = generic::BlockId<Block>;
+
+	impl_opaque_keys! {
+		pub struct SessionKeys {
+			pub babe: Babe,
+			pub grandpa: Grandpa,
+			pub im_online: ImOnline,
+			pub authority_discovery: AuthorityDiscovery,
+		}
+	}
+}
+
 use constants::currency::*;
 
 #[cfg(not(feature = "dev"))]
@@ -466,20 +486,21 @@ impl_opaque_keys! {
 }
 
 parameter_types! {
-	pub const DisabledValidatorsThreshold: Perbill = Perbill::from_percent(17);
+	pub const PeriodSession: u32 = 1 * MINUTES;
+	pub const Offset: u32 = 0;
 }
 
 impl pallet_session::Config for Runtime {
-	type Event = Event;
 	type ValidatorId = <Self as frame_system::Config>::AccountId;
-	type ValidatorIdOf = pallet_staking::StashOf<Self>;
-	type ShouldEndSession = Babe;
-	type NextSessionRotation = Babe;
-	type SessionManager = pallet_session::historical::NoteHistoricalRoot<Self, Staking>;
-	type SessionHandler = <SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
-	type Keys = SessionKeys;
-	type DisabledValidatorsThreshold = DisabledValidatorsThreshold;
+	type ValidatorIdOf = pallet_ipfs::ValidatorOf<Self>;
+	type ShouldEndSession = pallet_session::PeriodicSessions<PeriodSession, Offset>;
+	type NextSessionRotation = pallet_session::PeriodicSessions<PeriodSession, Offset>;
+	type SessionManager = Ipfs;
+	type SessionHandler = <opaque::SessionKeys as OpaqueKeys>::KeyTypeIdProviders;
+	type Keys = opaque::SessionKeys;
 	type WeightInfo = pallet_session::weights::SubstrateWeight<Runtime>;
+	type DisabledValidatorsThreshold = ();
+	type Event = Event;
 }
 
 impl pallet_session::historical::Config for Runtime {
@@ -1250,6 +1271,7 @@ impl pallet_transaction_storage::Config for Runtime {
 
 parameter_types! {
 	pub const MaxIpfsOwned: u32 = 5;
+	pub const MaxDeadSessions: u32 = 10;
 	pub const DefaultAssetLifetime: BlockNumber = DEFAULT_ASSET_LIFETIME;
 }
 
@@ -1259,8 +1281,10 @@ impl pallet_ipfs::Config for Runtime {
 	type AuthorityId = pallet_ipfs::crypto::AuthorityId;
 	type Call = Call;
 	type MaxIpfsOwned = MaxIpfsOwned;
+	type MaxDeadSessions = MaxDeadSessions;
 	type DefaultAssetLifetime = DefaultAssetLifetime;
 	type WeightInfo = pallet_ipfs::weights::SubstrateWeight<Runtime>;
+	type AddRemoveOrigin = EnsureRoot<AccountId>;
 }
 
 construct_runtime!(
@@ -1311,7 +1335,7 @@ construct_runtime!(
 		TransactionStorage: pallet_transaction_storage::{Pallet, Call, Storage, Inherent, Config<T>, Event<T>},
 		BagsList: pallet_bags_list::{Pallet, Call, Storage, Event<T>},
 
-		Ipfs: pallet_ipfs::{Pallet, Call, Storage, Event<T>},
+		Ipfs: pallet_ipfs::{Pallet, Call, Storage, Event<T>, Config<T>, ValidateUnsigned},
 	}
 );
 

@@ -1,7 +1,8 @@
 use super::*;
-use frame_support::dispatch::DispatchResult;
+use frame_support::{dispatch::DispatchResult, ensure, traits::Get};
 use frame_system::pallet_prelude::BlockNumberFor;
 use sp_runtime::offchain::{ipfs, IpfsRequest, IpfsResponse};
+use sp_std::collections::btree_set::BTreeSet;
 
 impl<T: Config> Pallet<T> {
 	pub fn retrieve_bytes(message: Bytes) -> Bytes {
@@ -13,6 +14,103 @@ impl<T: Config> Pallet<T> {
 		} else {
 			Bytes(Vec::new())
 		}
+	}
+
+	pub fn initialize_validators(validators: &[T::AccountId]) {
+		assert!(validators.len() > 1, "At least 2 validators should be initialized.");
+		assert!(<Validators<T>>::get().is_empty(), "Validators are already initialized.");
+		<Validators<T>>::put(validators);
+		<ApprovedValidators<T>>::put(validators);
+	}
+
+	pub fn approve_validator(validator_id: T::AccountId) -> DispatchResult {
+		let approved_set: BTreeSet<_> = <ApprovedValidators<T>>::get().into_iter().collect();
+
+		ensure!(!approved_set.contains(&validator_id), Error::<T>::Duplicate);
+		<ApprovedValidators<T>>::mutate(|v| v.push(validator_id.clone()));
+		Ok(())
+	}
+
+	pub fn do_add_validator(validator_id: T::AccountId) -> DispatchResult {
+		let validator_set: BTreeSet<_> = <Validators<T>>::get().into_iter().collect();
+		ensure!(!validator_set.contains(&validator_id), Error::<T>::Duplicate);
+		<Validators<T>>::mutate(|v| v.push(validator_id.clone()));
+		UnproductiveSessions::<T>::mutate(validator_id.clone(), |v| {
+			*v = 0;
+		});
+
+		Self::deposit_event(Event::ValidatorAdditionInitiated(validator_id.clone()));
+		log::debug!(target: LOG_TARGET, "Validator addition initiated.");
+
+		Ok(())
+	}
+
+	pub fn add_approve_validator(acct: &T::AccountId) {
+		if !Self::approved_validators().contains(acct) {
+			ApprovedValidators::<T>::mutate(|approve_validators| {
+				approve_validators.push(acct.clone())
+			});
+		} else {
+			log::info!("The AccountId {:?} is already an approved Validator", acct)
+		}
+	}
+
+	pub fn mark_for_removal(validator_id: T::AccountId) {
+		<OfflineValidators<T>>::mutate(|v| v.push(validator_id));
+		log::debug!(target: LOG_TARGET, "Offline validator marked for auto removal.");
+	}
+
+	pub fn remove_validator(acct: &T::AccountId) {
+		if Self::validators().contains(acct) {
+			Validators::<T>::mutate(|validators| validators.retain(|who| who != acct))
+		} else {
+			log::info!("The AccountId {:?} is not in the list of Validators", acct)
+		}
+	}
+
+	pub fn remove_approve_validator(acct: &T::AccountId) {
+		if Self::approved_validators().contains(acct) {
+			ApprovedValidators::<T>::mutate(|approved_validators| {
+				approved_validators.retain(|who| who != acct)
+			})
+		} else {
+			log::info!("The AccountId {:?} is not in the list of approved Validators", acct)
+		}
+	}
+
+	pub fn mark_offline_validator(acct: &T::AccountId) {
+		OfflineValidators::<T>::mutate(|offline_validators| offline_validators.push(acct.clone()));
+		log::info!("The AccountId {:?} was offline and is marked to auto-remove", acct)
+	}
+
+	pub fn mark_dead_validators(era_index: EraIndex) {
+		let participating_validators = SessionParticipation::<T>::get(era_index.clone());
+		for acct in Validators::<T>::get() {
+			if !participating_validators.contains(&acct) {
+				if UnproductiveSessions::<T>::get(acct.clone()) <= T::MaxDeadSessions::get() {
+					UnproductiveSessions::<T>::mutate(acct.clone(), |v| {
+						*v += 1;
+					});
+				} else {
+					let mut validators = Validators::<T>::get();
+
+					validators.retain(|v| *v != acct.clone());
+					Validators::<T>::put(validators);
+
+					log::info!("Validator removal just happened.");
+				}
+			}
+		}
+	}
+
+	pub fn remove_offline_validators() {
+		let bad_validators = OfflineValidators::<T>::get();
+		Validators::<T>::mutate(|validators| {
+			validators.retain(|good_validators| !bad_validators.contains(good_validators))
+		});
+		log::info!("removing the offline validators: {:?}", bad_validators);
+
+		<OfflineValidators<T>>::put(Vec::<T::AccountId>::new());
 	}
 
 	pub fn determine_account_ownership_layer(

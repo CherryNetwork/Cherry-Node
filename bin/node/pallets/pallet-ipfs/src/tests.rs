@@ -332,9 +332,48 @@ fn cherry_test_created_at_deleting_at() {
 fn cherry_initial_state() {
 	new_test_ext().execute_with(|| {
 		let data_queue = crate::DataQueue::<Test>::get();
+		let validators = crate::Validators::<Test>::get();
+		let offline_validators = crate::OfflineValidators::<Test>::get();
+		let approved_validators = crate::ApprovedValidators::<Test>::get();
+		let validators_init_len = validators.len();
+		let offline_validators_init_len = offline_validators.len();
+		let approved_validators_init_len = approved_validators.len();
+		let expected = 0;
 		let len = data_queue.len();
 
-		assert_eq!(len, 0);
+		assert_eq!(len, expected);
+		assert_eq!(validators_init_len, expected);
+		assert_eq!(offline_validators_init_len, expected);
+		assert_eq!(approved_validators_init_len, expected);
+	});
+}
+
+#[test]
+fn cherry_remove_validator() {
+	new_test_ext().execute_with(|| {
+		let (_, r) = sp_core::sr25519::Pair::generate();
+		let public = sp_core::sr25519::Public(r);
+		Pallet::<Test>::add_validator(&public);
+		Pallet::<Test>::remove_validator(&public);
+		Pallet::<Test>::remove_validator(&public);
+		Pallet::<Test>::remove_validator(&public);
+		let result = Pallet::<Test>::validators().len();
+		let expected = 0usize;
+		assert_eq!(result, expected);
+	});
+}
+
+#[test]
+fn cherry_add_validator() {
+	new_test_ext().execute_with(|| {
+		let (_, r) = sp_core::sr25519::Pair::generate();
+		let public = sp_core::sr25519::Public(r);
+		Pallet::<Test>::add_validator(&public);
+		Pallet::<Test>::add_validator(&public);
+		Pallet::<Test>::add_validator(&public);
+		let result = Pallet::<Test>::validators().len();
+		let expected = 1usize;
+		assert_eq!(result, expected);
 	});
 }
 
@@ -634,8 +673,7 @@ fn cherry_delete_ipfs_asset_ipfs_not_exist() {
 #[test]
 fn cherry_ipfs_can_submit_identity() {
 	let (p, _) = sp_core::sr25519::Pair::generate();
-	let (p_n, _) = sp_core::sr25519::Pair::generate();
-	let (offchain, state) = testing::TestOffchainExt::new();
+	let (offchain, _) = testing::TestOffchainExt::new();
 	let (pool, _) = testing::TestTransactionPoolExt::new();
 	const PHRASE: &str =
 		"news slush supreme milk chapter athlete soap sausage put clutch what kitten";
@@ -661,8 +699,6 @@ fn cherry_ipfs_can_submit_identity() {
 			.as_bytes()
 			.to_vec();
 	let cid_vec = "QmPZv7P8nQUSh2CpqTvUeYemFyjvMjgWEs8H1Tm8b3zAm9".as_bytes().to_vec();
-
-	let size = 1024;
 
 	let multiaddr = vec![multiaddr_ipv4_vec.clone(), multiaddr_ipv6_vec.clone()]
 		.into_iter()

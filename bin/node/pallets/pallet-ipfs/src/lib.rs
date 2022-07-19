@@ -10,7 +10,10 @@ mod tests;
 pub mod weights;
 
 use codec::{Decode, Encode};
-use frame_support::RuntimeDebug;
+use frame_support::{
+	traits::{EstimateNextSessionRotation, Get, ValidatorSet, ValidatorSetWithIdentification},
+	RuntimeDebug, LOG_TARGET,
+};
 use frame_system::{
 	self,
 	offchain::{SendSignedTransaction, Signer},
@@ -22,6 +25,8 @@ use sp_core::{
 	Bytes,
 };
 use sp_io::offchain::timestamp;
+use sp_runtime::traits::{Convert, Zero};
+use sp_staking::offence::{Offence, OffenceError, ReportOffence};
 use sp_std::{convert::TryInto, vec::Vec};
 
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"chfs");
@@ -67,14 +72,27 @@ pub enum DataCommand<AccountId> {
 	RemoveBlock(OpaqueMultiaddr, Vec<u8>, AccountId),
 }
 
+pub type EraIndex = u32;
+pub type RewardPoint = u32;
+
+/// Reward points for storage providers of some specific assest id during an era.
+#[derive(PartialEq, Encode, Decode, Default, RuntimeDebug, TypeInfo)]
+pub struct EraRewardPoints<AccountId> {
+	/// the total number of points
+	total: RewardPoint,
+	/// the reward points for individual validators, sum(i.rewardPoint in individual) = total
+	individual: sp_std::collections::btree_map::BTreeMap<AccountId, RewardPoint>,
+}
+
 #[frame_support::pallet]
 pub mod pallet {
 	use super::*;
 	use frame_support::{
 		dispatch::DispatchResult,
 		ensure,
-		pallet_prelude::{ValueQuery, *},
+		pallet_prelude::{InvalidTransaction, ValueQuery, *},
 		traits::Currency,
+		unsigned::{TransactionSource, TransactionValidity, ValidateUnsigned},
 	};
 	use frame_system::{
 		offchain::{AppCrypto, CreateSignedTransaction},
@@ -125,12 +143,55 @@ pub mod pallet {
 		StorageMap<_, Twox64Concat, Vec<u8>, Vec<OpaqueMultiaddr>, ValueQuery>;
 
 	#[pallet::storage]
+	#[pallet::getter(fn current_session)]
+	pub(super) type CurrentEra<T: Config> = StorageValue<_, EraIndex>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn active_session)]
+	pub(super) type ActiveEra<T: Config> = StorageValue<_, EraIndex>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn era_reward_points)]
+	pub(super) type ErasRewardPoints<T: Config> = StorageDoubleMap<
+		_,
+		Twox64Concat,
+		EraIndex,
+		Twox64Concat,
+		Vec<u8>,
+		EraRewardPoints<T::AccountId>,
+	>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn validators)]
+	pub(super) type Validators<T: Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn approved_validators)]
+	pub(super) type ApprovedValidators<T: Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn offline_validators)]
+	pub type OfflineValidators<T: Config> = StorageValue<_, Vec<T::AccountId>, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn total_session_rewards)]
+	pub type SessionParticipation<T: Config> =
+		StorageMap<_, Blake2_128Concat, EraIndex, Vec<T::AccountId>, ValueQuery>;
+
+	#[pallet::storage]
+	#[pallet::getter(fn unproductive_sessions)]
+	pub type UnproductiveSessions<T: Config> =
+		StorageMap<_, Blake2_128Concat, T::AccountId, u32, ValueQuery>;
+
+	#[pallet::storage]
 	#[pallet::getter(fn data_queue)]
 	pub(super) type DataQueue<T: Config> =
 		StorageValue<_, Vec<DataCommand<T::AccountId>>, ValueQuery>;
 
 	#[pallet::config]
-	pub trait Config: CreateSignedTransaction<Call<Self>> + frame_system::Config {
+	pub trait Config:
+		CreateSignedTransaction<Call<Self>> + frame_system::Config + pallet_session::Config
+	{
 		/// Because this pallet emits events, it depends on the runtime's definition of an event.
 		type Event: From<Event<Self>> + IsType<<Self as frame_system::Config>::Event>;
 
@@ -141,19 +202,41 @@ pub mod pallet {
 		#[pallet::constant]
 		type MaxIpfsOwned: Get<u32>;
 
+		#[pallet::constant]
+		type MaxDeadSessions: Get<u32>;
+
 		/// Default time that an IPFS asset will be stored online.
 		#[pallet::constant]
 		type DefaultAssetLifetime: Get<Self::BlockNumber>;
 
 		type Call: From<Call<Self>>;
 
+		type AddRemoveOrigin: EnsureOrigin<Self::Origin>;
+
 		type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
 
 		type WeightInfo: WeightInfo;
 	}
 
+	#[pallet::validate_unsigned]
+	impl<T: Config> ValidateUnsigned for Pallet<T> {
+		type Call = Call<T>;
+
+		/// Validate unsigned call to this module.
+		fn validate_unsigned(_source: TransactionSource, call: &Self::Call) -> TransactionValidity {
+			// if let Call::submit_rpc_ready { .. } = call {
+			// 	Self::validate_transaction_parameters()
+			// } else if let Call::submit_ipfs_identity { .. } = call {
+			// 	Self::validate_transaction_parameters()
+			// } else {
+			InvalidTransaction::Call.into()
+			// }
+		}
+	}
+
 	#[pallet::error]
 	pub enum Error<T> {
+		Duplicate,
 		/// Handles arithmetic overflow when incrementing the IPFS counter.
 		IpfsCntOverflow,
 		/// An account cannot own more IPFS Assets than `MaxIPFSCount`.
@@ -192,6 +275,7 @@ pub mod pallet {
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
 	pub enum Event<T: Config> {
 		/// A request to add bytes was queued
+		ValidatorAdditionInitiated(T::AccountId),
 		QueuedDataToAdd(T::AccountId),
 		QueuedDataToCat(T::AccountId),
 		PublishedIdentity(T::AccountId),
@@ -258,10 +342,38 @@ pub mod pallet {
 		}
 	}
 
+	#[pallet::genesis_config]
+	pub struct GenesisConfig<T: Config> {
+		pub initial_validators: Vec<T::AccountId>,
+	}
+
+	#[cfg(feature = "std")]
+	impl<T: Config> Default for GenesisConfig<T> {
+		fn default() -> Self {
+			Self { initial_validators: Default::default() }
+		}
+	}
+
+	#[pallet::genesis_build]
+	impl<T: Config> GenesisBuild<T> for GenesisConfig<T> {
+		fn build(&self) {
+			Pallet::<T>::initialize_validators(&self.initial_validators);
+		}
+	}
+
 	#[pallet::call]
 	impl<T: Config> Pallet<T> {
+		#[pallet::weight(100)]
+		pub fn add_validator(origin: OriginFor<T>, validator_id: T::AccountId) -> DispatchResult {
+			T::AddRemoveOrigin::ensure_origin(origin)?;
+			Self::do_add_validator(validator_id.clone())?;
+			Self::approve_validator(validator_id)?;
+
+			Ok(())
+		}
+
 		/// Create a new unique IPFS.
-		#[pallet::weight(T::WeightInfo::create_ipfs_asset())]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_ipfs_asset())]
 		pub fn create_ipfs_asset(
 			origin: OriginFor<T>,
 			addr: Vec<u8>,
@@ -304,7 +416,7 @@ pub mod pallet {
 		}
 
 		/// Create a new unique IPFS.
-		#[pallet::weight(T::WeightInfo::create_ipfs_asset())]
+		#[pallet::weight(<T as pallet::Config>::WeightInfo::create_ipfs_asset())]
 		pub fn create_ipfs_asset_raw(
 			origin: OriginFor<T>,
 			addr: Vec<u8>,
@@ -673,5 +785,100 @@ pub mod pallet {
 
 			Ok(())
 		}
+	}
+}
+
+impl<T: Config> pallet_session::SessionManager<T::AccountId> for Pallet<T> {
+	// Plan a new session and provide new validator set.
+	fn new_session(new_index: u32) -> Option<Vec<T::AccountId>> {
+		// TODO(elsuizo: 2022-05-03): this could be the next step
+		// Remove any offline validators. This will only work when the runtime
+		// also has the im-online pallet.
+		// Self::remove_offline_validators();
+
+		log::info!("Starting session with index: {:?}", new_index);
+
+		CurrentEra::<T>::mutate(|s| *s = Some(new_index));
+		Self::remove_offline_validators();
+
+		// TODO(charmitro <2022-05-19 Thu>): Select new candidates;
+		log::debug!(target: LOG_TARGET, "New session called; updated validator set provided.");
+
+		Some(Self::validators())
+	}
+
+	fn end_session(end_index: u32) {
+		log::info!("Ending session with index: {:?}", end_index);
+		// TODO(charmitro: <2022-05-19 Thu>): Self::mark_dead_validators();
+	}
+
+	fn start_session(start_index: u32) {
+		log::info!("Starting session with index: {:?}", start_index);
+		ActiveEra::<T>::mutate(|s| *s = Some(start_index));
+	}
+}
+
+impl<T: Config> EstimateNextSessionRotation<T::BlockNumber> for Pallet<T> {
+	fn average_session_length() -> T::BlockNumber {
+		Zero::zero()
+	}
+
+	fn estimate_current_session_progress(
+		_now: T::BlockNumber,
+	) -> (Option<sp_runtime::Permill>, frame_support::dispatch::Weight) {
+		(None, Zero::zero())
+	}
+
+	fn estimate_next_session_rotation(
+		_now: T::BlockNumber,
+	) -> (Option<T::BlockNumber>, frame_support::dispatch::Weight) {
+		(None, Zero::zero())
+	}
+}
+
+pub struct ValidatorOf<T>(sp_std::marker::PhantomData<T>);
+
+impl<T: Config> Convert<T::ValidatorId, Option<T::ValidatorId>> for ValidatorOf<T> {
+	fn convert(account: T::ValidatorId) -> Option<T::ValidatorId> {
+		Some(account)
+	}
+}
+
+impl<T: Config> ValidatorSet<T::AccountId> for Pallet<T> {
+	type ValidatorId = T::ValidatorId;
+	type ValidatorIdOf = T::ValidatorIdOf;
+
+	fn session_index() -> sp_staking::SessionIndex {
+		pallet_session::Pallet::<T>::current_index()
+	}
+
+	fn validators() -> Vec<Self::ValidatorId> {
+		pallet_session::Pallet::<T>::validators()
+	}
+}
+
+impl<T: Config> ValidatorSetWithIdentification<T::AccountId> for Pallet<T> {
+	type Identification = T::ValidatorId;
+	type IdentificationOf = ValidatorOf<T>;
+}
+
+impl<T: Config, O: Offence<(T::AccountId, T::AccountId)>>
+	ReportOffence<T::AccountId, (T::AccountId, T::AccountId), O> for Pallet<T>
+{
+	fn report_offence(_reporters: Vec<T::AccountId>, offence: O) -> Result<(), OffenceError> {
+		let offenders = offence.offenders();
+
+		for (v, _) in offenders.into_iter() {
+			Self::mark_for_removal(v);
+		}
+
+		Ok(())
+	}
+
+	fn is_known_offence(
+		_offenders: &[(T::AccountId, T::AccountId)],
+		_time_slot: &O::TimeSlot,
+	) -> bool {
+		false
 	}
 }

@@ -5827,6 +5827,7 @@ dependencies = [
  "log 0.4.14",
  "pallet-assets",
  "pallet-balances",
+ "pallet-session",
  "parity-scale-codec",
  "scale-info",
  "serde",
@@ -5834,6 +5835,7 @@ dependencies = [
  "sp-io",
  "sp-keystore",
  "sp-runtime",
+ "sp-staking",
  "sp-std",
 ]
 
