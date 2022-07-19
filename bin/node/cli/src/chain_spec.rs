@@ -23,8 +23,9 @@ use hex_literal::hex;
 use node_runtime::{
 	constants::currency::*, wasm_binary_unwrap, AssetsConfig, AuthorityDiscoveryConfig, BabeConfig,
 	BalancesConfig, Block, CouncilConfig, DemocracyConfig, ElectionsConfig, GrandpaConfig,
-	ImOnlineConfig, IndicesConfig, SessionConfig, SessionKeys, SocietyConfig, StakerStatus,
-	StakingConfig, SudoConfig, SystemConfig, TechnicalCommitteeConfig, MAX_NOMINATIONS,
+	ImOnlineConfig, IndicesConfig, IpfsConfig, SessionConfig, SessionKeys, SocietyConfig,
+	StakerStatus, StakingConfig, SudoConfig, SystemConfig, TechnicalCommitteeConfig,
+	MAX_NOMINATIONS,
 };
 use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
 use sc_chain_spec::ChainSpecExtension;
@@ -373,6 +374,9 @@ pub fn testnet_genesis(
 		},
 		gilt: Default::default(),
 		transaction_storage: Default::default(),
+		ipfs: IpfsConfig {
+			initial_validators: initial_authorities.iter().map(|x| x.0.clone()).collect::<Vec<_>>(),
+		},
 	}
 }
 
