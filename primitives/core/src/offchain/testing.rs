@@ -215,6 +215,7 @@ impl OffchainState {
 		}
 	}
 
+	#[allow(missing_docs)]
 	pub fn fulfill_ipfs_expected(&mut self, id: u16) {
 		if let Some(mut req) = self.expected_ipfs_requests.pop_back() {
 			let response = req.response.take().expect("Response checked when added.");
@@ -436,6 +437,7 @@ impl offchain::Externalities for TestOffchainExt {
 					}
 					IpfsRequestStatus::Finished(req.response.clone().unwrap())
 				},
+				#[allow(unreachable_patterns)]
 				Some(_) => IpfsRequestStatus::Finished(IpfsResponse::Success),
 				None => IpfsRequestStatus::Invalid,
 			})
