@@ -1,0 +1,58 @@
+[package]
+name = "polkadot-primitives"
+version = "0.9.12"
+authors = ["Parity Technologies <admin@parity.io>"]
+edition = "2018"
+
+[dependencies]
+serde = { version = "1.0.130", optional = true, features = ["derive"] }
+scale-info = { version = "1.0", default-features = false, features = ["bit-vec", "derive"] }
+parity-scale-codec = { version = "2.3.1", default-features = false, features = ["bit-vec", "derive"] }
+primitives = { package = "sp-core", version = "4.0.0-dev" ,path = "../primitives/core", default-features = false }
+inherents = { package = "sp-inherents", version = "4.0.0-dev" ,path = "../primitives/inherents", default-features = false }
+application-crypto = { package = "sp-application-crypto", version = "4.0.0-dev" ,path = "../primitives/application-crypto", default-features = false }
+sp-consensus-slots = { version = "0.10.0-dev" ,path = "../primitives/consensus/slots", default-features = false }
+sp-keystore = { version = "0.10.0-dev" ,path = "../primitives/keystore", optional = true }
+sp-api = { version = "4.0.0-dev" ,path = "../primitives/api", default-features = false }
+sp-version = { version = "4.0.0-dev" ,path = "../primitives/version", default-features = false }
+sp-std = { package = "sp-std", version = "4.0.0-dev" ,path = "../primitives/std", default-features = false }
+sp-io = { version = "4.0.0-dev" ,path = "../primitives/io", default-features = false }
+sp-staking = { version = "4.0.0-dev" ,path = "../primitives/staking", default-features = false }
+sp-arithmetic = { version = "4.0.0-dev" ,path = "../primitives/arithmetic", default-features = false }
+sp-authority-discovery = { version = "4.0.0-dev" ,path = "../primitives/authority-discovery", default-features = false }
+runtime_primitives = { package = "sp-runtime", version = "4.0.0-dev" ,path = "../primitives/runtime", default-features = false }
+polkadot-parachain = { version = "0.9.12" ,path = "../parachain", default-features = false }
+polkadot-core-primitives = { version = "0.9.12" ,path = "../core-primitives", default-features = false }
+trie = { package = "sp-trie", version = "4.0.0-dev" ,path = "../primitives/trie", default-features = false }
+bitvec = { version = "0.20.1", default-features = false, features = ["alloc"] }
+frame-system = { version = "4.0.0-dev" ,path = "../frame/system", default-features = false }
+hex-literal = "0.3.3"
+parity-util-mem = { version = "0.10.0", default-features = false, optional = true }
+
+
+[features]
+default = ["std"]
+std = [
+	"application-crypto/std",
+	"parity-scale-codec/std",
+	"scale-info/std",
+	"primitives/std",
+	"inherents/std",
+	"trie/std",
+	"sp-api/std",
+	"sp-authority-discovery/std",
+	"sp-consensus-slots/std",
+	"sp-keystore",
+	"sp-std/std",
+	"sp-io/std",
+	"sp-version/std",
+	"sp-staking/std",
+	"sp-arithmetic/std",
+	"runtime_primitives/std",
+	"serde",
+	"parity-util-mem",
+	"polkadot-parachain/std",
+	"polkadot-core-primitives/std",
+	"bitvec/std",
+	"frame-system/std",
+]

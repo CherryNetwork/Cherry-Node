@@ -1,0 +1,36 @@
+[package]
+authors = ["Parity Technologies <admin@parity.io>"]
+edition = "2018"
+name = "xcm-executor"
+description = "An abstract and configurable XCM message executor."
+version = "0.9.12"
+
+[dependencies]
+impl-trait-for-tuples = "0.2.0"
+parity-scale-codec = { version = "2.3.1", default-features = false, features = ["derive"] }
+xcm = { path = "..", default-features = false }
+sp-std = { version = "4.0.0-dev", path = "../../primitives/std", default-features = false }
+sp-io = { version = "4.0.0-dev", path = "../../primitives/io", default-features = false }
+sp-arithmetic = { version = "4.0.0-dev", path = "../../primitives/arithmetic", default-features = false }
+sp-core = { version = "4.0.0-dev", path = "../../primitives/core", default-features = false }
+sp-runtime = { version = "4.0.0-dev", path = "../../primitives/runtime", default-features = false }
+frame-support = { version = "4.0.0-dev", path = "../../frame/support", default-features = false }
+log = { version = "0.4.14", default-features = false }
+frame-benchmarking = { version = "4.0.0-dev", path = "../../frame/benchmarking", default-features = false, optional = true }
+
+[features]
+default = ["std"]
+runtime-benchmarks = [
+	"frame-benchmarking",
+]
+std = [
+	"parity-scale-codec/std",
+	"xcm/std",
+	"sp-std/std",
+	"sp-io/std",
+	"sp-arithmetic/std",
+	"sp-core/std",
+	"sp-runtime/std",
+	"frame-support/std",
+	"log/std",
+]

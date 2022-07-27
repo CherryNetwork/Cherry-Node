@@ -210,6 +210,15 @@ members = [
 	"utils/frame/generate-bags/node-runtime",
 	"utils/prometheus",
 	"utils/wasm-builder",
+	"core-primitives",
+	"parachain",
+	"xcm",
+	"xcm/pallet-xcm",
+	"xcm/pallet-xcm-benchmarks",
+	"xcm/procedural",
+	"xcm/xcm-builder",
+	"xcm/xcm-executor",
+	"xcm/xcm-simulator",
 ]
 
 # The list of dependencies below (which can be both direct and indirect dependencies) are crates
