@@ -20,7 +20,7 @@
 
 use grandpa_primitives::AuthorityId as GrandpaId;
 use hex_literal::hex;
-use node_runtime::{
+use cherry_runtime::{
 	constants::currency::*, wasm_binary_unwrap, AssetsConfig, AuthorityDiscoveryConfig, BabeConfig,
 	BalancesConfig, Block, CouncilConfig, ElectionsConfig, GrandpaConfig, ImOnlineConfig,
 	IndicesConfig, SessionConfig, SessionKeys, StakerStatus, StakingConfig, SystemConfig,
@@ -40,7 +40,7 @@ use sp_runtime::{
 };
 
 pub use node_primitives::{AccountId, Balance, Signature};
-pub use node_runtime::GenesisConfig;
+pub use cherry_runtime::GenesisConfig;
 
 type AccountPublic = <Signature as Verify>::Signer;
 
@@ -346,7 +346,7 @@ pub fn testnet_genesis(
 		// sudo: SudoConfig { key: root_key.clone() },
 		babe: BabeConfig {
 			authorities: vec![],
-			epoch_config: Some(node_runtime::BABE_GENESIS_EPOCH_CONFIG),
+			epoch_config: Some(cherry_runtime::BABE_GENESIS_EPOCH_CONFIG),
 		},
 		im_online: ImOnlineConfig { keys: vec![] },
 		authority_discovery: AuthorityDiscoveryConfig { keys: vec![] },

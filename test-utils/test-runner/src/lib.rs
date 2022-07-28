@@ -68,11 +68,11 @@
 //! 	type ExtendHostFunctions = SignatureVerificationOverride;
 //!
 //! 	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
-//! 		node_runtime::api::dispatch(method, data)
+//! 		cherry_runtime::api::dispatch(method, data)
 //! 	}
 //!
 //! 	fn native_version() -> sc_executor::NativeVersion {
-//! 		node_runtime::native_version()
+//! 		cherry_runtime::native_version()
 //! 	}
 //! }
 //!
@@ -84,9 +84,9 @@
 //!     /// Provide an ExecutorDispatch type for the runtime
 //!     type ExecutorDispatch = ExecutorDispatch;
 //!     /// Provide the runtime itself
-//!     type Runtime = node_runtime::Runtime;
+//!     type Runtime = cherry_runtime::Runtime;
 //!     /// A touch of runtime api
-//!     type RuntimeApi = node_runtime::RuntimeApi;
+//!     type RuntimeApi = cherry_runtime::RuntimeApi;
 //!     /// A pinch of SelectChain implementation
 //!     type SelectChain = sc_consensus::LongestChain<TFullBackend<Self::Block>, Self::Block>;
 //!     /// A slice of concrete BlockImport type
@@ -97,7 +97,7 @@
 //! 		Self::SelectChain,
 //!     >;
 //!     /// and a dash of SignedExtensions
-//! 	type SignedExtras = node_runtime::SignedExtra;
+//! 	type SignedExtras = cherry_runtime::SignedExtra;
 //!
 //!     /// Create your signed extras here.
 //! 	fn signed_extras(
@@ -206,7 +206,7 @@
 //! 	};
 //! 	let mut node = Node::<Requirements>::new(config).unwrap();
 //!
-//! 	type Balances = pallet_balances::Pallet<node_runtime::Runtime>;
+//! 	type Balances = pallet_balances::Pallet<cherry_runtime::Runtime>;
 //!
 //! 	let (alice, bob) = (Alice.pair(), Bob.pair());
 //! 	let (alice_account_id, bob_acount_id) = (

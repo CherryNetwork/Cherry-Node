@@ -511,7 +511,7 @@ Altogether this accumulates to the following diff for `node/cli/src/service.rs`.
  use sc_consensus_babe;
 -use grandpa::{self, FinalityProofProvider as GrandpaFinalityProofProvider};
  use node_primitives::Block;
- use node_runtime::RuntimeApi;
+ use cherry_runtime::RuntimeApi;
  use sc_service::{
 -	config::{Role, Configuration}, error::{Error as ServiceError},
 +	config::{Configuration}, error::{Error as ServiceError},
@@ -918,8 +918,8 @@ Altogether this accumulates to the following diff for `node/cli/src/service.rs`.
  	use sc_consensus_epochs::descendent_query;
  	use sp_consensus::{
 @@ -469,20 +475,25 @@ mod tests {
- 	use node_runtime::{BalancesCall, Call, UncheckedExtrinsic, Address};
- 	use node_runtime::constants::{currency::CENTS, time::SLOT_DURATION};
+ 	use cherry_runtime::{BalancesCall, Call, UncheckedExtrinsic, Address};
+ 	use cherry_runtime::constants::{currency::CENTS, time::SLOT_DURATION};
  	use codec::Encode;
 -	use sp_core::{crypto::Pair as CryptoPair, H256};
 +	use sp_core::{

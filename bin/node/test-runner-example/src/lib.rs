@@ -38,11 +38,11 @@ impl sc_executor::NativeExecutionDispatch for ExecutorDispatch {
 		(frame_benchmarking::benchmarking::HostFunctions, SignatureVerificationOverride);
 
 	fn dispatch(method: &str, data: &[u8]) -> Option<Vec<u8>> {
-		node_runtime::api::dispatch(method, data)
+		cherry_runtime::api::dispatch(method, data)
 	}
 
 	fn native_version() -> sc_executor::NativeVersion {
-		node_runtime::native_version()
+		cherry_runtime::native_version()
 	}
 }
 
@@ -52,8 +52,8 @@ struct NodeTemplateChainInfo;
 impl ChainInfo for NodeTemplateChainInfo {
 	type Block = node_primitives::Block;
 	type ExecutorDispatch = ExecutorDispatch;
-	type Runtime = node_runtime::Runtime;
-	type RuntimeApi = node_runtime::RuntimeApi;
+	type Runtime = cherry_runtime::Runtime;
+	type RuntimeApi = cherry_runtime::RuntimeApi;
 	type SelectChain = sc_consensus::LongestChain<TFullBackend<Self::Block>, Self::Block>;
 	type BlockImport = BlockImport<
 		Self::Block,
@@ -61,7 +61,7 @@ impl ChainInfo for NodeTemplateChainInfo {
 		TFullClient<Self::Block, Self::RuntimeApi, NativeElseWasmExecutor<Self::ExecutorDispatch>>,
 		Self::SelectChain,
 	>;
-	type SignedExtras = node_runtime::SignedExtra;
+	type SignedExtras = cherry_runtime::SignedExtra;
 	type InherentDataProviders =
 		(SlotTimestampProvider, sp_consensus_babe::inherents::InherentDataProvider);
 
@@ -123,7 +123,7 @@ mod tests {
 
 			// look ma, I can read state.
 			let _events =
-				node.with_state(|| frame_system::Pallet::<node_runtime::Runtime>::events());
+				node.with_state(|| frame_system::Pallet::<cherry_runtime::Runtime>::events());
 			// get access to the underlying client.
 			let _client = node.client();
 		})

@@ -42,5 +42,5 @@ struct Opt {
 
 fn main() -> Result<(), std::io::Error> {
 	let Opt { n_bags, output, total_issuance, minimum_balance } = Opt::from_args();
-	generate_thresholds::<node_runtime::Runtime>(n_bags, &output, total_issuance, minimum_balance)
+	generate_thresholds::<cherry_runtime::Runtime>(n_bags, &output, total_issuance, minimum_balance)
 }

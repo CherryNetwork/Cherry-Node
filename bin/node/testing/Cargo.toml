@@ -27,7 +27,7 @@ codec = { package = "parity-scale-codec", version = "2.0.0" }
 sp-keyring = { version = "4.0.0-dev", path = "../../../primitives/keyring" }
 node-executor = { version = "3.0.0-dev", path = "../executor" }
 node-primitives = { version = "2.0.0", path = "../primitives" }
-node-runtime = { version = "3.0.0-dev", path = "../runtime/node-runtime" }
+cherry-runtime = { version = "3.0.0-dev", path = "../runtime/cherry-runtime" }
 sp-core = { version = "4.0.0-dev", path = "../../../primitives/core" }
 sp-io = { version = "4.0.0-dev", path = "../../../primitives/io" }
 sp-runtime = { version = "4.0.0-dev", path = "../../../primitives/runtime" }

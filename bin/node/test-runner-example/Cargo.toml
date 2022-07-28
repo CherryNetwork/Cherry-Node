@@ -12,7 +12,7 @@ frame-system = { path = "../../../frame/system" }
 frame-benchmarking = { path = "../../../frame/benchmarking" }
 pallet-transaction-payment = { path = "../../../frame/transaction-payment" }
 
-node-runtime = { path = "../runtime/node-runtime" }
+cherry-runtime = { path = "../runtime/cherry-runtime" }
 node-primitives = { path = "../primitives" }
 node-cli = { path = "../cli" }
 

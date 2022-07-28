@@ -23,7 +23,7 @@
 use futures::prelude::*;
 use node_executor::ExecutorDispatch;
 use node_primitives::Block;
-use node_runtime::RuntimeApi;
+use cherry_runtime::RuntimeApi;
 use sc_client_api::{ExecutorProvider, RemoteBackend};
 use sc_consensus_babe::{self, SlotProportion};
 use sc_executor::NativeElseWasmExecutor;
@@ -614,7 +614,7 @@ mod tests {
 	use crate::service::{new_full_base, new_light_base, NewFullBase};
 	use codec::Encode;
 	use node_primitives::{Block, DigestItem, Signature};
-	use node_runtime::{
+	use cherry_runtime::{
 		constants::{currency::CENTS, time::SLOT_DURATION},
 		Address, BalancesCall, Call, UncheckedExtrinsic,
 	};

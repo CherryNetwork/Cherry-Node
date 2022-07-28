@@ -932,6 +932,78 @@ dependencies = [
 ]
 
 [[package]]
+name = "cherry-runtime"
+version = "3.0.0-dev"
+dependencies = [
+ "frame-benchmarking",
+ "frame-election-provider-support",
+ "frame-executive",
+ "frame-support",
+ "frame-system",
+ "frame-system-benchmarking",
+ "frame-system-rpc-runtime-api",
+ "frame-try-runtime",
+ "hex-literal",
+ "log 0.4.14",
+ "node-primitives",
+ "pallet-assets",
+ "pallet-authority-discovery",
+ "pallet-authorship",
+ "pallet-babe",
+ "pallet-bags-list",
+ "pallet-balances",
+ "pallet-bounties",
+ "pallet-collective",
+ "pallet-council",
+ "pallet-election-provider-multi-phase",
+ "pallet-elections-phragmen",
+ "pallet-grandpa",
+ "pallet-identity",
+ "pallet-im-online",
+ "pallet-indices",
+ "pallet-membership",
+ "pallet-multisig",
+ "pallet-offences",
+ "pallet-offences-benchmarking",
+ "pallet-proxy",
+ "pallet-randomness-collective-flip",
+ "pallet-recovery",
+ "pallet-scheduler",
+ "pallet-session",
+ "pallet-session-benchmarking",
+ "pallet-society",
+ "pallet-staking",
+ "pallet-staking-reward-curve",
+ "pallet-sudo",
+ "pallet-timestamp",
+ "pallet-transaction-payment",
+ "pallet-transaction-payment-rpc-runtime-api",
+ "pallet-transaction-storage",
+ "pallet-treasury",
+ "pallet-utility",
+ "parity-scale-codec",
+ "scale-info",
+ "sp-api",
+ "sp-authority-discovery",
+ "sp-block-builder",
+ "sp-consensus-babe",
+ "sp-core",
+ "sp-inherents",
+ "sp-io",
+ "sp-keyring",
+ "sp-npos-elections",
+ "sp-offchain",
+ "sp-runtime",
+ "sp-session",
+ "sp-staking",
+ "sp-std",
+ "sp-transaction-pool",
+ "sp-version",
+ "static_assertions",
+ "substrate-wasm-builder",
+]
+
+[[package]]
 name = "chrono"
 version = "0.4.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4765,6 +4837,7 @@ dependencies = [
 name = "node-bench"
 version = "0.9.0-dev"
 dependencies = [
+ "cherry-runtime",
  "derive_more",
  "fs_extra",
  "futures 0.3.19",
@@ -4775,7 +4848,6 @@ dependencies = [
  "lazy_static",
  "log 0.4.14",
  "node-primitives",
- "node-runtime",
  "node-testing",
  "parity-db",
  "parity-util-mem",
@@ -4804,6 +4876,7 @@ version = "3.0.0-dev"
 dependencies = [
  "assert_cmd",
  "async-std",
+ "cherry-runtime",
  "frame-benchmarking-cli",
  "frame-system",
  "futures 0.3.19",
@@ -4816,7 +4889,6 @@ dependencies = [
  "node-inspect",
  "node-primitives",
  "node-rpc",
- "node-runtime",
  "pallet-im-online",
  "pallet-transaction-payment",
  "parity-scale-codec",
@@ -4877,13 +4949,13 @@ dependencies = [
 name = "node-executor"
 version = "3.0.0-dev"
 dependencies = [
+ "cherry-runtime",
  "criterion",
  "frame-benchmarking",
  "frame-support",
  "frame-system",
  "futures 0.3.19",
  "node-primitives",
- "node-runtime",
  "node-testing",
  "pallet-balances",
  "pallet-contracts",
@@ -4973,83 +5045,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "node-runtime"
-version = "3.0.0-dev"
-dependencies = [
- "frame-benchmarking",
- "frame-election-provider-support",
- "frame-executive",
- "frame-support",
- "frame-system",
- "frame-system-benchmarking",
- "frame-system-rpc-runtime-api",
- "frame-try-runtime",
- "hex-literal",
- "log 0.4.14",
- "node-primitives",
- "pallet-assets",
- "pallet-authority-discovery",
- "pallet-authorship",
- "pallet-babe",
- "pallet-bags-list",
- "pallet-balances",
- "pallet-bounties",
- "pallet-collective",
- "pallet-council",
- "pallet-election-provider-multi-phase",
- "pallet-elections-phragmen",
- "pallet-grandpa",
- "pallet-identity",
- "pallet-im-online",
- "pallet-indices",
- "pallet-membership",
- "pallet-multisig",
- "pallet-offences",
- "pallet-offences-benchmarking",
- "pallet-proxy",
- "pallet-randomness-collective-flip",
- "pallet-recovery",
- "pallet-scheduler",
- "pallet-session",
- "pallet-session-benchmarking",
- "pallet-society",
- "pallet-staking",
- "pallet-staking-reward-curve",
- "pallet-sudo",
- "pallet-timestamp",
- "pallet-transaction-payment",
- "pallet-transaction-payment-rpc-runtime-api",
- "pallet-transaction-storage",
- "pallet-treasury",
- "pallet-utility",
- "parity-scale-codec",
- "scale-info",
- "sp-api",
- "sp-authority-discovery",
- "sp-block-builder",
- "sp-consensus-babe",
- "sp-core",
- "sp-inherents",
- "sp-io",
- "sp-keyring",
- "sp-npos-elections",
- "sp-offchain",
- "sp-runtime",
- "sp-session",
- "sp-staking",
- "sp-std",
- "sp-transaction-pool",
- "sp-version",
- "static_assertions",
- "substrate-wasm-builder",
-]
-
-[[package]]
 name = "node-runtime-generate-bags"
 version = "3.0.0"
 dependencies = [
+ "cherry-runtime",
  "generate-bags",
- "node-runtime",
  "structopt",
 ]
 
@@ -5057,13 +5057,13 @@ dependencies = [
 name = "node-testing"
 version = "3.0.0-dev"
 dependencies = [
+ "cherry-runtime",
  "frame-system",
  "fs_extra",
  "futures 0.3.19",
  "log 0.4.14",
  "node-executor",
  "node-primitives",
- "node-runtime",
  "pallet-transaction-payment",
  "parity-scale-codec",
  "sc-block-builder",
@@ -10826,11 +10826,11 @@ dependencies = [
 name = "test-runner-example"
 version = "0.1.0"
 dependencies = [
+ "cherry-runtime",
  "frame-benchmarking",
  "frame-system",
  "node-cli",
  "node-primitives",
- "node-runtime",
  "pallet-transaction-payment",
  "sc-consensus",
  "sc-consensus-babe",

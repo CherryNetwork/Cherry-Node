@@ -83,7 +83,7 @@ pallet-transaction-payment = { version = "4.0.0-dev", path = "../../../frame/tra
 pallet-im-online = { version = "4.0.0-dev", default-features = false, path = "../../../frame/im-online" }
 
 # node-specific dependencies
-node-runtime = { version = "3.0.0-dev", path = "../runtime/node-runtime" }
+cherry-runtime = { version = "3.0.0-dev", path = "../runtime/cherry-runtime" }
 node-rpc = { version = "3.0.0-dev", path = "../rpc" }
 node-primitives = { version = "2.0.0", path = "../primitives" }
 node-executor = { version = "3.0.0-dev", path = "../executor" }
@@ -153,9 +153,9 @@ cli = [
 	"try-runtime-cli",
 ]
 runtime-benchmarks = [
-	"node-runtime/runtime-benchmarks",
+	"cherry-runtime/runtime-benchmarks",
 	"frame-benchmarking-cli",
 ]
 # Enable features that allow the runtime to be tried and debugged. Name might be subject to change
 # in the near future.
-try-runtime = ["node-runtime/try-runtime", "try-runtime-cli"]
+try-runtime = ["cherry-runtime/try-runtime", "try-runtime-cli"]
