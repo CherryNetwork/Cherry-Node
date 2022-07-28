@@ -16,7 +16,9 @@
 
 use super::*;
 use crate::{account_and_location, new_executor, worst_case_holding, AssetTransactorOf, XcmCallOf};
-use frame_benchmarking::{benchmarks_instance_pallet, BenchmarkError, BenchmarkResult};
+use frame_benchmarking::{
+	benchmarks_instance_pallet, impl_benchmark_test_suite, BenchmarkError, BenchmarkResult,
+};
 use frame_support::{
 	pallet_prelude::Get,
 	traits::fungible::{Inspect, Mutate},
@@ -219,11 +221,10 @@ benchmarks_instance_pallet! {
 			assert!(!T::TransactAsset::balance(&checked_account).is_zero());
 		}
 	}
-
-	// TODO: fix this, error: `no rules expected the token '!'`
-	// impl_benchmark_test_suite!(
-	// 	Pallet,
-	// 	crate::fungible::mock::new_test_ext(),
-	// 	crate::fungible::mock::Test
-	// );
 }
+
+impl_benchmark_test_suite!(
+	Pallet,
+	crate::fungible::mock::new_test_ext(),
+	crate::fungible::mock::Test
+);

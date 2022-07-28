@@ -22,7 +22,7 @@ use frame_support::{
 	weights::GetDispatchInfo,
 };
 use sp_runtime::traits::Saturating;
-use sp_std::{marker::PhantomData, prelude::*};
+use sp_std::{marker::PhantomData, prelude::*, vec};
 use xcm::latest::{
 	Error as XcmError, ExecuteXcm,
 	Instruction::{self, *},
@@ -285,9 +285,10 @@ impl<Config: config::Config> XcmExecutor<Config> {
 						Config::IsTeleporter::filter_asset_location(asset, origin),
 						XcmError::UntrustedTeleportLocation
 					);
-					// We should check that the asset can actually be teleported in (for this to be in error, there
-					// would need to be an accounting violation by one of the trusted chains, so it's unlikely, but we
-					// don't want to punish a possibly innocent chain/user).
+					// We should check that the asset can actually be teleported in (for this to be
+					// in error, there would need to be an accounting violation by one of the
+					// trusted chains, so it's unlikely, but we don't want to punish a possibly
+					// innocent chain/user).
 					Config::AssetTransactor::can_check_in(&origin, asset)?;
 				}
 				for asset in assets.drain().into_iter() {
@@ -309,8 +310,8 @@ impl<Config: config::Config> XcmExecutor<Config> {
 				let actual_weight = match message_call.dispatch(dispatch_origin) {
 					Ok(post_info) => post_info.actual_weight,
 					Err(error_and_info) => {
-						// Not much to do with the result as it is. It's up to the parachain to ensure that the
-						// message makes sense.
+						// Not much to do with the result as it is. It's up to the parachain to
+						// ensure that the message makes sense.
 						error_and_info.post_info.actual_weight
 					},
 				}
@@ -343,8 +344,8 @@ impl<Config: config::Config> XcmExecutor<Config> {
 				Ok(())
 			},
 			ReportError { query_id, dest, max_response_weight: max_weight } => {
-				// Report the given result by sending a QueryResponse XCM to a previously given outcome
-				// destination if one was registered.
+				// Report the given result by sending a QueryResponse XCM to a previously given
+				// outcome destination if one was registered.
 				let response = Response::ExecutionResult(self.error);
 				let message = QueryResponse { query_id, response, max_weight };
 				Config::XcmSender::send_xcm(dest, Xcm(vec![message]))?;
