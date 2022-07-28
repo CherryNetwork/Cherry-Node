@@ -24,7 +24,7 @@ xcm-executor = { path = "../../xcm-executor" }
 xcm-builder = { path = "../../xcm-builder" }
 pallet-xcm = { path = "../../pallet-xcm" }
 polkadot-core-primitives = { path = "../../../core-primitives" }
-polkadot-runtime-parachains = { path = "../../../runtime/parachains" }
+polkadot-runtime-parachains = { path = "../../../bin/node/runtime/parachains" }
 polkadot-parachain = { path = "../../../parachain" }
 
 [[bin]]

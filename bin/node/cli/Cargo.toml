@@ -83,7 +83,7 @@ pallet-transaction-payment = { version = "4.0.0-dev", path = "../../../frame/tra
 pallet-im-online = { version = "4.0.0-dev", default-features = false, path = "../../../frame/im-online" }
 
 # node-specific dependencies
-node-runtime = { version = "3.0.0-dev", path = "../runtime" }
+node-runtime = { version = "3.0.0-dev", path = "../runtime/node-runtime" }
 node-rpc = { version = "3.0.0-dev", path = "../rpc" }
 node-primitives = { version = "2.0.0", path = "../primitives" }
 node-executor = { version = "3.0.0-dev", path = "../executor" }

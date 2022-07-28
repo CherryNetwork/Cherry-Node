@@ -29,7 +29,7 @@ xcm-builder = { path = "../xcm-builder" }
 xcm = { path = ".." }
 # temp
 pallet-xcm = { path = "../pallet-xcm" }
-polkadot-runtime-common = { path = "../../runtime/common" }
+polkadot-runtime-common = { path = "../../bin/node/runtime/common" }
 # westend-runtime = { path = "../../runtime/westend", features = ["runtime-benchmarks"] }
 polkadot-primitives = { path = "../../polkadot-primitives" }
 

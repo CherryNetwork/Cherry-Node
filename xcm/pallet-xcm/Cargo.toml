@@ -21,7 +21,7 @@ xcm-executor = { path = "../xcm-executor", default-features = false }
 
 [dev-dependencies]
 pallet-balances = { version = "4.0.0-dev", path = "../../frame/balances" } 
-polkadot-runtime-parachains = { path = "../../runtime/parachains" }
+polkadot-runtime-parachains = { path = "../../bin/node/runtime/parachains" }
 sp-io = { version = "4.0.0-dev", path = "../../primitives/io", default-features = false  }
 xcm-builder = { path = "../xcm-builder" }
 polkadot-parachain = { path = "../../parachain" }
