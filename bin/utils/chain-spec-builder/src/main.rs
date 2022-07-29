@@ -168,7 +168,7 @@ fn generate_authority_keys_and_store(seeds: &[String], keystore_path: &Path) -> 
 				.map_err(|err| err.to_string())?,
 		);
 
-		let (_, _, grandpa, babe, im_online, authority_discovery) =
+		let (_, _, grandpa, babe, im_online, assigment, validator, authority_discovery) =
 			chain_spec::authority_keys_from_seed(seed);
 
 		let insert_key = |key_type, public| {
