@@ -4896,7 +4896,7 @@ dependencies = [
  "pallet-transaction-payment",
  "parity-scale-codec",
  "platforms",
- "polkadot-runtime-parachains",
+ "polkadot-primitives",
  "rand 0.7.3",
  "regex",
  "remote-externalities",

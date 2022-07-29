@@ -41,7 +41,7 @@ use sp_runtime::{
 
 pub use node_primitives::{AccountId, Balance, Signature};
 pub use cherry_runtime::GenesisConfig;
-
+use primitives::v1::{AssignmentId, ValidatorId};
 type AccountPublic = <Signature as Verify>::Signer;
 
 const STAGING_TELEMETRY_URL: &str = "wss://telemetry.polkadot.io/submit/";
@@ -71,8 +71,8 @@ fn session_keys(
 	grandpa: GrandpaId,
 	babe: BabeId,
 	im_online: ImOnlineId,
-	para_assignment: InitializerId,
-	para_validator: ParaSessionInfoId,
+	para_assignment: AssignmentId,
+	para_validator: ValidatorId,
 	authority_discovery: AuthorityDiscoveryId,
 ) -> SessionKeys {
 	SessionKeys { grandpa, babe, im_online, para_assignment, para_validator, authority_discovery }
@@ -94,8 +94,8 @@ fn staging_testnet_config_genesis() -> GenesisConfig {
 		GrandpaId,
 		BabeId,
 		ImOnlineId,
-		InitializerId,
-		ParaSessionInfoId,
+		AssignmentId,
+		ValidatorId,
 		AuthorityDiscoveryId,
 	)> = vec![
 		(
@@ -255,15 +255,15 @@ where
 /// Helper function to generate stash, controller and session key from seed
 pub fn authority_keys_from_seed(
 	seed: &str,
-) -> (AccountId, AccountId, GrandpaId, BabeId, ImOnlineId, InitializerId, ParaSessionInfoId, AuthorityDiscoveryId) {
+) -> (AccountId, AccountId, GrandpaId, BabeId, ImOnlineId, AssignmentId, ValidatorId, AuthorityDiscoveryId) {
 	(
 		get_account_id_from_seed::<sr25519::Public>(&format!("{}//stash", seed)),
 		get_account_id_from_seed::<sr25519::Public>(seed),
 		get_from_seed::<GrandpaId>(seed),
 		get_from_seed::<BabeId>(seed),
 		get_from_seed::<ImOnlineId>(seed),
-		get_from_seed::<InitializerId>(seed),
-		get_from_seed::<ParaSessionInfoId>(seed),
+		get_from_seed::<AssignmentId>(seed),
+		get_from_seed::<ValidatorId>(seed),
 		get_from_seed::<AuthorityDiscoveryId>(seed),
 	)
 }
@@ -276,8 +276,8 @@ pub fn testnet_genesis(
 		GrandpaId,
 		BabeId,
 		ImOnlineId,
-		InitializerId,
-		ParaSessionInfoId,
+		AssignmentId,
+		ValidatorId,
 		AuthorityDiscoveryId,
 	)>,
 	initial_nominators: Vec<AccountId>,

@@ -57,6 +57,7 @@ sp-keystore = { version = "0.10.0-dev", path = "../../../primitives/keystore" }
 sp-consensus = { version = "0.10.0-dev", path = "../../../primitives/consensus/common" }
 sp-transaction-pool = { version = "4.0.0-dev", path = "../../../primitives/transaction-pool" }
 sp-transaction-storage-proof = { version = "4.0.0-dev", path = "../../../primitives/transaction-storage-proof" }
+primitives = { package = "polkadot-primitives", path = "../../../polkadot-primitives", default-features = false }
 
 # client dependencies
 sc-client-api = { version = "4.0.0-dev", path = "../../../client/api" }
@@ -81,8 +82,6 @@ sc-sync-state-rpc = { version = "0.10.0-dev", path = "../../../client/sync-state
 frame-system = { version = "4.0.0-dev", path = "../../../frame/system" }
 pallet-transaction-payment = { version = "4.0.0-dev", path = "../../../frame/transaction-payment" }
 pallet-im-online = { version = "4.0.0-dev", default-features = false, path = "../../../frame/im-online" }
-
-runtime-parachains = { package = "polkadot-runtime-parachains", path = "../runtime/parachains", default-features = false }
 
 # node-specific dependencies
 cherry-runtime = { version = "3.0.0-dev", path = "../runtime/cherry-runtime" }
