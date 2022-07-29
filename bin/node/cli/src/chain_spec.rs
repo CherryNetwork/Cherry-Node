@@ -71,9 +71,11 @@ fn session_keys(
 	grandpa: GrandpaId,
 	babe: BabeId,
 	im_online: ImOnlineId,
+	para_assignment: InitializerId,
+	para_validator: ParaSessionInfoId,
 	authority_discovery: AuthorityDiscoveryId,
 ) -> SessionKeys {
-	SessionKeys { grandpa, babe, im_online, authority_discovery }
+	SessionKeys { grandpa, babe, im_online, para_assignment, para_validator, authority_discovery }
 }
 
 fn staging_testnet_config_genesis() -> GenesisConfig {
@@ -92,6 +94,8 @@ fn staging_testnet_config_genesis() -> GenesisConfig {
 		GrandpaId,
 		BabeId,
 		ImOnlineId,
+		InitializerId,
+		ParaSessionInfoId,
 		AuthorityDiscoveryId,
 	)> = vec![
 		(
@@ -107,6 +111,12 @@ fn staging_testnet_config_genesis() -> GenesisConfig {
 				.unchecked_into(),
 			// 5EZaeQ8djPcq9pheJUhgerXQZt9YaHnMJpiHMRhwQeinqUW8
 			hex!["6e7e4eb42cbd2e0ab4cae8708ce5509580b8c04d11f6758dbf686d50fe9f9106"]
+				.unchecked_into(),
+			// 5CX4YXndQp7S2J2SAxGetiTvQb4caqbFwJNkhtRRioh6DWzu
+			hex!["141a052809bf7f43a7bec8cdacd262c36900da9da41551ef698f6753afb0fe06"]
+				.unchecked_into(),
+			// 5CMkFy4iRqQNdki7gNn5xUZXzyx7bLoyr36L9vZfnr1VdTXk
+			hex!["0cff41b889496a1e85a24d491bedb6cef7f376ca0529e85530cfe122074f0e05"]
 				.unchecked_into(),
 			// 5EZaeQ8djPcq9pheJUhgerXQZt9YaHnMJpiHMRhwQeinqUW8
 			hex!["6e7e4eb42cbd2e0ab4cae8708ce5509580b8c04d11f6758dbf686d50fe9f9106"]
@@ -126,6 +136,12 @@ fn staging_testnet_config_genesis() -> GenesisConfig {
 			// 5DhLtiaQd1L1LU9jaNeeu9HJkP6eyg3BwXA7iNMzKm7qqruQ
 			hex!["482dbd7297a39fa145c570552249c2ca9dd47e281f0c500c971b59c9dcdcd82e"]
 				.unchecked_into(),
+			// 5DeWjNay16P1oEAeNu3zLjwAWZzchNKM9oVMpuahisdQjd8z
+			hex!["46051fdc61b1bd42830d8de1c3801b6ce952ee3fb65b5fbfa771ac665807c16d"]
+				.unchecked_into(),
+			// 5DA3HGd5Y2BsaTSLVdso8xBVZpuML4Q4g8MLuTYt1PFBWhxR
+			hex!["304dd918bb573c15cc26250da338fa24b0d7b4c78a4033f2a5c1445b58ea4367"]
+				.unchecked_into(),
 			// 5DhLtiaQd1L1LU9jaNeeu9HJkP6eyg3BwXA7iNMzKm7qqruQ
 			hex!["482dbd7297a39fa145c570552249c2ca9dd47e281f0c500c971b59c9dcdcd82e"]
 				.unchecked_into(),
@@ -144,6 +160,12 @@ fn staging_testnet_config_genesis() -> GenesisConfig {
 			// 5DhKqkHRkndJu8vq7pi2Q5S3DfftWJHGxbEUNH43b46qNspH
 			hex!["482a3389a6cf42d8ed83888cfd920fec738ea30f97e44699ada7323f08c3380a"]
 				.unchecked_into(),
+			// 5C5JPkt8eRRDdb8fibKhevfphHT1GiGYYzWLWcQcMN7nHF9u
+			hex!["007442321660f554769a4e363cb6d474c1a5e5c7f8f9df96206de050289d312e"]
+			.unchecked_into(),
+			// 5HmuopAbjm4iaTsjkvRQCVyhaeKvSYkaZ1sVNG6TX5dc8P4r
+			hex!["fc9a7571140a87fde77c579634de630591b1f5ee9082e594bf585750502c8a53"]
+			.unchecked_into(),
 			// 5DhKqkHRkndJu8vq7pi2Q5S3DfftWJHGxbEUNH43b46qNspH
 			hex!["482a3389a6cf42d8ed83888cfd920fec738ea30f97e44699ada7323f08c3380a"]
 				.unchecked_into(),
@@ -162,6 +184,12 @@ fn staging_testnet_config_genesis() -> GenesisConfig {
 			// 5C4vDQxA8LTck2xJEy4Yg1hM9qjDt4LvTQaMo4Y8ne43aU6x
 			hex!["00299981a2b92f878baaf5dbeba5c18d4e70f2a1fcd9c61b32ea18daf38f4378"]
 				.unchecked_into(),
+			// 5H4QGHeeQaCN7wDYT61v85eHj7D6zpCUkzP9PjjJyDJzonzr
+			hex!["dcf1f1d8732af175509485914de666abcdace4dece6ba6b7b6d524357c293b73"]
+			.unchecked_into(),
+			// 5HKdSyt8oHp4uoGus9wjPfgnT8oShuPkEzxtohmTeq8gtSRX
+			hex!["e88f02220ce3c821fee03ed75d7d45a1ff32fc36e7355a1b3113ada0ea625927"]
+			.unchecked_into(),
 			// 5C4vDQxA8LTck2xJEy4Yg1hM9qjDt4LvTQaMo4Y8ne43aU6x
 			hex!["00299981a2b92f878baaf5dbeba5c18d4e70f2a1fcd9c61b32ea18daf38f4378"]
 				.unchecked_into(),
@@ -227,13 +255,15 @@ where
 /// Helper function to generate stash, controller and session key from seed
 pub fn authority_keys_from_seed(
 	seed: &str,
-) -> (AccountId, AccountId, GrandpaId, BabeId, ImOnlineId, AuthorityDiscoveryId) {
+) -> (AccountId, AccountId, GrandpaId, BabeId, ImOnlineId, InitializerId, ParaSessionInfoId, AuthorityDiscoveryId) {
 	(
 		get_account_id_from_seed::<sr25519::Public>(&format!("{}//stash", seed)),
 		get_account_id_from_seed::<sr25519::Public>(seed),
 		get_from_seed::<GrandpaId>(seed),
 		get_from_seed::<BabeId>(seed),
 		get_from_seed::<ImOnlineId>(seed),
+		get_from_seed::<InitializerId>(seed),
+		get_from_seed::<ParaSessionInfoId>(seed),
 		get_from_seed::<AuthorityDiscoveryId>(seed),
 	)
 }
@@ -246,6 +276,8 @@ pub fn testnet_genesis(
 		GrandpaId,
 		BabeId,
 		ImOnlineId,
+		InitializerId,
+		ParaSessionInfoId,
 		AuthorityDiscoveryId,
 	)>,
 	initial_nominators: Vec<AccountId>,
@@ -319,7 +351,7 @@ pub fn testnet_genesis(
 					(
 						x.0.clone(),
 						x.0.clone(),
-						session_keys(x.2.clone(), x.3.clone(), x.4.clone(), x.5.clone()),
+						session_keys(x.2.clone(), x.3.clone(), x.4.clone(), x.5.clone(), x.6.clone(), x.7.clone()),
 					)
 				})
 				.collect::<Vec<_>>(),

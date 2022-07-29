@@ -82,6 +82,8 @@ frame-system = { version = "4.0.0-dev", path = "../../../frame/system" }
 pallet-transaction-payment = { version = "4.0.0-dev", path = "../../../frame/transaction-payment" }
 pallet-im-online = { version = "4.0.0-dev", default-features = false, path = "../../../frame/im-online" }
 
+runtime-parachains = { package = "polkadot-runtime-parachains", path = "../runtime/parachains", default-features = false }
+
 # node-specific dependencies
 cherry-runtime = { version = "3.0.0-dev", path = "../runtime/cherry-runtime" }
 node-rpc = { version = "3.0.0-dev", path = "../rpc" }

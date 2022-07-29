@@ -63,6 +63,8 @@ pub fn to_session_keys(
 		grandpa: ed25519_keyring.to_owned().public().into(),
 		babe: sr25519_keyring.to_owned().public().into(),
 		im_online: sr25519_keyring.to_owned().public().into(),
+		para_assignment: sr25519_keyring.to_owned().public().into(),
+		para_validator: sr25519_keyring.to_owned().public().into(),
 		authority_discovery: sr25519_keyring.to_owned().public().into(),
 	}
 }
