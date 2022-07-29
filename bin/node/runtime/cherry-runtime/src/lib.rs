@@ -23,9 +23,7 @@
 #![recursion_limit = "256"]
 
 use codec::{Decode, Encode};
-use runtime_common::{
-	auctions, crowdloan, paras_registrar, slots,
-};
+use runtime_common::{auctions, crowdloan, paras_registrar, slots};
 
 use runtime_parachains::{
 	configuration as parachains_configuration, dmp as parachains_dmp, hrmp as parachains_hrmp,
@@ -61,14 +59,14 @@ use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
 use pallet_session::historical as pallet_session_historical;
 pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdjustment};
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
+use primitives::v1::{
+	CandidateEvent, CommittedCandidateReceipt, CoreState, GroupRotationInfo, Id as ParaId,
+	InboundDownwardMessage, InboundHrmpMessage, OccupiedCoreAssumption, PersistedValidationData,
+	ScrapedOnChainVotes, SessionInfo, ValidationCode, ValidationCodeHash, ValidatorId,
+	ValidatorIndex,
+};
 use sp_api::impl_runtime_apis;
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
-use primitives::v1::{
-	CandidateEvent, CommittedCandidateReceipt,
-	CoreState, GroupRotationInfo, Id as ParaId, InboundDownwardMessage, InboundHrmpMessage,
-	OccupiedCoreAssumption, PersistedValidationData, ScrapedOnChainVotes,
-	SessionInfo, ValidationCode, ValidationCodeHash, ValidatorId, ValidatorIndex,
-};
 use sp_core::{
 	crypto::KeyTypeId,
 	u32_trait::{_1, _2, _3, _4, _5},
@@ -119,9 +117,9 @@ use constants::time_dev::*;
 
 use sp_runtime::generic::Era;
 
-mod weights;
 /// Generated voter bag information.
 mod voter_bags;
+mod weights;
 
 // Make the WASM binary available.
 #[cfg(feature = "std")]

@@ -20,8 +20,8 @@
 //! this fork of the relay chain, what their validation code is, and what their past and upcoming
 //! validation code is.
 //!
-//! A para is not considered live until it is registered and activated in this pallet. Activation can
-//! only occur at session boundaries.
+//! A para is not considered live until it is registered and activated in this pallet. Activation
+//! can only occur at session boundaries.
 
 use crate::{configuration, initializer::SessionChangeNotification, shared};
 use frame_support::pallet_prelude::*;
@@ -55,8 +55,8 @@ pub struct ReplacementTimes<N> {
 	/// first parablock included with a relay-parent with number >= this value.
 	expected_at: N,
 	/// The relay-chain block number at which the parablock activating the code upgrade was
-	/// actually included. This means considered included and available, so this is the time at which
-	/// that parablock enters the acceptance period in this fork of the relay-chain.
+	/// actually included. This means considered included and available, so this is the time at
+	/// which that parablock enters the acceptance period in this fork of the relay-chain.
 	activated_at: N,
 }
 
@@ -81,8 +81,8 @@ enum UseCodeAt<N> {
 	/// Use the current code.
 	Current,
 	/// Use the code that was replaced at the given block number.
-	/// This is an inclusive endpoint - a parablock in the context of a relay-chain block on this fork
-	/// with number N should use the code that is replaced at N.
+	/// This is an inclusive endpoint - a parablock in the context of a relay-chain block on this
+	/// fork with number N should use the code that is replaced at N.
 	ReplacedAt(N),
 }
 
@@ -182,8 +182,8 @@ impl<N: Ord + Copy + PartialEq> ParaPastCodeMeta<N> {
 		//
 		// A block executed in the context of `activated_at` should use the new code.
 		//
-		// Cases where `expected_at` and `activated_at` are the same, that is, zero-delay code upgrades
-		// are also handled by this rule correctly.
+		// Cases where `expected_at` and `activated_at` are the same, that is, zero-delay code
+		// upgrades are also handled by this rule correctly.
 		let replaced_after_pos = self.upgrade_times.iter().position(|t| {
 			// example: code replaced at (5, 5)
 			//
@@ -199,9 +199,10 @@ impl<N: Ord + Copy + PartialEq> ParaPastCodeMeta<N> {
 		});
 
 		if let Some(replaced_after_pos) = replaced_after_pos {
-			// The earliest stored code replacement needs to be special-cased, since we need to check
-			// against the pruning state to see if this replacement represents the correct code, or
-			// is simply after a replacement that actually represents the correct code, but has been pruned.
+			// The earliest stored code replacement needs to be special-cased, since we need to
+			// check against the pruning state to see if this replacement represents the correct
+			// code, or is simply after a replacement that actually represents the correct code, but
+			// has been pruned.
 			let was_pruned =
 				replaced_after_pos == 0 && self.last_pruned.map_or(false, |t| t >= para_at);
 
@@ -384,11 +385,11 @@ pub mod pallet {
 	pub(super) type PastCodeMeta<T: Config> =
 		StorageMap<_, Twox64Concat, ParaId, ParaPastCodeMeta<T::BlockNumber>, ValueQuery>;
 
-	/// Which paras have past code that needs pruning and the relay-chain block at which the code was replaced.
-	/// Note that this is the actual height of the included block, not the expected height at which the
-	/// code upgrade would be applied, although they may be equal.
-	/// This is to ensure the entire acceptance period is covered, not an offset acceptance period starting
-	/// from the time at which the parachain perceives a code upgrade as having occurred.
+	/// Which paras have past code that needs pruning and the relay-chain block at which the code
+	/// was replaced. Note that this is the actual height of the included block, not the expected
+	/// height at which the code upgrade would be applied, although they may be equal.
+	/// This is to ensure the entire acceptance period is covered, not an offset acceptance period
+	/// starting from the time at which the parachain perceives a code upgrade as having occurred.
 	/// Multiple entries for a single para are permitted. Ordered ascending by block number.
 	#[pallet::storage]
 	pub(super) type PastCodePruning<T: Config> =
@@ -409,12 +410,13 @@ pub mod pallet {
 	pub(super) type FutureCodeHash<T: Config> =
 		StorageMap<_, Twox64Concat, ParaId, ValidationCodeHash>;
 
-	/// This is used by the relay-chain to communicate to a parachain a go-ahead with in the upgrade procedure.
+	/// This is used by the relay-chain to communicate to a parachain a go-ahead with in the upgrade
+	/// procedure.
 	///
 	/// This value is absent when there are no upgrades scheduled or during the time the relay chain
-	/// performs the checks. It is set at the first relay-chain block when the corresponding parachain
-	/// can switch its upgrade function. As soon as the parachain's block is included, the value
-	/// gets reset to `None`.
+	/// performs the checks. It is set at the first relay-chain block when the corresponding
+	/// parachain can switch its upgrade function. As soon as the parachain's block is included, the
+	/// value gets reset to `None`.
 	///
 	/// NOTE that this field is used by parachains via merkle storage proofs, therefore changing
 	/// the format will require migration of parachains.
@@ -1001,9 +1003,9 @@ impl<T: Config> Pallet<T> {
 		})
 	}
 
-	/// Note that a para has progressed to a new head, where the new head was executed in the context
-	/// of a relay-chain block with given number. This will apply pending code upgrades based
-	/// on the relay-parent block number provided.
+	/// Note that a para has progressed to a new head, where the new head was executed in the
+	/// context of a relay-chain block with given number. This will apply pending code upgrades
+	/// based on the relay-parent block number provided.
 	pub(crate) fn note_new_head(
 		id: ParaId,
 		new_head: HeadData,
@@ -1045,8 +1047,8 @@ impl<T: Config> Pallet<T> {
 	/// relay-chain height as its context. This may return the hash for the past, current, or
 	/// (with certain choices of `assume_intermediate`) future code.
 	///
-	/// `assume_intermediate`, if provided, must be before `at`. This will return `None` if the validation
-	/// code has been pruned.
+	/// `assume_intermediate`, if provided, must be before `at`. This will return `None` if the
+	/// validation code has been pruned.
 	///
 	/// To get associated code see [`Self::validation_code_at`].
 	pub(crate) fn validation_code_hash_at(
@@ -1114,8 +1116,9 @@ impl<T: Config> Pallet<T> {
 		}
 	}
 
-	/// The block number of the last scheduled upgrade of the requested para. Includes future upgrades
-	/// if the flag is set. This is the `expected_at` number, not the `activated_at` number.
+	/// The block number of the last scheduled upgrade of the requested para. Includes future
+	/// upgrades if the flag is set. This is the `expected_at` number, not the `activated_at`
+	/// number.
 	pub(crate) fn last_code_upgrade(id: ParaId, include_future: bool) -> Option<T::BlockNumber> {
 		if include_future {
 			if let Some(at) = Self::future_code_upgrade_at(id) {
@@ -1652,8 +1655,8 @@ mod tests {
 
 			run_to_block(expected_at + 1 + 4, None);
 
-			// the candidate is in the context of the first descendant of `expected_at`, and triggers
-			// the upgrade.
+			// the candidate is in the context of the first descendant of `expected_at`, and
+			// triggers the upgrade.
 			{
 				// The signal should be set to go-ahead until the new head is actually processed.
 				assert_eq!(
@@ -1745,7 +1748,8 @@ mod tests {
 			Paras::schedule_code_upgrade(para_id, newer_code.clone(), 2, &Configuration::config());
 			assert_eq!(
 				<Paras as Store>::FutureCodeUpgrades::get(&para_id),
-				Some(1 + validation_upgrade_delay), // did not change since the same assertion from the last time.
+				Some(1 + validation_upgrade_delay), /* did not change since the same assertion
+				                                     * from the last time. */
 			);
 			assert_eq!(<Paras as Store>::FutureCodeHash::get(&para_id), Some(new_code.hash()));
 			check_code_is_not_stored(&newer_code);

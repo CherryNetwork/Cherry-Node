@@ -31,12 +31,12 @@
 //!
 //! ### `MultiLocation`
 //! - The `try_from` conversion method will always canonicalize the v0 `MultiLocation` before
-//!   attempting to do the proper conversion. Since canonicalization is not a fallible operation,
-//!   we do not expect v0 `MultiLocation` to ever fail to be upgraded to v1.
+//!   attempting to do the proper conversion. Since canonicalization is not a fallible operation, we
+//!   do not expect v0 `MultiLocation` to ever fail to be upgraded to v1.
 //!
 //! ### `MultiAsset`
-//! - Stronger typing to differentiate between a single class of `MultiAsset` and several classes
-//!   of `MultiAssets` is introduced. As the name suggests, a `Vec<MultiAsset>` that is used on all
+//! - Stronger typing to differentiate between a single class of `MultiAsset` and several classes of
+//!   `MultiAssets` is introduced. As the name suggests, a `Vec<MultiAsset>` that is used on all
 //!   APIs will instead be using a new type called `MultiAssets` (note the `s`).
 //! - All `MultiAsset` variants whose name contains "All" in it, namely `v0::MultiAsset::All`,
 //!   `v0::MultiAsset::AllFungible`, `v0::MultiAsset::AllNonFungible`,
@@ -134,16 +134,16 @@ pub enum Response {
 ///
 /// All messages are delivered from a known *origin*, expressed as a `MultiLocation`.
 ///
-/// This is the inner XCM format and is version-sensitive. Messages are typically passed using the outer
-/// XCM format, known as `VersionedXcm`.
+/// This is the inner XCM format and is version-sensitive. Messages are typically passed using the
+/// outer XCM format, known as `VersionedXcm`.
 #[derive(Derivative, Encode, Decode, TypeInfo)]
 #[derivative(Clone(bound = ""), Eq(bound = ""), PartialEq(bound = ""), Debug(bound = ""))]
 #[codec(encode_bound())]
 #[codec(decode_bound())]
 #[scale_info(bounds(), skip_type_params(Call))]
 pub enum Xcm<Call> {
-	/// Withdraw asset(s) (`assets`) from the ownership of `origin` and place them into `holding`. Execute the
-	/// orders (`effects`).
+	/// Withdraw asset(s) (`assets`) from the ownership of `origin` and place them into `holding`.
+	/// Execute the orders (`effects`).
 	///
 	/// - `assets`: The asset(s) to be withdrawn into holding.
 	/// - `effects`: The order(s) to execute on the holding register.
@@ -154,16 +154,17 @@ pub enum Xcm<Call> {
 	#[codec(index = 0)]
 	WithdrawAsset { assets: MultiAssets, effects: Vec<Order<Call>> },
 
-	/// Asset(s) (`assets`) have been received into the ownership of this system on the `origin` system.
+	/// Asset(s) (`assets`) have been received into the ownership of this system on the `origin`
+	/// system.
 	///
-	/// Some orders are given (`effects`) which should be executed once the corresponding derivative assets have
-	/// been placed into `holding`.
+	/// Some orders are given (`effects`) which should be executed once the corresponding
+	/// derivative assets have been placed into `holding`.
 	///
 	/// - `assets`: The asset(s) that are minted into holding.
 	/// - `effects`: The order(s) to execute on the holding register.
 	///
-	/// Safety: `origin` must be trusted to have received and be storing `assets` such that they may later be
-	/// withdrawn should this system send a corresponding message.
+	/// Safety: `origin` must be trusted to have received and be storing `assets` such that they
+	/// may later be withdrawn should this system send a corresponding message.
 	///
 	/// Kind: *Trusted Indication*.
 	///
@@ -171,17 +172,17 @@ pub enum Xcm<Call> {
 	#[codec(index = 1)]
 	ReserveAssetDeposited { assets: MultiAssets, effects: Vec<Order<Call>> },
 
-	/// Asset(s) (`assets`) have been destroyed on the `origin` system and equivalent assets should be
-	/// created on this system.
+	/// Asset(s) (`assets`) have been destroyed on the `origin` system and equivalent assets should
+	/// be created on this system.
 	///
-	/// Some orders are given (`effects`) which should be executed once the corresponding derivative assets have
-	/// been placed into the Holding Register.
+	/// Some orders are given (`effects`) which should be executed once the corresponding
+	/// derivative assets have been placed into the Holding Register.
 	///
 	/// - `assets`: The asset(s) that are minted into the Holding Register.
 	/// - `effects`: The order(s) to execute on the Holding Register.
 	///
-	/// Safety: `origin` must be trusted to have irrevocably destroyed the corresponding `assets` prior as a consequence
-	/// of sending this message.
+	/// Safety: `origin` must be trusted to have irrevocably destroyed the corresponding `assets`
+	/// prior as a consequence of sending this message.
 	///
 	/// Kind: *Trusted Indication*.
 	///
@@ -189,7 +190,8 @@ pub enum Xcm<Call> {
 	#[codec(index = 2)]
 	ReceiveTeleportedAsset { assets: MultiAssets, effects: Vec<Order<Call>> },
 
-	/// Indication of the contents of the holding register corresponding to the `QueryHolding` order of `query_id`.
+	/// Indication of the contents of the holding register corresponding to the `QueryHolding`
+	/// order of `query_id`.
 	///
 	/// - `query_id`: The identifier of the query that resulted in this message being sent.
 	/// - `assets`: The message content.
@@ -206,8 +208,8 @@ pub enum Xcm<Call> {
 		response: Response,
 	},
 
-	/// Withdraw asset(s) (`assets`) from the ownership of `origin` and place equivalent assets under the
-	/// ownership of `beneficiary`.
+	/// Withdraw asset(s) (`assets`) from the ownership of `origin` and place equivalent assets
+	/// under the ownership of `beneficiary`.
 	///
 	/// - `assets`: The asset(s) to be withdrawn.
 	/// - `beneficiary`: The new owner for the assets.
@@ -220,16 +222,17 @@ pub enum Xcm<Call> {
 	#[codec(index = 4)]
 	TransferAsset { assets: MultiAssets, beneficiary: MultiLocation },
 
-	/// Withdraw asset(s) (`assets`) from the ownership of `origin` and place equivalent assets under the
-	/// ownership of `dest` within this consensus system (i.e. its sovereign account).
+	/// Withdraw asset(s) (`assets`) from the ownership of `origin` and place equivalent assets
+	/// under the ownership of `dest` within this consensus system (i.e. its sovereign account).
 	///
 	/// Send an onward XCM message to `dest` of `ReserveAssetDeposited` with the given `effects`.
 	///
 	/// - `assets`: The asset(s) to be withdrawn.
-	/// - `dest`: The location whose sovereign account will own the assets and thus the effective beneficiary for the
-	///   assets and the notification target for the reserve asset deposit message.
-	/// - `effects`: The orders that should be contained in the `ReserveAssetDeposited` which is sent onwards to
-	///   `dest`.
+	/// - `dest`: The location whose sovereign account will own the assets and thus the effective
+	///   beneficiary for the assets and the notification target for the reserve asset deposit
+	///   message.
+	/// - `effects`: The orders that should be contained in the `ReserveAssetDeposited` which is
+	///   sent onwards to `dest`.
 	///
 	/// Safety: No concerns.
 	///
@@ -239,12 +242,12 @@ pub enum Xcm<Call> {
 	#[codec(index = 5)]
 	TransferReserveAsset { assets: MultiAssets, dest: MultiLocation, effects: Vec<Order<()>> },
 
-	/// Apply the encoded transaction `call`, whose dispatch-origin should be `origin` as expressed by the kind
-	/// of origin `origin_type`.
+	/// Apply the encoded transaction `call`, whose dispatch-origin should be `origin` as expressed
+	/// by the kind of origin `origin_type`.
 	///
 	/// - `origin_type`: The means of expressing the message origin as a dispatch origin.
-	/// - `max_weight`: The weight of `call`; this should be at least the chain's calculated weight and will
-	///   be used in the weight determination arithmetic.
+	/// - `max_weight`: The weight of `call`; this should be at least the chain's calculated weight
+	///   and will be used in the weight determination arithmetic.
 	/// - `call`: The encoded transaction to be applied.
 	///
 	/// Safety: No concerns.
@@ -255,10 +258,11 @@ pub enum Xcm<Call> {
 	#[codec(index = 6)]
 	Transact { origin_type: OriginKind, require_weight_at_most: u64, call: DoubleEncoded<Call> },
 
-	/// A message to notify about a new incoming HRMP channel. This message is meant to be sent by the
-	/// relay-chain to a para.
+	/// A message to notify about a new incoming HRMP channel. This message is meant to be sent by
+	/// the relay-chain to a para.
 	///
-	/// - `sender`: The sender in the to-be opened channel. Also, the initiator of the channel opening.
+	/// - `sender`: The sender in the to-be opened channel. Also, the initiator of the channel
+	///   opening.
 	/// - `max_message_size`: The maximum size of a message proposed by the sender.
 	/// - `max_capacity`: The maximum number of messages that can be queued in the channel.
 	///
@@ -276,8 +280,8 @@ pub enum Xcm<Call> {
 	},
 
 	/// A message to notify about that a previously sent open channel request has been accepted by
-	/// the recipient. That means that the channel will be opened during the next relay-chain session
-	/// change. This message is meant to be sent by the relay-chain to a para.
+	/// the recipient. That means that the channel will be opened during the next relay-chain
+	/// session change. This message is meant to be sent by the relay-chain to a para.
 	///
 	/// Safety: The message should originate directly from the relay-chain.
 	///
@@ -290,10 +294,10 @@ pub enum Xcm<Call> {
 		recipient: u32,
 	},
 
-	/// A message to notify that the other party in an open channel decided to close it. In particular,
-	/// `initiator` is going to close the channel opened from `sender` to the `recipient`. The close
-	/// will be enacted at the next relay-chain session change. This message is meant to be sent by
-	/// the relay-chain to a para.
+	/// A message to notify that the other party in an open channel decided to close it. In
+	/// particular, `initiator` is going to close the channel opened from `sender` to the
+	/// `recipient`. The close will be enacted at the next relay-chain session change. This message
+	/// is meant to be sent by the relay-chain to a para.
 	///
 	/// Safety: The message should originate directly from the relay-chain.
 	///
@@ -310,8 +314,8 @@ pub enum Xcm<Call> {
 		recipient: u32,
 	},
 
-	/// A message to indicate that the embedded XCM is actually arriving on behalf of some consensus
-	/// location within the origin.
+	/// A message to indicate that the embedded XCM is actually arriving on behalf of some
+	/// consensus location within the origin.
 	///
 	/// Kind: *Instruction*
 	///
@@ -377,8 +381,8 @@ impl<Call> Xcm<Call> {
 }
 
 pub mod opaque {
-	/// The basic concrete type of `generic::Xcm`, which doesn't make any assumptions about the format of a
-	/// call other than it is pre-encoded.
+	/// The basic concrete type of `generic::Xcm`, which doesn't make any assumptions about the
+	/// format of a call other than it is pre-encoded.
 	pub type Xcm = super::Xcm<()>;
 
 	pub use super::order::opaque::*;

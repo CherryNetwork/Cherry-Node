@@ -23,7 +23,8 @@ use sp_std::{convert::TryInto, marker::PhantomData};
 use xcm::latest::{BodyId, BodyPart, Junction, Junctions::*, MultiLocation, NetworkId, OriginKind};
 use xcm_executor::traits::{Convert, ConvertOrigin};
 
-/// Sovereign accounts use the system's `Signed` origin with an account ID derived from the `LocationConverter`.
+/// Sovereign accounts use the system's `Signed` origin with an account ID derived from the
+/// `LocationConverter`.
 pub struct SovereignSignedViaLocation<LocationConverter, Origin>(
 	PhantomData<(LocationConverter, Origin)>,
 );
@@ -223,10 +224,11 @@ where
 	}
 }
 
-/// `Convert` implementation to convert from some a `Signed` (system) `Origin` into an `AccountId32`.
+/// `Convert` implementation to convert from some a `Signed` (system) `Origin` into an
+/// `AccountId32`.
 ///
-/// Typically used when configuring `pallet-xcm` for allowing normal accounts to dispatch an XCM from an `AccountId32`
-/// origin.
+/// Typically used when configuring `pallet-xcm` for allowing normal accounts to dispatch an XCM
+/// from an `AccountId32` origin.
 pub struct SignedToAccountId32<Origin, AccountId, Network>(
 	PhantomData<(Origin, AccountId, Network)>,
 );
@@ -246,11 +248,11 @@ where
 	}
 }
 
-/// `Convert` implementation to convert from some an origin which implements `Backing` into a corresponding `Plurality`
-/// `MultiLocation`.
+/// `Convert` implementation to convert from some an origin which implements `Backing` into a
+/// corresponding `Plurality` `MultiLocation`.
 ///
-/// Typically used when configuring `pallet-xcm` for allowing a collective's Origin to dispatch an XCM from a
-/// `Plurality` origin.
+/// Typically used when configuring `pallet-xcm` for allowing a collective's Origin to dispatch an
+/// XCM from a `Plurality` origin.
 pub struct BackingToPlurality<Origin, COrigin, Body>(PhantomData<(Origin, COrigin, Body)>);
 impl<Origin: OriginTrait + Clone, COrigin: GetBacking, Body: Get<BodyId>>
 	Convert<Origin, MultiLocation> for BackingToPlurality<Origin, COrigin, Body>

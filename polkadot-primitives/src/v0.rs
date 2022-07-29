@@ -106,7 +106,8 @@ impl MallocSizeOf for ValidatorId {
 	}
 }
 
-/// Index of the validator is used as a lightweight replacement of the `ValidatorId` when appropriate.
+/// Index of the validator is used as a lightweight replacement of the `ValidatorId` when
+/// appropriate.
 #[derive(Eq, Ord, PartialEq, PartialOrd, Copy, Clone, Encode, Decode, TypeInfo)]
 #[cfg_attr(feature = "std", derive(Serialize, Deserialize, Debug, Hash, MallocSizeOf))]
 pub struct ValidatorIndex(pub u32);
@@ -146,7 +147,8 @@ pub enum Retriable {
 	/// Ineligible for retry. This means it's either a parachain that is always scheduled anyway or
 	/// has been removed/swapped.
 	Never,
-	/// Eligible for retry; the associated value is the number of retries that the para already had.
+	/// Eligible for retry; the associated value is the number of retries that the para already
+	/// had.
 	WithRetries(u32),
 }
 
@@ -190,9 +192,9 @@ pub trait SwapAux {
 	/// code and `head_data` remain equivalent for all parachains/threads, however other properties
 	/// such as leases, deposits held and thread/chain nature are swapped.
 	///
-	/// May only be called on a state that `ensure_can_swap` has previously returned `Ok` for: if this is
-	/// not the case, the result is undefined. May only return an error if `ensure_can_swap` also returns
-	/// an error.
+	/// May only be called on a state that `ensure_can_swap` has previously returned `Ok` for: if
+	/// this is not the case, the result is undefined. May only return an error if `ensure_can_swap`
+	/// also returns an error.
 	fn on_swap(one: Id, other: Id) -> Result<(), &'static str>;
 }
 
@@ -516,7 +518,8 @@ impl AbridgedCandidateReceipt {
 		}
 	}
 
-	/// Clone the relevant portions of the `AbridgedCandidateReceipt` to form a `CandidateDescriptor`.
+	/// Clone the relevant portions of the `AbridgedCandidateReceipt` to form a
+	/// `CandidateDescriptor`.
 	pub fn to_descriptor(&self) -> CandidateDescriptor {
 		CandidateDescriptor {
 			para_id: self.parachain_index,

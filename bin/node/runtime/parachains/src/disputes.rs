@@ -72,22 +72,22 @@ impl RewardValidators for () {
 
 /// Punishment hooks for disputes.
 pub trait PunishValidators {
-	/// Punish a series of validators who were for an invalid parablock. This is expected to be a major
-	/// punishment.
+	/// Punish a series of validators who were for an invalid parablock. This is expected to be a
+	/// major punishment.
 	fn punish_for_invalid(
 		session: SessionIndex,
 		validators: impl IntoIterator<Item = ValidatorIndex>,
 	);
 
-	/// Punish a series of validators who were against a valid parablock. This is expected to be a minor
-	/// punishment.
+	/// Punish a series of validators who were against a valid parablock. This is expected to be a
+	/// minor punishment.
 	fn punish_against_valid(
 		session: SessionIndex,
 		validators: impl IntoIterator<Item = ValidatorIndex>,
 	);
 
-	/// Punish a series of validators who were part of a dispute which never concluded. This is expected
-	/// to be a minor punishment.
+	/// Punish a series of validators who were part of a dispute which never concluded. This is
+	/// expected to be a minor punishment.
 	fn punish_inconclusive(
 		session: SessionIndex,
 		validators: impl IntoIterator<Item = ValidatorIndex>,
@@ -641,13 +641,13 @@ impl<T: Config> Pallet<T> {
 						None => return,
 					};
 
-					// also reduce spam slots for all validators involved, if the dispute was unconfirmed.
-					// this does open us up to more spam, but only for validators who are willing
-					// to be punished more.
+					// also reduce spam slots for all validators involved, if the dispute was
+					// unconfirmed. this does open us up to more spam, but only for validators who
+					// are willing to be punished more.
 					//
-					// it would be unexpected for any change here to occur when the dispute has not concluded
-					// in time, as a dispute guaranteed to have at least one honest participant should
-					// conclude quickly.
+					// it would be unexpected for any change here to occur when the dispute has not
+					// concluded in time, as a dispute guaranteed to have at least one honest
+					// participant should conclude quickly.
 					let participating = decrement_spam(spam_slots, &dispute);
 
 					// Slight punishment as these validators have failed to make data available to
@@ -691,8 +691,8 @@ impl<T: Config> Pallet<T> {
 				// This should be small, as disputes are rare, so `None` is fine.
 				<Disputes<T>>::remove_prefix(to_prune, None);
 
-				// This is larger, and will be extracted to the `shared` module for more proper pruning.
-				// TODO: https://github.com/paritytech/polkadot/issues/3469
+				// This is larger, and will be extracted to the `shared` module for more proper
+				// pruning. TODO: https://github.com/paritytech/polkadot/issues/3469
 				<Included<T>>::remove_prefix(to_prune, None);
 				SpamSlots::<T>::remove(to_prune);
 			}
@@ -1148,8 +1148,8 @@ fn has_supermajority_against<BlockNumber>(dispute: &DisputeState<BlockNumber>) -
 	dispute.validators_against.count_ones() >= supermajority_threshold
 }
 
-// If the dispute had not enough validators to confirm, decrement spam slots for all the participating
-// validators.
+// If the dispute had not enough validators to confirm, decrement spam slots for all the
+// participating validators.
 //
 // Returns the set of participating validators as a bitvec.
 fn decrement_spam<BlockNumber>(
@@ -1237,7 +1237,8 @@ mod tests {
 		while System::block_number() < to {
 			let b = System::block_number();
 			if b != 0 {
-				// circumvent requirement to have bitfields and headers in block for testing purposes
+				// circumvent requirement to have bitfields and headers in block for testing
+				// purposes
 				crate::paras_inherent::Included::<Test>::set(Some(()));
 
 				AllPallets::on_finalize(b);

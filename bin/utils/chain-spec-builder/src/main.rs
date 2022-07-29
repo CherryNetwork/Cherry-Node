@@ -182,6 +182,9 @@ fn generate_authority_keys_and_store(seeds: &[String], keystore_path: &Path) -> 
 
 		insert_key(sp_core::crypto::key_types::IM_ONLINE, im_online.as_slice())?;
 
+		insert_key(primitives::v1::ASSIGNMENT_KEY_TYPE_ID, assigment.as_slice())?;
+		insert_key(primitives::v0::COLLATOR_KEY_TYPE_ID, validator.as_slice())?;
+
 		insert_key(
 			sp_core::crypto::key_types::AUTHORITY_DISCOVERY,
 			authority_discovery.as_slice(),

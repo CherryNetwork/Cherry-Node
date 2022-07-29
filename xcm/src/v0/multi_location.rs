@@ -22,24 +22,27 @@ use parity_scale_codec::{self, Decode, Encode};
 
 /// A relative path between state-bearing consensus systems.
 ///
-/// A location in a consensus system is defined as an *isolatable state machine* held within global consensus. The
-/// location in question need not have a sophisticated consensus algorithm of its own; a single account within
-/// Ethereum, for example, could be considered a location.
+/// A location in a consensus system is defined as an *isolatable state machine* held within global
+/// consensus. The location in question need not have a sophisticated consensus algorithm of its
+/// own; a single account within Ethereum, for example, could be considered a location.
 ///
 /// A very-much non-exhaustive list of types of location include:
 /// - A (normal, layer-1) block chain, e.g. the Bitcoin mainnet or a parachain.
 /// - A layer-0 super-chain, e.g. the Polkadot Relay chain.
 /// - A layer-2 smart contract, e.g. an ERC-20 on Ethereum.
-/// - A logical functional component of a chain, e.g. a single instance of a pallet on a Frame-based Substrate chain.
+/// - A logical functional component of a chain, e.g. a single instance of a pallet on a Frame-based
+///   Substrate chain.
 /// - An account.
 ///
-/// A `MultiLocation` is a *relative identifier*, meaning that it can only be used to define the relative path
-/// between two locations, and cannot generally be used to refer to a location universally. It is comprised of a
-/// number of *junctions*, each morphing the previous location, either diving down into one of its internal locations,
-/// called a *sub-consensus*, or going up into its parent location. Correct `MultiLocation` values must have all
-/// `Parent` junctions as a prefix to all *sub-consensus* junctions.
+/// A `MultiLocation` is a *relative identifier*, meaning that it can only be used to define the
+/// relative path between two locations, and cannot generally be used to refer to a location
+/// universally. It is comprised of a number of *junctions*, each morphing the previous location,
+/// either diving down into one of its internal locations, called a *sub-consensus*, or going up
+/// into its parent location. Correct `MultiLocation` values must have all `Parent` junctions as a
+/// prefix to all *sub-consensus* junctions.
 ///
-/// This specific `MultiLocation` implementation uses a Rust `enum` in order to make pattern matching easier.
+/// This specific `MultiLocation` implementation uses a Rust `enum` in order to make pattern
+/// matching easier.
 ///
 /// The `MultiLocation` value of `Null` simply refers to the interpreting consensus system.
 #[derive(Clone, Eq, PartialEq, Ord, PartialOrd, Encode, Decode, Debug, scale_info::TypeInfo)]
@@ -135,8 +138,8 @@ impl MultiLocation {
 		}
 	}
 
-	/// Splits off the first junction, returning the remaining suffix (first item in tuple) and the first element
-	/// (second item in tuple) or `None` if it was empty.
+	/// Splits off the first junction, returning the remaining suffix (first item in tuple) and the
+	/// first element (second item in tuple) or `None` if it was empty.
 	pub fn split_first(self) -> (MultiLocation, Option<Junction>) {
 		match self {
 			MultiLocation::Null => (MultiLocation::Null, None),
@@ -153,8 +156,8 @@ impl MultiLocation {
 		}
 	}
 
-	/// Splits off the last junction, returning the remaining prefix (first item in tuple) and the last element
-	/// (second item in tuple) or `None` if it was empty.
+	/// Splits off the last junction, returning the remaining prefix (first item in tuple) and the
+	/// last element (second item in tuple) or `None` if it was empty.
 	pub fn split_last(self) -> (MultiLocation, Option<Junction>) {
 		match self {
 			MultiLocation::Null => (MultiLocation::Null, None),
@@ -189,8 +192,8 @@ impl MultiLocation {
 		tail
 	}
 
-	/// Consumes `self` and returns a `MultiLocation` suffixed with `new`, or an `Err` with the original value of
-	/// `self` in case of overflow.
+	/// Consumes `self` and returns a `MultiLocation` suffixed with `new`, or an `Err` with the
+	/// original value of `self` in case of overflow.
 	pub fn pushed_with(self, new: Junction) -> result::Result<Self, Self> {
 		Ok(match self {
 			MultiLocation::Null => MultiLocation::X1(new),
@@ -205,8 +208,8 @@ impl MultiLocation {
 		})
 	}
 
-	/// Consumes `self` and returns a `MultiLocation` prefixed with `new`, or an `Err` with the original value of
-	/// `self` in case of overflow.
+	/// Consumes `self` and returns a `MultiLocation` prefixed with `new`, or an `Err` with the
+	/// original value of `self` in case of overflow.
 	pub fn pushed_front_with(self, new: Junction) -> result::Result<Self, Self> {
 		Ok(match self {
 			MultiLocation::Null => MultiLocation::X1(new),
@@ -236,7 +239,8 @@ impl MultiLocation {
 		}
 	}
 
-	/// Returns the junction at index `i`, or `None` if the location doesn't contain that many elements.
+	/// Returns the junction at index `i`, or `None` if the location doesn't contain that many
+	/// elements.
 	pub fn at(&self, i: usize) -> Option<&Junction> {
 		Some(match (i, &self) {
 			(0, MultiLocation::X1(ref a)) => a,
@@ -279,8 +283,8 @@ impl MultiLocation {
 		})
 	}
 
-	/// Returns a mutable reference to the junction at index `i`, or `None` if the location doesn't contain that many
-	/// elements.
+	/// Returns a mutable reference to the junction at index `i`, or `None` if the location doesn't
+	/// contain that many elements.
 	pub fn at_mut(&mut self, i: usize) -> Option<&mut Junction> {
 		Some(match (i, self) {
 			(0, MultiLocation::X1(ref mut a)) => a,

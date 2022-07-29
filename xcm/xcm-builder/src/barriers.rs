@@ -81,8 +81,8 @@ impl<T: Contains<MultiLocation>> ShouldExecute for AllowTopLevelPaidExecutionFro
 	}
 }
 
-/// Allows execution from any origin that is contained in `T` (i.e. `T::Contains(origin)`) without any payments.
-/// Use only for executions from trusted origin groups.
+/// Allows execution from any origin that is contained in `T` (i.e. `T::Contains(origin)`) without
+/// any payments. Use only for executions from trusted origin groups.
 pub struct AllowUnpaidExecutionFrom<T>(PhantomData<T>);
 impl<T: Contains<MultiLocation>> ShouldExecute for AllowUnpaidExecutionFrom<T> {
 	fn should_execute<Call>(

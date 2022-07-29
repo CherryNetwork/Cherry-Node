@@ -94,10 +94,10 @@ impl frame_support::pallet_prelude::Get<Option<(usize, sp_npos_elections::Extend
 }
 
 /// Implementation of `frame_election_provider_support::SortedListProvider` that updates the
-/// bags-list but uses [`pallet_staking::Nominators`] for `iter`. This is meant to be a transitionary
-/// implementation for runtimes to "test" out the bags-list by keeping it up to date, but not yet
-/// using it for snapshot generation. In contrast, a  "complete" implementation would use bags-list
-/// for `iter`.
+/// bags-list but uses [`pallet_staking::Nominators`] for `iter`. This is meant to be a
+/// transitionary implementation for runtimes to "test" out the bags-list by keeping it up to date,
+/// but not yet using it for snapshot generation. In contrast, a  "complete" implementation would
+/// use bags-list for `iter`.
 pub struct UseNominatorsAndUpdateBagsList<T>(PhantomData<T>);
 impl<T: pallet_bags_list::Config + pallet_staking::Config> SortedListProvider<T::AccountId>
 	for UseNominatorsAndUpdateBagsList<T>

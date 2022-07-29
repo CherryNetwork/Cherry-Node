@@ -18,9 +18,9 @@
 
 //! Test accounts.
 
+use cherry_runtime::{CheckedExtrinsic, SessionKeys, SignedExtra, UncheckedExtrinsic};
 use codec::Encode;
 use node_primitives::{AccountId, Balance, Index};
-use cherry_runtime::{CheckedExtrinsic, SessionKeys, SignedExtra, UncheckedExtrinsic};
 use sp_keyring::{AccountKeyring, Ed25519Keyring, Sr25519Keyring};
 use sp_runtime::generic::Era;
 

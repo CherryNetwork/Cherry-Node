@@ -27,7 +27,8 @@ use derivative::Derivative;
 use parity_scale_codec::{self, Decode, Encode};
 use scale_info::TypeInfo;
 
-/// An instruction to be executed on some or all of the assets in holding, used by asset-related XCM messages.
+/// An instruction to be executed on some or all of the assets in holding, used by asset-related XCM
+/// messages.
 #[derive(Derivative, Encode, Decode, TypeInfo)]
 #[derivative(Clone(bound = ""), Eq(bound = ""), PartialEq(bound = ""), Debug(bound = ""))]
 #[codec(encode_bound())]
@@ -38,32 +39,33 @@ pub enum Order<Call> {
 	#[codec(index = 0)]
 	Noop,
 
-	/// Remove the asset(s) (`assets`) from holding and place equivalent assets under the ownership of `beneficiary`
-	/// within this consensus system.
+	/// Remove the asset(s) (`assets`) from holding and place equivalent assets under the ownership
+	/// of `beneficiary` within this consensus system.
 	///
 	/// - `assets`: The asset(s) to remove from holding.
-	/// - `max_assets`: The maximum number of unique assets/asset instances to remove from holding. Only the first
-	///   `max_assets` assets/instances of those matched by `assets` will be removed, prioritized under standard asset
-	///   ordering. Any others will remain in holding.
+	/// - `max_assets`: The maximum number of unique assets/asset instances to remove from holding.
+	///   Only the first `max_assets` assets/instances of those matched by `assets` will be
+	///   removed, prioritized under standard asset ordering. Any others will remain in holding.
 	/// - `beneficiary`: The new owner for the assets.
 	///
 	/// Errors:
 	#[codec(index = 1)]
 	DepositAsset { assets: MultiAssetFilter, max_assets: u32, beneficiary: MultiLocation },
 
-	/// Remove the asset(s) (`assets`) from holding and place equivalent assets under the ownership of `dest` within
-	/// this consensus system (i.e. its sovereign account).
+	/// Remove the asset(s) (`assets`) from holding and place equivalent assets under the ownership
+	/// of `dest` within this consensus system (i.e. its sovereign account).
 	///
 	/// Send an onward XCM message to `dest` of `ReserveAssetDeposited` with the given `effects`.
 	///
 	/// - `assets`: The asset(s) to remove from holding.
-	/// - `max_assets`: The maximum number of unique assets/asset instances to remove from holding. Only the first
-	///   `max_assets` assets/instances of those matched by `assets` will be removed, prioritized under standard asset
-	///   ordering. Any others will remain in holding.
-	/// - `dest`: The location whose sovereign account will own the assets and thus the effective beneficiary for the
-	///   assets and the notification target for the reserve asset deposit message.
-	/// - `effects`: The orders that should be contained in the `ReserveAssetDeposited` which is sent onwards to
-	///   `dest`.
+	/// - `max_assets`: The maximum number of unique assets/asset instances to remove from holding.
+	///   Only the first `max_assets` assets/instances of those matched by `assets` will be
+	///   removed, prioritized under standard asset ordering. Any others will remain in holding.
+	/// - `dest`: The location whose sovereign account will own the assets and thus the effective
+	///   beneficiary for the assets and the notification target for the reserve asset deposit
+	///   message.
+	/// - `effects`: The orders that should be contained in the `ReserveAssetDeposited` which is
+	///   sent onwards to `dest`.
 	///
 	/// Errors:
 	#[codec(index = 2)]
@@ -76,7 +78,8 @@ pub enum Order<Call> {
 
 	/// Remove the asset(s) (`give`) from holding and replace them with alternative assets.
 	///
-	/// The minimum amount of assets to be received into holding for the order not to fail may be stated.
+	/// The minimum amount of assets to be received into holding for the order not to fail may be
+	/// stated.
 	///
 	/// - `give`: The asset(s) to remove from holding.
 	/// - `receive`: The minimum amount of assets(s) which `give` should be exchanged for.
@@ -85,12 +88,14 @@ pub enum Order<Call> {
 	#[codec(index = 3)]
 	ExchangeAsset { give: MultiAssetFilter, receive: MultiAssets },
 
-	/// Remove the asset(s) (`assets`) from holding and send a `WithdrawAsset` XCM message to a reserve location.
+	/// Remove the asset(s) (`assets`) from holding and send a `WithdrawAsset` XCM message to a
+	/// reserve location.
 	///
 	/// - `assets`: The asset(s) to remove from holding.
-	/// - `reserve`: A valid location that acts as a reserve for all asset(s) in `assets`. The sovereign account
-	///   of this consensus system *on the reserve location* will have appropriate assets withdrawn and `effects` will
-	///   be executed on them. There will typically be only one valid location on any given asset/chain combination.
+	/// - `reserve`: A valid location that acts as a reserve for all asset(s) in `assets`. The
+	///   sovereign account of this consensus system *on the reserve location* will have
+	///   appropriate assets withdrawn and `effects` will be executed on them. There will typically
+	///   be only one valid location on any given asset/chain combination.
 	/// - `effects`: The orders to execute on the assets once withdrawn *on the reserve location*.
 	///
 	/// Errors:
@@ -101,27 +106,30 @@ pub enum Order<Call> {
 		effects: Vec<Order<()>>,
 	},
 
-	/// Remove the asset(s) (`assets`) from holding and send a `ReceiveTeleportedAsset` XCM message to a `destination`
-	/// location.
+	/// Remove the asset(s) (`assets`) from holding and send a `ReceiveTeleportedAsset` XCM message
+	/// to a `destination` location.
 	///
 	/// - `assets`: The asset(s) to remove from holding.
 	/// - `destination`: A valid location that has a bi-lateral teleportation arrangement.
-	/// - `effects`: The orders to execute on the assets once arrived *on the destination location*.
+	/// - `effects`: The orders to execute on the assets once arrived *on the destination
+	///   location*.
 	///
-	/// NOTE: The `destination` location *MUST* respect this origin as a valid teleportation origin for all `assets`.
-	/// If it does not, then the assets may be lost.
+	/// NOTE: The `destination` location *MUST* respect this origin as a valid teleportation origin
+	/// for all `assets`. If it does not, then the assets may be lost.
 	///
 	/// Errors:
 	#[codec(index = 5)]
 	InitiateTeleport { assets: MultiAssetFilter, dest: MultiLocation, effects: Vec<Order<()>> },
 
-	/// Send a `Balances` XCM message with the `assets` value equal to the holding contents, or a portion thereof.
+	/// Send a `Balances` XCM message with the `assets` value equal to the holding contents, or a
+	/// portion thereof.
 	///
 	/// - `query_id`: An identifier that will be replicated into the returned XCM message.
-	/// - `dest`: A valid destination for the returned XCM message. This may be limited to the current origin.
-	/// - `assets`: A filter for the assets that should be reported back. The assets reported back will be, asset-
-	///   wise, *the lesser of this value and the holding register*. No wildcards will be used when reporting assets
-	///   back.
+	/// - `dest`: A valid destination for the returned XCM message. This may be limited to the
+	///   current origin.
+	/// - `assets`: A filter for the assets that should be reported back. The assets reported back
+	///   will be, asset- wise, *the lesser of this value and the holding register*. No wildcards
+	///   will be used when reporting assets back.
 	///
 	/// Errors:
 	#[codec(index = 6)]
@@ -132,18 +140,19 @@ pub enum Order<Call> {
 		assets: MultiAssetFilter,
 	},
 
-	/// Pay for the execution of some XCM `instructions` and `orders` with up to `weight` picoseconds of execution time,
-	/// paying for this with up to `fees` from the Holding Register.
+	/// Pay for the execution of some XCM `instructions` and `orders` with up to `weight`
+	/// picoseconds of execution time, paying for this with up to `fees` from the Holding Register.
 	///
 	/// - `fees`: The asset(s) to remove from holding to pay for fees.
-	/// - `weight`: The amount of weight to purchase; this should be at least the shallow weight of `effects` and `xcm`.
-	/// - `debt`: The amount of weight-debt already incurred to be paid off; this should be equal to the unpaid weight of
-	///   any surrounding operations/orders.
-	/// - `halt_on_error`: If `true`, the execution of the `orders` and `operations` will halt on the first failure. If
-	///   `false`, then execution will continue regardless.
-	/// - `instructions`: XCM instructions to be executed outside of the context of the current Holding Register;
-	///   execution of these instructions happens AFTER the execution of the `orders`. The (shallow) weight for these
-	///   must be paid for with the `weight` purchased.
+	/// - `weight`: The amount of weight to purchase; this should be at least the shallow weight of
+	///   `effects` and `xcm`.
+	/// - `debt`: The amount of weight-debt already incurred to be paid off; this should be equal
+	///   to the unpaid weight of any surrounding operations/orders.
+	/// - `halt_on_error`: If `true`, the execution of the `orders` and `operations` will halt on
+	///   the first failure. If `false`, then execution will continue regardless.
+	/// - `instructions`: XCM instructions to be executed outside of the context of the current
+	///   Holding Register; execution of these instructions happens AFTER the execution of the
+	///   `orders`. The (shallow) weight for these must be paid for with the `weight` purchased.
 	/// Errors:
 	#[codec(index = 7)]
 	BuyExecution {

@@ -20,10 +20,10 @@
 
 //! Service implementation. Specialized wrapper over substrate service.
 
+use cherry_runtime::RuntimeApi;
 use futures::prelude::*;
 use node_executor::ExecutorDispatch;
 use node_primitives::Block;
-use cherry_runtime::RuntimeApi;
 use sc_client_api::{ExecutorProvider, RemoteBackend};
 use sc_consensus_babe::{self, SlotProportion};
 use sc_executor::NativeElseWasmExecutor;
@@ -612,12 +612,12 @@ pub fn new_light(config: Configuration) -> Result<TaskManager, ServiceError> {
 #[cfg(test)]
 mod tests {
 	use crate::service::{new_full_base, new_light_base, NewFullBase};
-	use codec::Encode;
-	use node_primitives::{Block, DigestItem, Signature};
 	use cherry_runtime::{
 		constants::{currency::CENTS, time::SLOT_DURATION},
 		Address, BalancesCall, Call, UncheckedExtrinsic,
 	};
+	use codec::Encode;
+	use node_primitives::{Block, DigestItem, Signature};
 	use sc_client_api::BlockBackend;
 	use sc_consensus::{BlockImport, BlockImportParams, ForkChoiceStrategy};
 	use sc_consensus_babe::{BabeIntermediate, CompatibleDigestItem, INTERMEDIATE_KEY};

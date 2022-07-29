@@ -1,5 +1,5 @@
-// Copyright 2020 Parity Technologies query_id: (), max_response_weight: ()  query_id: (), max_response_weight: ()  (UK) Ltd.
-// This file is part of Polkadot.
+// Copyright 2020 Parity Technologies query_id: (), max_response_weight: ()  query_id: (),
+// max_response_weight: ()  (UK) Ltd. This file is part of Polkadot.
 
 // Polkadot is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -645,7 +645,8 @@ fn paid_transacting_should_refund_payment_for_unused_weight() {
 #[test]
 fn prepaid_result_of_query_should_get_free_execution() {
 	let query_id = 33;
-	// We put this in manually here, but normally this would be done at the point of crafting the message.
+	// We put this in manually here, but normally this would be done at the point of crafting the
+	// message.
 	expect_response(query_id, Parent.into());
 
 	let the_response = Response::Assets((Parent, 100).into());

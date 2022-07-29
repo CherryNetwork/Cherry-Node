@@ -17,8 +17,8 @@
 //! The inclusion pallet is responsible for inclusion and availability of scheduled parachains
 //! and parathreads.
 //!
-//! It is responsible for carrying candidates from being backable to being backed, and then from backed
-//! to included.
+//! It is responsible for carrying candidates from being backable to being backed, and then from
+//! backed to included.
 
 use bitvec::{order::Lsb0 as BitOrderLsb0, vec::BitVec};
 use frame_support::pallet_prelude::*;
@@ -209,8 +209,8 @@ pub mod pallet {
 		InvalidOutboundHrmp,
 		/// The validation code hash of the candidate is not valid.
 		InvalidValidationCodeHash,
-		/// The `para_head` hash in the candidate descriptor doesn't match the hash of the actual para head in the
-		/// commitments.
+		/// The `para_head` hash in the candidate descriptor doesn't match the hash of the actual
+		/// para head in the commitments.
 		ParaHeadMismatch,
 	}
 
@@ -257,8 +257,8 @@ impl<T: Config> Pallet<T> {
 
 	/// Process a set of incoming bitfields.
 	///
-	/// Returns a `Vec` of `CandidateHash`es and their respective `AvailabilityCore`s that became available,
-	/// and cores free.
+	/// Returns a `Vec` of `CandidateHash`es and their respective `AvailabilityCore`s that became
+	/// available, and cores free.
 	pub(crate) fn process_bitfields(
 		expected_bits: usize,
 		unchecked_bitfields: UncheckedSignedAvailabilityBitfields,
@@ -337,8 +337,8 @@ impl<T: Config> Pallet<T> {
 					continue
 				};
 
-				// defensive check - this is constructed by loading the availability bitfield record,
-				// which is always `Some` if the core is occupied - that's why we're here.
+				// defensive check - this is constructed by loading the availability bitfield
+				// record, which is always `Some` if the core is occupied - that's why we're here.
 				let val_idx = signed_bitfield.validator_index().0 as usize;
 				if let Some(mut bit) =
 					pending_availability.as_mut().and_then(|candidate_pending_availability| {
@@ -401,8 +401,8 @@ impl<T: Config> Pallet<T> {
 		Ok(freed_cores)
 	}
 
-	/// Process candidates that have been backed. Provide the relay storage root, a set of candidates
-	/// and scheduled cores.
+	/// Process candidates that have been backed. Provide the relay storage root, a set of
+	/// candidates and scheduled cores.
 	///
 	/// Both should be sorted ascending by core index, and the candidates should be a subset of
 	/// scheduled cores. If these conditions are not met, the execution of the function fails.
@@ -476,7 +476,8 @@ impl<T: Config> Pallet<T> {
 
 				let validation_code_hash =
 					<paras::Pallet<T>>::validation_code_hash_at(para_id, now, None)
-						// A candidate for a parachain without current validation code is not scheduled.
+						// A candidate for a parachain without current validation code is not
+						// scheduled.
 						.ok_or_else(|| Error::<T>::UnscheduledCandidate)?;
 				ensure!(
 					backed_candidate.descriptor().validation_code_hash == validation_code_hash,
@@ -1343,7 +1344,8 @@ mod tests {
 				core if core == CoreIndex::from(0) => Some(chain_a),
 				core if core == CoreIndex::from(1) => Some(chain_b),
 				core if core == CoreIndex::from(2) => Some(thread_a),
-				core if core == CoreIndex::from(3) => None, // for the expected_cores() + 1 test below.
+				core if core == CoreIndex::from(3) => None, /* for the expected_cores() + 1 test
+				                                              * below. */
 				_ => panic!("out of bounds for testing"),
 			};
 

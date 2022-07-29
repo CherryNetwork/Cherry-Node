@@ -22,3 +22,4 @@ sp-core = { version = "4.0.0-dev", path = "../../../primitives/core" }
 sp-keystore = { version = "0.10.0-dev", path = "../../../primitives/keystore" }
 rand = "0.7.2"
 structopt = "0.3.8"
+primitives = { package = "polkadot-primitives", path = "../../../polkadot-primitives", default-features = false }

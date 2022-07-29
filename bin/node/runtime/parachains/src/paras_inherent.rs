@@ -119,8 +119,8 @@ pub mod pallet {
 			// filter out any unneeded dispute statements
 			T::DisputesHandler::filter_multi_dispute_data(&mut inherent_data.disputes);
 
-			// Sanity check: session changes can invalidate an inherent, and we _really_ don't want that to happen.
-			// See github.com/paritytech/polkadot/issues/1327
+			// Sanity check: session changes can invalidate an inherent, and we _really_ don't want
+			// that to happen. See github.com/paritytech/polkadot/issues/1327
 			let inherent_data =
 				match Self::enter(frame_system::RawOrigin::None.into(), inherent_data.clone()) {
 					Ok(_) => inherent_data,
@@ -188,7 +188,8 @@ pub mod pallet {
 
 				let _ = T::DisputesHandler::provide_multi_dispute_data(disputes.clone())?;
 				if T::DisputesHandler::is_frozen() {
-					// The relay chain we are currently on is invalid. Proceed no further on parachains.
+					// The relay chain we are currently on is invalid. Proceed no further on
+					// parachains.
 					Included::<T>::set(Some(()));
 					return Ok(Some(MINIMAL_INCLUSION_INHERENT_WEIGHT).into())
 				}
@@ -372,7 +373,8 @@ mod tests {
 				let backed_candidates = vec![BackedCandidate::default()];
 				let max_block_weight =
 					<Test as frame_system::Config>::BlockWeights::get().max_block;
-				// if the consumed resources are precisely equal to the max block weight, we do not truncate.
+				// if the consumed resources are precisely equal to the max block weight, we do not
+				// truncate.
 				System::set_block_consumed_resources(max_block_weight, 0);
 				assert_eq!(limit_backed_candidates::<Test>(backed_candidates).len(), 1);
 			});
@@ -384,7 +386,8 @@ mod tests {
 				let backed_candidates = vec![BackedCandidate::default()];
 				let max_block_weight =
 					<Test as frame_system::Config>::BlockWeights::get().max_block;
-				// if the consumed resources are precisely equal to the max block weight, we do not truncate.
+				// if the consumed resources are precisely equal to the max block weight, we do not
+				// truncate.
 				System::set_block_consumed_resources(max_block_weight + 1, 0);
 				assert_eq!(limit_backed_candidates::<Test>(backed_candidates).len(), 0);
 			});
@@ -396,7 +399,8 @@ mod tests {
 				let backed_candidates = vec![BackedCandidate::default(); 10];
 				let max_block_weight =
 					<Test as frame_system::Config>::BlockWeights::get().max_block;
-				// if the consumed resources are precisely equal to the max block weight, we do not truncate.
+				// if the consumed resources are precisely equal to the max block weight, we do not
+				// truncate.
 				System::set_block_consumed_resources(max_block_weight + 1, 0);
 				assert_eq!(limit_backed_candidates::<Test>(backed_candidates).len(), 0);
 			});
@@ -433,7 +437,8 @@ mod tests {
 
 		/// We expect the weight of the paras inherent not to change when no truncation occurs:
 		/// its weight is dynamically computed from the size of the backed candidates list, and is
-		/// already incorporated into the current block weight when it is selected by the provisioner.
+		/// already incorporated into the current block weight when it is selected by the
+		/// provisioner.
 		#[test]
 		fn weight_does_not_change_on_happy_path() {
 			new_test_ext(MockGenesisConfig::default()).execute_with(|| {
@@ -441,9 +446,11 @@ mod tests {
 				System::set_block_number(1);
 				System::set_parent_hash(header.hash());
 
-				// number of bitfields doesn't affect the paras inherent weight, so we can mock it with an empty one
+				// number of bitfields doesn't affect the paras inherent weight, so we can mock it
+				// with an empty one
 				let signed_bitfields = Vec::new();
-				// backed candidates must not be empty, so we can demonstrate that the weight has not changed
+				// backed candidates must not be empty, so we can demonstrate that the weight has
+				// not changed
 				let backed_candidates = vec![BackedCandidate::default(); 10];
 
 				// the expected weight can always be computed by this formula
@@ -473,9 +480,9 @@ mod tests {
 				// call has returned the appropriate post-dispatch weight for refund, and trust
 				// Substrate to do the right thing with that information.
 				//
-				// In this case, the weight system can update the actual weight with the same amount,
-				// or return `None` to indicate that the pre-computed weight should not change.
-				// Either option is acceptable for our purposes.
+				// In this case, the weight system can update the actual weight with the same
+				// amount, or return `None` to indicate that the pre-computed weight should not
+				// change. Either option is acceptable for our purposes.
 				if let Some(actual_weight) = post_info.actual_weight {
 					assert_eq!(actual_weight, expected_weight);
 				}
@@ -492,9 +499,11 @@ mod tests {
 				System::set_block_number(1);
 				System::set_parent_hash(header.hash());
 
-				// number of bitfields doesn't affect the paras inherent weight, so we can mock it with an empty one
+				// number of bitfields doesn't affect the paras inherent weight, so we can mock it
+				// with an empty one
 				let signed_bitfields = Vec::new();
-				// backed candidates must not be empty, so we can demonstrate that the weight has not changed
+				// backed candidates must not be empty, so we can demonstrate that the weight has
+				// not changed
 				let backed_candidates = vec![BackedCandidate::default(); 10];
 
 				// the expected weight with no blocks is just the minimum weight

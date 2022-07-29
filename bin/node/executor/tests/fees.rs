@@ -15,6 +15,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use cherry_runtime::{
+	constants::{currency::*, time::SLOT_DURATION},
+	Balances, Call, CheckedExtrinsic, Multiplier, Runtime, TransactionByteFee, TransactionPayment,
+};
 use codec::{Encode, Joiner};
 use frame_support::{
 	traits::Currency,
@@ -23,10 +27,6 @@ use frame_support::{
 	},
 };
 use node_primitives::Balance;
-use cherry_runtime::{
-	constants::{currency::*, time::SLOT_DURATION},
-	Balances, Call, CheckedExtrinsic, Multiplier, Runtime, TransactionByteFee, TransactionPayment,
-};
 use node_testing::keyring::*;
 use sp_core::NeverNativeValue;
 use sp_runtime::{traits::One, Perbill};

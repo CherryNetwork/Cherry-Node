@@ -22,7 +22,8 @@ use frame_support::{traits::StorageVersion, weights::Weight};
 /// The current storage version.
 pub const STORAGE_VERSION: StorageVersion = StorageVersion::new(1);
 
-/// Migrates the pallet storage to the most recent version, checking and setting the `StorageVersion`.
+/// Migrates the pallet storage to the most recent version, checking and setting the
+/// `StorageVersion`.
 pub fn migrate_to_latest<T: Config>() -> Weight {
 	0
 }

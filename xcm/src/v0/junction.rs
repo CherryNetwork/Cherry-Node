@@ -46,11 +46,11 @@ pub enum BodyId {
 	Executive,
 	/// The unambiguous technical body (for Polkadot, this would be the Technical Committee).
 	Technical,
-	/// The unambiguous legislative body (for Polkadot, this could be considered the opinion of a majority of
-	/// lock-voters).
+	/// The unambiguous legislative body (for Polkadot, this could be considered the opinion of a
+	/// majority of lock-voters).
 	Legislative,
-	/// The unambiguous judicial body (this doesn't exist on Polkadot, but if it were to get a "grand oracle", it
-	/// may be considered as that).
+	/// The unambiguous judicial body (this doesn't exist on Polkadot, but if it were to get a
+	/// "grand oracle", it may be considered as that).
 	Judicial,
 }
 
@@ -106,20 +106,20 @@ impl BodyPart {
 pub enum Junction {
 	/// The consensus system of which the context is a member and state-wise super-set.
 	///
-	/// NOTE: This item is *not* a sub-consensus item: a consensus system may not identify itself trustlessly as
-	/// a location that includes this junction.
+	/// NOTE: This item is *not* a sub-consensus item: a consensus system may not identify itself
+	/// trustlessly as a location that includes this junction.
 	Parent,
 	/// An indexed parachain belonging to and operated by the context.
 	///
 	/// Generally used when the context is a Polkadot Relay-chain.
 	Parachain(#[codec(compact)] u32),
-	/// A 32-byte identifier for an account of a specific network that is respected as a sovereign endpoint within
-	/// the context.
+	/// A 32-byte identifier for an account of a specific network that is respected as a sovereign
+	/// endpoint within the context.
 	///
 	/// Generally used when the context is a Substrate-based chain.
 	AccountId32 { network: NetworkId, id: [u8; 32] },
-	/// An 8-byte index for an account of a specific network that is respected as a sovereign endpoint within
-	/// the context.
+	/// An 8-byte index for an account of a specific network that is respected as a sovereign
+	/// endpoint within the context.
 	///
 	/// May be used when the context is a Frame-based chain and includes e.g. an indices pallet.
 	AccountIndex64 {
@@ -127,8 +127,8 @@ pub enum Junction {
 		#[codec(compact)]
 		index: u64,
 	},
-	/// A 20-byte identifier for an account of a specific network that is respected as a sovereign endpoint within
-	/// the context.
+	/// A 20-byte identifier for an account of a specific network that is respected as a sovereign
+	/// endpoint within the context.
 	///
 	/// May be used when the context is an Ethereum or Bitcoin chain or smart-contract.
 	AccountKey20 { network: NetworkId, key: [u8; 20] },
@@ -154,8 +154,8 @@ pub enum Junction {
 	OnlyChild,
 	/// A pluralistic body existing within consensus.
 	///
-	/// Typical to be used to represent a governance origin of a chain, but could in principle be used to represent
-	/// things such as multisigs also.
+	/// Typical to be used to represent a governance origin of a chain, but could in principle be
+	/// used to represent things such as multisigs also.
 	Plurality { id: BodyId, part: BodyPart },
 }
 
@@ -185,8 +185,8 @@ impl Junction {
 		}
 	}
 
-	/// Returns true if this junction can be considered an interior part of its context. This is generally `true`,
-	/// except for the `Parent` item.
+	/// Returns true if this junction can be considered an interior part of its context. This is
+	/// generally `true`, except for the `Parent` item.
 	pub fn is_interior(&self) -> bool {
 		match self {
 			Junction::Parent => false,

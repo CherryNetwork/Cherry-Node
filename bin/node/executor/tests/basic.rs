@@ -26,12 +26,12 @@ use sp_runtime::{
 	traits::Hash as HashT, transaction_validity::InvalidTransaction, ApplyExtrinsicResult,
 };
 
-use node_primitives::{Balance, Hash};
 use cherry_runtime::{
 	constants::{currency::*, time::SLOT_DURATION},
 	Balances, Block, Call, CheckedExtrinsic, Event, Header, Runtime, System, TransactionPayment,
 	UncheckedExtrinsic,
 };
+use node_primitives::{Balance, Hash};
 use node_testing::keyring::*;
 use wat;
 

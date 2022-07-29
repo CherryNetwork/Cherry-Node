@@ -18,14 +18,14 @@
 
 //! Substrate chain configurations.
 
-use grandpa_primitives::AuthorityId as GrandpaId;
-use hex_literal::hex;
 use cherry_runtime::{
 	constants::currency::*, wasm_binary_unwrap, AssetsConfig, AuthorityDiscoveryConfig, BabeConfig,
 	BalancesConfig, Block, CouncilConfig, ElectionsConfig, GrandpaConfig, ImOnlineConfig,
 	IndicesConfig, SessionConfig, SessionKeys, StakerStatus, StakingConfig, SystemConfig,
 	TechnicalMembershipConfig, MAX_NOMINATIONS,
 };
+use grandpa_primitives::AuthorityId as GrandpaId;
+use hex_literal::hex;
 use pallet_im_online::sr25519::AuthorityId as ImOnlineId;
 use sc_chain_spec::ChainSpecExtension;
 use sc_service::ChainType;
@@ -39,8 +39,8 @@ use sp_runtime::{
 	Perbill,
 };
 
-pub use node_primitives::{AccountId, Balance, Signature};
 pub use cherry_runtime::GenesisConfig;
+pub use node_primitives::{AccountId, Balance, Signature};
 use primitives::v1::{AssignmentId, ValidatorId};
 type AccountPublic = <Signature as Verify>::Signer;
 
@@ -255,7 +255,16 @@ where
 /// Helper function to generate stash, controller and session key from seed
 pub fn authority_keys_from_seed(
 	seed: &str,
-) -> (AccountId, AccountId, GrandpaId, BabeId, ImOnlineId, AssignmentId, ValidatorId, AuthorityDiscoveryId) {
+) -> (
+	AccountId,
+	AccountId,
+	GrandpaId,
+	BabeId,
+	ImOnlineId,
+	AssignmentId,
+	ValidatorId,
+	AuthorityDiscoveryId,
+) {
 	(
 		get_account_id_from_seed::<sr25519::Public>(&format!("{}//stash", seed)),
 		get_account_id_from_seed::<sr25519::Public>(seed),
@@ -351,7 +360,14 @@ pub fn testnet_genesis(
 					(
 						x.0.clone(),
 						x.0.clone(),
-						session_keys(x.2.clone(), x.3.clone(), x.4.clone(), x.5.clone(), x.6.clone(), x.7.clone()),
+						session_keys(
+							x.2.clone(),
+							x.3.clone(),
+							x.4.clone(),
+							x.5.clone(),
+							x.6.clone(),
+							x.7.clone(),
+						),
 					)
 				})
 				.collect::<Vec<_>>(),

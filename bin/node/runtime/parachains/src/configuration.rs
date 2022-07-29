@@ -40,12 +40,12 @@ const LOG_TARGET: &str = "runtime::configuration";
 #[derive(Clone, Encode, Decode, PartialEq, sp_core::RuntimeDebug, scale_info::TypeInfo)]
 #[cfg_attr(feature = "std", derive(serde::Serialize, serde::Deserialize))]
 pub struct HostConfiguration<BlockNumber> {
-	// NOTE: This structure is used by parachains via merkle proofs. Therefore, this struct requires
-	// special treatment.
+	// NOTE: This structure is used by parachains via merkle proofs. Therefore, this struct
+	// requires special treatment.
 	//
-	// A parachain requested this struct can only depend on the subset of this struct. Specifically,
-	// only a first few fields can be depended upon. These fields cannot be changed without
-	// corresponding migration of the parachains.
+	// A parachain requested this struct can only depend on the subset of this struct.
+	// Specifically, only a first few fields can be depended upon. These fields cannot be changed
+	// without corresponding migration of the parachains.
 	/**
 	 * The parameters that are required for the parachains.
 	 */
@@ -132,13 +132,13 @@ pub struct HostConfiguration<BlockNumber> {
 	/// Must be non-zero.
 	pub group_rotation_frequency: BlockNumber,
 	/// The availability period, in blocks, for parachains. This is the amount of blocks
-	/// after inclusion that validators have to make the block available and signal its availability to
-	/// the chain.
+	/// after inclusion that validators have to make the block available and signal its
+	/// availability to the chain.
 	///
 	/// Must be at least 1.
 	pub chain_availability_period: BlockNumber,
-	/// The availability period, in blocks, for parathreads. Same as the `chain_availability_period`,
-	/// but a differing timeout due to differing requirements.
+	/// The availability period, in blocks, for parathreads. Same as the
+	/// `chain_availability_period`, but a differing timeout due to differing requirements.
 	///
 	/// Must be at least 1.
 	pub thread_availability_period: BlockNumber,
@@ -710,7 +710,8 @@ pub mod pallet {
 			Ok(())
 		}
 
-		/// Sets the maximum total size of items that can present in a upward dispatch queue at once.
+		/// Sets the maximum total size of items that can present in a upward dispatch queue at
+		/// once.
 		#[pallet::weight((
 			T::WeightInfo::set_config_with_u32(),
 			DispatchClass::Operational,

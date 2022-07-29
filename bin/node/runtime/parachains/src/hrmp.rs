@@ -57,12 +57,12 @@ pub struct HrmpOpenChannelRequest {
 #[derive(Encode, Decode, TypeInfo)]
 #[cfg_attr(test, derive(Debug))]
 pub struct HrmpChannel {
-	// NOTE: This structure is used by parachains via merkle proofs. Therefore, this struct requires
-	// special treatment.
+	// NOTE: This structure is used by parachains via merkle proofs. Therefore, this struct
+	// requires special treatment.
 	//
-	// A parachain requested this struct can only depend on the subset of this struct. Specifically,
-	// only a first few fields can be depended upon (See `AbridgedHrmpChannel`). These fields cannot
-	// be changed without corresponding migration of parachains.
+	// A parachain requested this struct can only depend on the subset of this struct.
+	// Specifically, only a first few fields can be depended upon (See `AbridgedHrmpChannel`).
+	// These fields cannot be changed without corresponding migration of parachains.
 	/// The maximum number of messages that can be pending in the channel at once.
 	pub max_capacity: u32,
 	/// The maximum total size of the messages that can be pending in the channel at once.
@@ -191,9 +191,9 @@ pub mod pallet {
 
 		/// An interface for reserving deposits for opening channels.
 		///
-		/// NOTE that this Currency instance will be charged with the amounts defined in the `Configuration`
-		/// pallet. Specifically, that means that the `Balance` of the `Currency` implementation should
-		/// be the same as `Balance` as used in the `Configuration`.
+		/// NOTE that this Currency instance will be charged with the amounts defined in the
+		/// `Configuration` pallet. Specifically, that means that the `Balance` of the `Currency`
+		/// implementation should be the same as `Balance` as used in the `Configuration`.
 		type Currency: ReservableCurrency<Self::AccountId>;
 	}
 
@@ -267,8 +267,8 @@ pub mod pallet {
 		StorageValue<_, Vec<HrmpChannelId>, ValueQuery>;
 
 	/// This mapping tracks how many open channel requests are initiated by a given sender para.
-	/// Invariant: `HrmpOpenChannelRequests` should contain the same number of items that has `(X, _)`
-	/// as the number of `HrmpOpenChannelRequestCount` for `X`.
+	/// Invariant: `HrmpOpenChannelRequests` should contain the same number of items that has `(X,
+	/// _)` as the number of `HrmpOpenChannelRequestCount` for `X`.
 	#[pallet::storage]
 	pub type HrmpOpenChannelRequestCount<T: Config> =
 		StorageMap<_, Twox64Concat, ParaId, u32, ValueQuery>;
@@ -280,8 +280,8 @@ pub mod pallet {
 	pub type HrmpAcceptedChannelRequestCount<T: Config> =
 		StorageMap<_, Twox64Concat, ParaId, u32, ValueQuery>;
 
-	/// A set of pending HRMP close channel requests that are going to be closed during the session change.
-	/// Used for checking if a given channel is registered for closure.
+	/// A set of pending HRMP close channel requests that are going to be closed during the session
+	/// change. Used for checking if a given channel is registered for closure.
 	///
 	/// The set is accompanied by a list for iteration.
 	///
@@ -296,7 +296,8 @@ pub mod pallet {
 
 	/// The HRMP watermark associated with each para.
 	/// Invariant:
-	/// - each para `P` used here as a key should satisfy `Paras::is_valid_para(P)` within a session.
+	/// - each para `P` used here as a key should satisfy `Paras::is_valid_para(P)` within a
+	///   session.
 	#[pallet::storage]
 	pub type HrmpWatermarks<T: Config> = StorageMap<_, Twox64Concat, ParaId, T::BlockNumber>;
 
@@ -313,10 +314,10 @@ pub mod pallet {
 	/// (b) egress index allows to find all the recipients for a given sender.
 	///
 	/// Invariants:
-	/// - for each ingress index entry for `P` each item `I` in the index should present in `HrmpChannels`
-	///   as `(I, P)`.
-	/// - for each egress index entry for `P` each item `E` in the index should present in `HrmpChannels`
-	///   as `(P, E)`.
+	/// - for each ingress index entry for `P` each item `I` in the index should present in
+	///   `HrmpChannels` as `(I, P)`.
+	/// - for each egress index entry for `P` each item `E` in the index should present in
+	///   `HrmpChannels` as `(P, E)`.
 	/// - there should be no other dangling channels in `HrmpChannels`.
 	/// - the vectors are sorted.
 	#[pallet::storage]
@@ -345,23 +346,23 @@ pub mod pallet {
 	/// Invariants:
 	/// - The inner `Vec<ParaId>` is never empty.
 	/// - The inner `Vec<ParaId>` cannot store two same `ParaId`.
-	/// - The outer vector is sorted ascending by block number and cannot store two items with the same
-	///   block number.
+	/// - The outer vector is sorted ascending by block number and cannot store two items with the
+	///   same block number.
 	#[pallet::storage]
 	pub type HrmpChannelDigests<T: Config> =
 		StorageMap<_, Twox64Concat, ParaId, Vec<(T::BlockNumber, Vec<ParaId>)>, ValueQuery>;
 
 	/// Preopen the given HRMP channels.
 	///
-	/// The values in the tuple corresponds to `(sender, recipient, max_capacity, max_message_size)`,
-	/// i.e. similar to `init_open_channel`. In fact, the initialization is performed as if
-	/// the `init_open_channel` and `accept_open_channel` were called with the respective parameters
-	/// and the session change take place.
+	/// The values in the tuple corresponds to `(sender, recipient, max_capacity,
+	/// max_message_size)`, i.e. similar to `init_open_channel`. In fact, the initialization is
+	/// performed as if the `init_open_channel` and `accept_open_channel` were called with the
+	/// respective parameters and the session change take place.
 	///
 	/// As such, each channel initializer should satisfy the same constraints, namely:
 	///
-	/// 1. `max_capacity` and `max_message_size` should be within the limits set by the configuration pallet.
-	/// 2. `sender` and `recipient` must be valid paras.
+	/// 1. `max_capacity` and `max_message_size` should be within the limits set by the
+	/// configuration pallet. 2. `sender` and `recipient` must be valid paras.
 	#[pallet::genesis_config]
 	pub struct GenesisConfig {
 		preopen_hrmp_channels: Vec<(ParaId, ParaId, u32, u32)>,
@@ -801,9 +802,9 @@ impl<T: Config> Pallet<T> {
 			out_hrmp_msgs.iter().enumerate().map(|(idx, out_msg)| (idx as u32, out_msg))
 		{
 			match last_recipient {
-				// the messages must be sorted in ascending order and there must be no two messages sent
-				// to the same recipient. Thus we can check that every recipient is strictly greater than
-				// the previous one.
+				// the messages must be sorted in ascending order and there must be no two messages
+				// sent to the same recipient. Thus we can check that every recipient is strictly
+				// greater than the previous one.
 				Some(last_recipient) if out_msg.recipient <= last_recipient =>
 					return Err(OutboundHrmpAcceptanceErr::NotSorted { idx }),
 				_ => last_recipient = Some(out_msg.recipient),
@@ -982,8 +983,8 @@ impl<T: Config> Pallet<T> {
 	/// Initiate opening a channel from a parachain to a given recipient with given channel
 	/// parameters.
 	///
-	/// Basically the same as [`hrmp_init_open_channel`](Pallet::hrmp_init_open_channel) but intendend for calling directly from
-	/// other pallets rather than dispatched.
+	/// Basically the same as [`hrmp_init_open_channel`](Pallet::hrmp_init_open_channel) but
+	/// intendend for calling directly from other pallets rather than dispatched.
 	pub fn init_open_channel(
 		origin: ParaId,
 		recipient: ParaId,

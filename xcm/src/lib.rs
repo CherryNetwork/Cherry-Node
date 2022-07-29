@@ -384,7 +384,8 @@ impl<Call> TryFrom<VersionedXcm<Call>> for v2::Xcm<Call> {
 	}
 }
 
-/// Convert an `Xcm` datum into a `VersionedXcm`, based on a destination `MultiLocation` which will interpret it.
+/// Convert an `Xcm` datum into a `VersionedXcm`, based on a destination `MultiLocation` which will
+/// interpret it.
 pub trait WrapVersion {
 	fn wrap_version<Call>(
 		dest: &latest::MultiLocation,
@@ -392,7 +393,8 @@ pub trait WrapVersion {
 	) -> Result<VersionedXcm<Call>, ()>;
 }
 
-/// `()` implementation does nothing with the XCM, just sending with whatever version it was authored as.
+/// `()` implementation does nothing with the XCM, just sending with whatever version it was
+/// authored as.
 impl WrapVersion for () {
 	fn wrap_version<Call>(
 		_: &latest::MultiLocation,
@@ -402,7 +404,8 @@ impl WrapVersion for () {
 	}
 }
 
-/// `WrapVersion` implementation which attempts to always convert the XCM to version 0 before wrapping it.
+/// `WrapVersion` implementation which attempts to always convert the XCM to version 0 before
+/// wrapping it.
 pub struct AlwaysV0;
 impl WrapVersion for AlwaysV0 {
 	fn wrap_version<Call>(
@@ -413,7 +416,8 @@ impl WrapVersion for AlwaysV0 {
 	}
 }
 
-/// `WrapVersion` implementation which attempts to always convert the XCM to version 1 before wrapping it.
+/// `WrapVersion` implementation which attempts to always convert the XCM to version 1 before
+/// wrapping it.
 pub struct AlwaysV1;
 impl WrapVersion for AlwaysV1 {
 	fn wrap_version<Call>(
@@ -424,7 +428,8 @@ impl WrapVersion for AlwaysV1 {
 	}
 }
 
-/// `WrapVersion` implementation which attempts to always convert the XCM to version 2 before wrapping it.
+/// `WrapVersion` implementation which attempts to always convert the XCM to version 2 before
+/// wrapping it.
 pub struct AlwaysV2;
 impl WrapVersion for AlwaysV2 {
 	fn wrap_version<Call>(
@@ -435,10 +440,12 @@ impl WrapVersion for AlwaysV2 {
 	}
 }
 
-/// `WrapVersion` implementation which attempts to always convert the XCM to the latest version before wrapping it.
+/// `WrapVersion` implementation which attempts to always convert the XCM to the latest version
+/// before wrapping it.
 pub type AlwaysLatest = AlwaysV1;
 
-/// `WrapVersion` implementation which attempts to always convert the XCM to the release version before wrapping it.
+/// `WrapVersion` implementation which attempts to always convert the XCM to the release version
+/// before wrapping it.
 pub type AlwaysRelease = AlwaysV0;
 
 pub mod prelude {

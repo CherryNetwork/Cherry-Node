@@ -113,8 +113,9 @@ where
 	}
 }
 
-/// Function trait for handling some revenue. Similar to a negative imbalance (credit) handler, but for a
-/// `MultiAsset`. Sensible implementations will deposit the asset in some known treasury or block-author account.
+/// Function trait for handling some revenue. Similar to a negative imbalance (credit) handler, but
+/// for a `MultiAsset`. Sensible implementations will deposit the asset in some known treasury or
+/// block-author account.
 pub trait TakeRevenue {
 	/// Do something with the given `revenue`, which is a single non-wildcard `MultiAsset`.
 	fn take_revenue(revenue: MultiAsset);
@@ -127,8 +128,8 @@ impl TakeRevenue for () {
 
 /// Simple fee calculator that requires payment in a single concrete fungible at a fixed rate.
 ///
-/// The constant `Get` type parameter should be the concrete fungible ID and the amount of it required for
-/// one second of weight.
+/// The constant `Get` type parameter should be the concrete fungible ID and the amount of it
+/// required for one second of weight.
 #[deprecated = "Use `FixedRateOfFungible` instead"]
 pub struct FixedRateOfConcreteFungible<T: Get<(MultiLocation, u128)>, R: TakeRevenue>(
 	Weight,
@@ -224,8 +225,8 @@ impl<T: Get<(AssetId, u128)>, R: TakeRevenue> Drop for FixedRateOfFungible<T, R>
 	}
 }
 
-/// Weight trader which uses the `TransactionPayment` pallet to set the right price for weight and then
-/// places any weight bought into the right account.
+/// Weight trader which uses the `TransactionPayment` pallet to set the right price for weight and
+/// then places any weight bought into the right account.
 pub struct UsingComponents<
 	WeightToFee: WeightToFeePolynomial<Balance = Currency::Balance>,
 	AssetId: Get<MultiLocation>,

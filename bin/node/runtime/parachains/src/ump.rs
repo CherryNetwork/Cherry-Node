@@ -28,7 +28,8 @@ use xcm::latest::Outcome;
 
 pub use pallet::*;
 
-/// All upward messages coming from parachains will be funneled into an implementation of this trait.
+/// All upward messages coming from parachains will be funneled into an implementation of this
+/// trait.
 ///
 /// The message is opaque from the perspective of UMP. The message size can range from 0 to
 /// `config.max_upward_message_size`.
@@ -38,8 +39,8 @@ pub use pallet::*;
 /// strategy.
 ///
 /// There are no guarantees on how much time it takes for the message sent by a candidate to end up
-/// in the sink after the candidate was enacted. That typically depends on the UMP traffic, the sizes
-/// of upward messages and the configuration of UMP.
+/// in the sink after the candidate was enacted. That typically depends on the UMP traffic, the
+/// sizes of upward messages and the configuration of UMP.
 ///
 /// It is possible that by the time the message is sank the origin parachain was offboarded. It is
 /// up to the implementer to check that if it cares.
@@ -178,10 +179,12 @@ pub mod pallet {
 		/// A place where all received upward messages are funneled.
 		type UmpSink: UmpSink;
 
-		/// The factor by which the weight limit it multiplied for the first UMP message to execute with.
+		/// The factor by which the weight limit it multiplied for the first UMP message to execute
+		/// with.
 		///
-		/// An amount less than 100 keeps more available weight in the queue for messages after the first, and potentially
-		/// stalls the queue in doing so. More than 100 will provide additional weight for the first message only.
+		/// An amount less than 100 keeps more available weight in the queue for messages after the
+		/// first, and potentially stalls the queue in doing so. More than 100 will provide
+		/// additional weight for the first message only.
 		///
 		/// Generally you'll want this to be a bit more - 150 or 200 would be good values.
 		type FirstMessageFactorPercent: Get<Weight>;
@@ -232,8 +235,8 @@ pub mod pallet {
 
 	/// The messages waiting to be handled by the relay-chain originating from a certain parachain.
 	///
-	/// Note that some upward messages might have been already processed by the inclusion logic. E.g.
-	/// channel management messages.
+	/// Note that some upward messages might have been already processed by the inclusion logic.
+	/// E.g. channel management messages.
 	///
 	/// The messages are processed in FIFO order.
 	#[pallet::storage]
@@ -245,9 +248,9 @@ pub mod pallet {
 	/// First item in the tuple is the count of messages and second
 	/// is the total length (in bytes) of the message payloads.
 	///
-	/// Note that this is an auxiliary mapping: it's possible to tell the byte size and the number of
-	/// messages only looking at `RelayDispatchQueues`. This mapping is separate to avoid the cost of
-	/// loading the whole message queue if only the total size and count are required.
+	/// Note that this is an auxiliary mapping: it's possible to tell the byte size and the number
+	/// of messages only looking at `RelayDispatchQueues`. This mapping is separate to avoid the
+	/// cost of loading the whole message queue if only the total size and count are required.
 	///
 	/// Invariant:
 	/// - The set of keys should exactly match the set of keys of `RelayDispatchQueues`.
@@ -265,8 +268,8 @@ pub mod pallet {
 	#[pallet::storage]
 	pub type NeedsDispatch<T: Config> = StorageValue<_, Vec<ParaId>, ValueQuery>;
 
-	/// This is the para that gets will get dispatched first during the next upward dispatchable queue
-	/// execution round.
+	/// This is the para that gets will get dispatched first during the next upward dispatchable
+	/// queue execution round.
 	///
 	/// Invariant:
 	/// - If `Some(para)`, then `para` must be present in `NeedsDispatch`.
@@ -468,8 +471,8 @@ impl<T: Config> Pallet<T> {
 				break
 			}
 			let max_weight = if weight_used == 0 {
-				// we increase the amount of weight that we're allowed to use on the first message to try to prevent
-				// the possibility of blockage of the queue.
+				// we increase the amount of weight that we're allowed to use on the first message
+				// to try to prevent the possibility of blockage of the queue.
 				config.ump_service_total_weight * T::FirstMessageFactorPercent::get() / 100
 			} else {
 				config.ump_service_total_weight - weight_used
@@ -498,8 +501,8 @@ impl<T: Config> Pallet<T> {
 								dispatchee, id, index, required,
 							));
 						} else {
-							// we process messages in order and don't drop them if we run out of weight,
-							// so need to break here without calling `consume_front`.
+							// we process messages in order and don't drop them if we run out of
+							// weight, so need to break here without calling `consume_front`.
 							Self::deposit_event(Event::WeightExhausted(id, max_weight, required));
 							break
 						}
@@ -546,8 +549,9 @@ impl<T: Config> Pallet<T> {
 /// 2. the dispatcher makes more than one cycle
 ///
 /// if the queues are deep and there are many we would load and keep the queues for a long time,
-/// thus increasing the peak memory consumption of the wasm runtime. Under such conditions persisting
-/// queues might play better since it's unlikely that they are going to be requested once more.
+/// thus increasing the peak memory consumption of the wasm runtime. Under such conditions
+/// persisting queues might play better since it's unlikely that they are going to be requested once
+/// more.
 ///
 /// On the other hand, the situation when deep queues exist and it takes more than one dispatcher
 /// cycle to traverse the queues is already sub-optimal and better be avoided.
@@ -611,9 +615,9 @@ impl QueueCache {
 
 	/// Flushes the updated queues into the storage.
 	fn flush<T: Config>(self) {
-		// NOTE we use an explicit method here instead of Drop impl because it has unwanted semantics
-		// within runtime. It is dangerous to use because of double-panics and flushing on a panic
-		// is not necessary as well.
+		// NOTE we use an explicit method here instead of Drop impl because it has unwanted
+		// semantics within runtime. It is dangerous to use because of double-panics and flushing on
+		// a panic is not necessary as well.
 		for (para, entry) in self.0 {
 			if entry.consumed_count >= entry.queue.len() {
 				// remove the entries altogether.
@@ -688,8 +692,8 @@ impl NeedsDispatchCursor {
 		}
 		let _ = self.needs_dispatch.remove(self.index);
 
-		// we might've removed the last element and that doesn't necessarily mean that `needs_dispatch`
-		// became empty. Reposition the cursor in this case to the beginning.
+		// we might've removed the last element and that doesn't necessarily mean that
+		// `needs_dispatch` became empty. Reposition the cursor in this case to the beginning.
 		if self.needs_dispatch.get(self.index).is_none() {
 			self.index = 0;
 		}
