@@ -96,5 +96,7 @@ pub fn config_endowed(
 		treasury: Default::default(),
 		assets: Default::default(),
 		transaction_storage: Default::default(),
+		configuration: Default::default(),
+		paras: Default::default(),
 	}
 }

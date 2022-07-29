@@ -23,6 +23,19 @@
 #![recursion_limit = "256"]
 
 use codec::{Decode, Encode};
+use runtime_common::{
+	auctions, crowdloan, paras_registrar, slots,
+};
+
+use runtime_parachains::{
+	configuration as parachains_configuration, dmp as parachains_dmp, hrmp as parachains_hrmp,
+	inclusion as parachains_inclusion, initializer as parachains_initializer,
+	origin as parachains_origin, paras as parachains_paras,
+	paras_inherent as parachains_paras_inherent, reward_points as parachains_reward_points,
+	runtime_api_impl::v1 as parachains_runtime_api_impl, scheduler as parachains_scheduler,
+	session_info as parachains_session_info, shared as parachains_shared, ump as parachains_ump,
+};
+
 use frame_support::{
 	construct_runtime, parameter_types,
 	traits::{
@@ -50,6 +63,12 @@ pub use pallet_transaction_payment::{CurrencyAdapter, Multiplier, TargetedFeeAdj
 use pallet_transaction_payment::{FeeDetails, RuntimeDispatchInfo};
 use sp_api::impl_runtime_apis;
 use sp_authority_discovery::AuthorityId as AuthorityDiscoveryId;
+use primitives::v1::{
+	CandidateEvent, CommittedCandidateReceipt,
+	CoreState, GroupRotationInfo, Id as ParaId, InboundDownwardMessage, InboundHrmpMessage,
+	OccupiedCoreAssumption, PersistedValidationData, ScrapedOnChainVotes,
+	SessionInfo, ValidationCode, ValidationCodeHash, ValidatorId, ValidatorIndex,
+};
 use sp_core::{
 	crypto::KeyTypeId,
 	u32_trait::{_1, _2, _3, _4, _5},
@@ -67,7 +86,8 @@ use sp_runtime::{
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
 	ApplyExtrinsicResult, FixedPointNumber, Perbill, Percent, Permill, Perquintill,
 };
-use sp_std::prelude::*;
+use sp_staking::SessionIndex;
+use sp_std::{collections::btree_map::BTreeMap, prelude::*};
 #[cfg(any(feature = "std", test))]
 use sp_version::NativeVersion;
 use sp_version::RuntimeVersion;
@@ -99,6 +119,7 @@ use constants::time_dev::*;
 
 use sp_runtime::generic::Era;
 
+mod weights;
 /// Generated voter bag information.
 mod voter_bags;
 
@@ -915,6 +936,143 @@ impl pallet_transaction_storage::Config for Runtime {
 	type WeightInfo = pallet_transaction_storage::weights::SubstrateWeight<Runtime>;
 }
 
+impl parachains_origin::Config for Runtime {}
+
+impl parachains_configuration::Config for Runtime {
+	type WeightInfo = weights::runtime_parachains_configuration::WeightInfo<Runtime>;
+}
+
+impl parachains_shared::Config for Runtime {}
+
+impl parachains_session_info::Config for Runtime {}
+
+impl parachains_inclusion::Config for Runtime {
+	type Event = Event;
+	type DisputesHandler = ();
+	type RewardValidators = parachains_reward_points::RewardValidatorsWithEraPoints<Runtime>;
+}
+
+impl parachains_paras::Config for Runtime {
+	type Origin = Origin;
+	type Event = Event;
+	type WeightInfo = weights::runtime_parachains_paras::WeightInfo<Runtime>;
+}
+
+parameter_types! {
+	pub const FirstMessageFactorPercent: u64 = 100;
+}
+
+impl parachains_ump::Config for Runtime {
+	type Event = Event;
+	type UmpSink = ();
+	type FirstMessageFactorPercent = FirstMessageFactorPercent;
+	type ExecuteOverweightOrigin = EnsureRoot<AccountId>;
+}
+
+impl parachains_dmp::Config for Runtime {}
+
+impl parachains_hrmp::Config for Runtime {
+	type Event = Event;
+	type Origin = Origin;
+	type Currency = Balances;
+}
+
+impl parachains_paras_inherent::Config for Runtime {}
+
+impl parachains_scheduler::Config for Runtime {}
+
+impl parachains_initializer::Config for Runtime {
+	type Randomness = pallet_babe::RandomnessFromOneEpochAgo<Runtime>;
+	type ForceOrigin = EnsureRoot<AccountId>;
+	type WeightInfo = weights::runtime_parachains_initializer::WeightInfo<Runtime>;
+}
+
+parameter_types! {
+	// Mostly arbitrary deposit price, but should provide an adequate incentive not to spam reserve
+	// `ParaId`s.
+	pub const ParaDeposit: Balance = 100 * DOLLARS;
+	pub const ParaDataByteDeposit: Balance = deposit(0, 1);
+}
+
+impl paras_registrar::Config for Runtime {
+	type Event = Event;
+	type Origin = Origin;
+	type Currency = Balances;
+	type OnSwap = (Crowdloan, Slots);
+	type ParaDeposit = ParaDeposit;
+	type DataDepositPerByte = ParaDataByteDeposit;
+	type WeightInfo = weights::runtime_common_paras_registrar::WeightInfo<Runtime>;
+}
+
+parameter_types! {
+	// 12 weeks = 3 months per lease period -> 8 lease periods ~ 2 years
+	pub const LeasePeriod: BlockNumber = 12 * 7 * DAYS;
+	// Polkadot Genesis was on May 26, 2020.
+	// Target Parachain Onboarding Date: Dec 15, 2021.
+	// Difference is 568 days.
+	// We want a lease period to start on the target onboarding date.
+	// 568 % (12 * 7) = 64 day offset
+	pub const LeaseOffset: BlockNumber = 64 * DAYS;
+}
+
+impl slots::Config for Runtime {
+	type Event = Event;
+	type Currency = Balances;
+	type Registrar = Registrar;
+	type LeasePeriod = LeasePeriod;
+	type LeaseOffset = LeaseOffset;
+	type WeightInfo = weights::runtime_common_slots::WeightInfo<Runtime>;
+}
+
+parameter_types! {
+	pub const CrowdloanId: PalletId = PalletId(*b"py/cfund");
+	// Accounts for 10_000 contributions, each using 48 bytes (16 bytes for balance, and 32 bytes
+	// for a memo).
+	pub const SubmissionDeposit: Balance = deposit(1, 480_000);
+	// The minimum crowdloan contribution.
+	pub const MinContribution: Balance = 5 * DOLLARS;
+	pub const RemoveKeysLimit: u32 = 1000;
+	// Allow 32 bytes for an additional memo to a crowdloan.
+	pub const MaxMemoLength: u8 = 32;
+}
+
+impl crowdloan::Config for Runtime {
+	type Event = Event;
+	type PalletId = CrowdloanId;
+	type SubmissionDeposit = SubmissionDeposit;
+	type MinContribution = MinContribution;
+	type RemoveKeysLimit = RemoveKeysLimit;
+	type Registrar = Registrar;
+	type Auctioneer = Auctions;
+	type MaxMemoLength = MaxMemoLength;
+	type WeightInfo = weights::runtime_common_crowdloan::WeightInfo<Runtime>;
+}
+
+parameter_types! {
+	// The average auction is 7 days long, so this will be 70% for ending period.
+	// 5 Days = 72000 Blocks @ 6 sec per block
+	pub const EndingPeriod: BlockNumber = 5 * DAYS;
+	// ~ 1000 samples per day -> ~ 20 blocks per sample -> 2 minute samples
+	pub const SampleLength: BlockNumber = 2 * MINUTES;
+}
+
+type AuctionInitiate = EnsureOneOf<
+	AccountId,
+	EnsureRoot<AccountId>,
+	pallet_collective::EnsureProportionAtLeast<_2, _3, AccountId, TechnicalCollective>,
+>;
+
+impl auctions::Config for Runtime {
+	type Event = Event;
+	type Leaser = Slots;
+	type Registrar = Registrar;
+	type EndingPeriod = EndingPeriod;
+	type SampleLength = SampleLength;
+	type Randomness = pallet_babe::RandomnessFromOneEpochAgo<Runtime>;
+	type InitiateOrigin = AuctionInitiate;
+	type WeightInfo = weights::runtime_common_auctions::WeightInfo<Runtime>;
+}
+
 construct_runtime!(
 	pub enum Runtime where
 		Block = Block,
@@ -952,6 +1110,24 @@ construct_runtime!(
 		Assets: pallet_assets::{Pallet, Call, Storage, Event<T>, Config<T>},
 		TransactionStorage: pallet_transaction_storage::{Pallet, Call, Storage, Inherent, Config<T>, Event<T>},
 		BagsList: pallet_bags_list::{Pallet, Call, Storage, Event<T>},
+
+		ParachainsOrigin: parachains_origin::{Pallet, Origin},
+		Configuration: parachains_configuration::{Pallet, Call, Storage, Config<T>},
+		ParasShared: parachains_shared::{Pallet, Call, Storage},
+		ParaInclusion: parachains_inclusion::{Pallet, Call, Storage, Event<T>},
+		ParaInherent: parachains_paras_inherent::{Pallet, Call, Storage, Inherent},
+		ParaScheduler: parachains_scheduler::{Pallet, Storage},
+		Paras: parachains_paras::{Pallet, Call, Storage, Event, Config},
+		Initializer: parachains_initializer::{Pallet, Call, Storage},
+		Dmp: parachains_dmp::{Pallet, Call, Storage},
+		Ump: parachains_ump::{Pallet, Call, Storage, Event},
+		Hrmp: parachains_hrmp::{Pallet, Call, Storage, Event<T>},
+		ParaSessionInfo: parachains_session_info::{Pallet, Storage},
+
+		Registrar: paras_registrar::{Pallet, Call, Storage, Event<T>},
+		Slots: slots::{Pallet, Call, Storage, Event<T>},
+		Auctions: auctions::{Pallet, Call, Storage, Event<T>},
+		Crowdloan: crowdloan::{Pallet, Call, Storage, Event<T>},
 	}
 );
 
@@ -1047,6 +1223,78 @@ impl_runtime_apis! {
 	impl sp_offchain::OffchainWorkerApi<Block> for Runtime {
 		fn offchain_worker(header: &<Block as BlockT>::Header) {
 			Executive::offchain_worker(header)
+		}
+	}
+
+	impl primitives::v1::ParachainHost<Block, Hash, BlockNumber> for Runtime {
+		fn validators() -> Vec<ValidatorId> {
+			parachains_runtime_api_impl::validators::<Runtime>()
+		}
+
+		fn validator_groups() -> (Vec<Vec<ValidatorIndex>>, GroupRotationInfo<BlockNumber>) {
+			parachains_runtime_api_impl::validator_groups::<Runtime>()
+		}
+
+		fn availability_cores() -> Vec<CoreState<Hash, BlockNumber>> {
+			parachains_runtime_api_impl::availability_cores::<Runtime>()
+		}
+
+		fn persisted_validation_data(para_id: ParaId, assumption: OccupiedCoreAssumption)
+			-> Option<PersistedValidationData<Hash, BlockNumber>> {
+			parachains_runtime_api_impl::persisted_validation_data::<Runtime>(para_id, assumption)
+		}
+
+		fn check_validation_outputs(
+			para_id: ParaId,
+			outputs: primitives::v1::CandidateCommitments,
+		) -> bool {
+			parachains_runtime_api_impl::check_validation_outputs::<Runtime>(para_id, outputs)
+		}
+
+		fn session_index_for_child() -> SessionIndex {
+			parachains_runtime_api_impl::session_index_for_child::<Runtime>()
+		}
+
+		fn validation_code(para_id: ParaId, assumption: OccupiedCoreAssumption)
+			-> Option<ValidationCode> {
+			parachains_runtime_api_impl::validation_code::<Runtime>(para_id, assumption)
+		}
+
+		fn candidate_pending_availability(para_id: ParaId) -> Option<CommittedCandidateReceipt<Hash>> {
+			parachains_runtime_api_impl::candidate_pending_availability::<Runtime>(para_id)
+		}
+
+		fn candidate_events() -> Vec<CandidateEvent<Hash>> {
+			parachains_runtime_api_impl::candidate_events::<Runtime, _>(|ev| {
+				match ev {
+					Event::ParaInclusion(ev) => {
+						Some(ev)
+					}
+					_ => None,
+				}
+			})
+		}
+
+		fn session_info(index: SessionIndex) -> Option<SessionInfo> {
+			parachains_runtime_api_impl::session_info::<Runtime>(index)
+		}
+
+		fn dmq_contents(recipient: ParaId) -> Vec<InboundDownwardMessage<BlockNumber>> {
+			parachains_runtime_api_impl::dmq_contents::<Runtime>(recipient)
+		}
+
+		fn inbound_hrmp_channels_contents(
+			recipient: ParaId
+		) -> BTreeMap<ParaId, Vec<InboundHrmpMessage<BlockNumber>>> {
+			parachains_runtime_api_impl::inbound_hrmp_channels_contents::<Runtime>(recipient)
+		}
+
+		fn validation_code_by_hash(hash: ValidationCodeHash) -> Option<ValidationCode> {
+			parachains_runtime_api_impl::validation_code_by_hash::<Runtime>(hash)
+		}
+
+		fn on_chain_votes() -> Option<ScrapedOnChainVotes<Hash>> {
+			parachains_runtime_api_impl::on_chain_votes::<Runtime>()
 		}
 	}
 
@@ -1217,6 +1465,15 @@ impl_runtime_apis! {
 
 			let mut list = Vec::<BenchmarkList>::new();
 
+			list_benchmark!(list, extra, runtime_common::claims, Claims);
+			list_benchmark!(list, extra, runtime_common::crowdloan, Crowdloan);
+			list_benchmark!(list, extra, runtime_common::claims, Claims);
+			list_benchmark!(list, extra, runtime_common::slots, Slots);
+			list_benchmark!(list, extra, runtime_common::paras_registrar, Registrar);
+			list_benchmark!(list, extra, runtime_parachains::configuration, Configuration);
+			list_benchmark!(list, extra, runtime_parachains::initializer, Initializer);
+			list_benchmark!(list, extra, runtime_parachains::paras, Paras);
+
 			list_benchmark!(list, extra, pallet_assets, Assets);
 			list_benchmark!(list, extra, pallet_babe, Babe);
 			list_benchmark!(list, extra, pallet_bags_list, BagsList);
@@ -1283,6 +1540,15 @@ impl_runtime_apis! {
 
 			let mut batches = Vec::<BenchmarkBatch>::new();
 			let params = (&config, &whitelist);
+
+			add_benchmark!(params, batches, runtime_common::claims, Claims);
+			add_benchmark!(params, batches, runtime_common::crowdloan, Crowdloan);
+			add_benchmark!(params, batches, runtime_common::claims, Claims);
+			add_benchmark!(params, batches, runtime_common::slots, Slots);
+			add_benchmark!(params, batches, runtime_common::paras_registrar, Registrar);
+			add_benchmark!(params, batches, runtime_parachains::configuration, Configuration);
+			add_benchmark!(params, batches, runtime_parachains::initializer, Initializer);
+			add_benchmark!(params, batches, runtime_parachains::paras, Paras);
 
 			add_benchmark!(params, batches, pallet_assets, Assets);
 			add_benchmark!(params, batches, pallet_babe, Babe);

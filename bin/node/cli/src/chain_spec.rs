@@ -366,6 +366,8 @@ pub fn testnet_genesis(
 			accounts: vec![(999, root_key.clone(), 10)],
 		},
 		transaction_storage: Default::default(),
+		configuration: Default::default(),
+		paras: Default::default(),
 	}
 }
 
