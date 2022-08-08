@@ -231,7 +231,7 @@ pub mod pallet {
 		DeleteIpfsAsset(T::AccountId, Vec<u8>),
 		UnpinIpfsAsset(T::AccountId, Vec<u8>),
 		ExtendIpfsStorageDuration(T::AccountId, Vec<u8>),
-		UpdateDB(T::AccountId),
+		ExportIpfsStats(T::AccountId),
 	}
 
 	// Storage items.
@@ -287,7 +287,7 @@ pub mod pallet {
 			}
 
 			if block_no % T::UpdateDuration::get().try_into().ok().unwrap() == 0u32.into() {
-				if let Err(e) = Self::publish_ipfs_node_db_info() {
+				if let Err(e) = Self::emit_ipfs_stats() {
 					log::error!("IPFS: Encountered an error while publishing metadata {:?}", e);
 				}
 			}
