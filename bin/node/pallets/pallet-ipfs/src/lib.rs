@@ -80,8 +80,7 @@ pub mod pallet {
 		offchain::{AppCrypto, CreateSignedTransaction},
 		pallet_prelude::*,
 	};
-	use scale_info::TypeInfo;
-	use scale_info::prelude::string::String;
+	use scale_info::{prelude::string::String, TypeInfo};
 	use sp_core::offchain::OpaqueMultiaddr;
 	use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
