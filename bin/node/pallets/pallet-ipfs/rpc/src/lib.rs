@@ -14,8 +14,8 @@ use std::sync::Arc;
 #[derive(Default, Debug, Serialize, Deserialize)]
 pub struct GetStorageResponse {
 	pub available_storage: u64,
+	pub maximum_storage: u64,
 	pub files: usize,
-	pub total_files: usize,
 }
 
 #[rpc]
@@ -68,8 +68,8 @@ where
 			// TODO: this should change the IPFS partition path.
 			Ok(mount) => {
 				resp.available_storage = mount.avail.as_u64();
+				resp.maximum_storage = mount.total.as_u64();
 				resp.files = mount.files;
-				resp.total_files = mount.files_total;
 			},
 			Err(e) => {
 				log::error!("{:?}", e);

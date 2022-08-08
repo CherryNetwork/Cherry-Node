@@ -12,8 +12,8 @@ use serde::{Deserialize, Serialize};
 #[derive(Default, Debug, Serialize, Deserialize)]
 pub struct GetStorageResponseRPC {
 	pub available_storage: u64,
+	pub maximum_storage: u64,
 	pub files: usize,
-	pub total_files: usize,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -443,7 +443,7 @@ impl<T: Config> Pallet<T> {
 
 		if !IPFSNodes::<T>::contains_key(public_key.clone()) {
 			if let Some(ipfs_node) = &IPFSNodes::<T>::iter().nth(0) {
-				if let Some(ipfs_maddr) = ipfs_node.1.multiaddress.clone().pop() {
+				if let Some(ipfs_maddr) = ipfs_node.1.addr.clone().pop() {
 					if let IpfsResponse::Success =
 						Self::ipfs_request(IpfsRequest::Connect(ipfs_maddr.clone()), deadline)?
 					{
@@ -454,7 +454,7 @@ impl<T: Config> Pallet<T> {
 							&ipfs_node.0
 						);
 
-						if let Some(next_ipfs_maddr) = ipfs_node.1.multiaddress.clone().pop() {
+						if let Some(next_ipfs_maddr) = ipfs_node.1.addr.clone().pop() {
 							if let IpfsResponse::Success = Self::ipfs_request(
 								IpfsRequest::Connect(next_ipfs_maddr.clone()),
 								deadline,
@@ -480,20 +480,25 @@ impl<T: Config> Pallet<T> {
 			}
 
 			let avail_storage = Self::get_validator_storage().unwrap().result.available_storage;
+			let max_storage = Self::get_validator_storage().unwrap().result.maximum_storage;
 			let files = Self::get_validator_storage().unwrap().result.files;
-			let files_total = Self::get_validator_storage().unwrap().result.total_files;
 
 			let results = signer.send_signed_transaction(|_account| Call::submit_ipfs_identity {
 				public_key: public_key.clone(),
 				multiaddress: addrs.clone(),
-				storage_size: avail_storage.clone(),
-				files: files as u64,
-				files_total: files_total as u64,
+				available_storage: avail_storage.clone() as i32,
+				max_storage: max_storage as i32,
+				files: files as i32,
 			});
 
 			for (_, res) in &results {
 				match res {
-					Ok(()) => log::info!("Submitted ipfs identity results"),
+					Ok(()) => {
+						log::info!("Submitted ipfs identity results");
+						// log::info!("\n\navailable storage: {:?}", avail_storage);
+						// log::info!("\nmax storage: {:?}", max_storage);
+						// log::info!("\nfiles: {:?}", files);
+					},
 					Err(e) => log::error!("Failed to submit tx: {:?}", e),
 				}
 			}

@@ -22,7 +22,7 @@ use sp_core::{
 	Bytes,
 };
 use sp_io::offchain::timestamp;
-use sp_std::{convert::TryInto, vec::Vec};
+use sp_std::{convert::TryInto, str::from_utf8, vec::Vec};
 
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"chfs");
 
@@ -81,6 +81,7 @@ pub mod pallet {
 		pallet_prelude::*,
 	};
 	use scale_info::TypeInfo;
+	use scale_info::prelude::string::String;
 	use sp_core::offchain::OpaqueMultiaddr;
 	use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
@@ -104,11 +105,21 @@ pub mod pallet {
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
 	#[scale_info(skip_type_params(T))]
 	pub struct IpfsNode {
-		pub multiaddress: Vec<OpaqueMultiaddr>,
-		pub public_key: Vec<u8>,
-		pub avail_storage: u64,
-		pub files: u64,
-		pub files_total: u64,
+		pub peer_id: Vec<u8>,
+		pub addr: Vec<OpaqueMultiaddr>,
+		pub avail: i32,
+		pub max: i32,
+		pub files: i32,
+	}
+
+	// #[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
+	// #[scale_info(skip_type_params(T))]
+	pub struct IpfsNodeDB {
+		pub peer_id: String,
+		pub addr: String,
+		pub avail: i32,
+		pub max: i32,
+		pub files: i32,
 	}
 
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
@@ -465,22 +476,26 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			public_key: Vec<u8>,
 			multiaddress: Vec<OpaqueMultiaddr>,
-			storage_size: u64,
-			files: u64,
-			files_total: u64,
+			available_storage: i32,
+			max_storage: i32,
+			files: i32,
 		) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
 
-			let ipfs_node: IpfsNode = IpfsNode {
-				multiaddress,
-				public_key: public_key.clone(),
-				avail_storage: storage_size,
-				files,
-				files_total,
-			};
-			<IPFSNodes<T>>::insert(public_key.clone(), ipfs_node.clone());
+			// let addr = from_utf8(&multiaddress.encode()).unwrap();
+			// let peer_id = from_utf8(&public_key.encode()).unwrap();
 
-			Self::deposit_event(Event::PublishedIdentity(signer.clone()));
+			let ipfs_node: IpfsNode = IpfsNode {
+				peer_id: public_key.clone(),
+				addr: multiaddress,
+				avail: available_storage,
+				max: max_storage,
+				files,
+			};
+
+			<IPFSNodes<T>>::insert(public_key, ipfs_node);
+
+			Self::deposit_event(Event::PublishedIdentity(signer));
 
 			Ok(())
 		}
