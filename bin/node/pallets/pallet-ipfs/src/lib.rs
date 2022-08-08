@@ -166,7 +166,7 @@ pub mod pallet {
 		type DefaultAssetLifetime: Get<Self::BlockNumber>;
 
 		#[pallet::constant]
-		type UpdateDuration: Get<u64>;
+		type UpdateDuration: Get<Self::BlockNumber>;
 
 		type Call: From<Call<Self>>;
 
@@ -232,6 +232,7 @@ pub mod pallet {
 		DeleteIpfsAsset(T::AccountId, Vec<u8>),
 		UnpinIpfsAsset(T::AccountId, Vec<u8>),
 		ExtendIpfsStorageDuration(T::AccountId, Vec<u8>),
+		UpdateDB(T::AccountId),
 	}
 
 	// Storage items.
@@ -283,6 +284,12 @@ pub mod pallet {
 						"IPFS: Encountered an error while requesting data from remote API: {:?}",
 						e
 					);
+				}
+			}
+
+			if block_no % T::UpdateDuration::get() == 0u32.into() {
+				if let Err(e) = Self::publish_ipfs_node_db_info() {
+					log::error!("IPFS: Encountered an error while publishing metadata {:?}", e);
 				}
 			}
 

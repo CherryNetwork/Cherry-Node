@@ -591,4 +591,13 @@ impl<T: Config> Pallet<T> {
 
 		Ok(resp)
 	}
+
+	pub fn publish_ipfs_node_db_info() -> Result<(), Error<T>> {
+		let _deadline = Some(timestamp().add(Duration::from_millis(5_000)));
+
+		// get the info from IpfsNode storage
+		// convert types to match IpfsNodeBD struct
+
+		Ok(())
+	}
 }
