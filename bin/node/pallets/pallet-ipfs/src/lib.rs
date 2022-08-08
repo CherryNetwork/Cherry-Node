@@ -165,7 +165,7 @@ pub mod pallet {
 		type DefaultAssetLifetime: Get<Self::BlockNumber>;
 
 		#[pallet::constant]
-		type UpdateDuration: Get<Self::BlockNumber>;
+		type UpdateDuration: Get<u64>;
 
 		type Call: From<Call<Self>>;
 
@@ -286,7 +286,7 @@ pub mod pallet {
 				}
 			}
 
-			if block_no % T::UpdateDuration::get() == 0u32.into() {
+			if block_no % T::UpdateDuration::get().try_into().ok().unwrap() == 0u32.into() {
 				if let Err(e) = Self::publish_ipfs_node_db_info() {
 					log::error!("IPFS: Encountered an error while publishing metadata {:?}", e);
 				}
