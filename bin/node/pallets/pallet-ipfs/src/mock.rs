@@ -80,6 +80,7 @@ parameter_types! {
 	pub const MetadataDepositBase: u64 = 1;
 	pub const MetadataDepositPerByte: u64 = 1;
 	pub const MaxIpfsOwned: u32 = 5;
+	pub const EpochDuration: u64 = 6;
 	pub const DefaultAssetLifetime: u32 = 60;
 }
 
@@ -135,6 +136,7 @@ impl Config for Test {
 	type Event = Event;
 	type AuthorityId = pallet_cherry::crypto::AuthorityId;
 	type MaxIpfsOwned = MaxIpfsOwned;
+	type UpdateDuration = EpochDuration;
 	type DefaultAssetLifetime = DefaultAssetLifetime;
 	type WeightInfo = pallet_cherry::weights::SubstrateWeight<Test>;
 }

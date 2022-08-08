@@ -165,6 +165,9 @@ pub mod pallet {
 		#[pallet::constant]
 		type DefaultAssetLifetime: Get<Self::BlockNumber>;
 
+		#[pallet::constant]
+		type UpdateDuration: Get<u64>;
+
 		type Call: From<Call<Self>>;
 
 		type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
