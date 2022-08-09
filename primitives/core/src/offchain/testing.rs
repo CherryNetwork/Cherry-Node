@@ -437,6 +437,7 @@ impl offchain::Externalities for TestOffchainExt {
 					}
 					IpfsRequestStatus::Finished(req.response.clone().unwrap())
 				},
+				#[allow(unreachable_patterns)]
 				Some(_) => IpfsRequestStatus::Finished(IpfsResponse::Success),
 				None => IpfsRequestStatus::Invalid,
 			})
