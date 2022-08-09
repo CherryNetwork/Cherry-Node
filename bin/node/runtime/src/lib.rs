@@ -916,7 +916,7 @@ impl pallet_transaction_storage::Config for Runtime {
 }
 
 parameter_types! {
-	pub const UpdateDuration: u64 = EPOCH_DURATION_IN_SLOTS as u64 * 6;
+	pub const UpdateDuration: u64 = UPDATE_DURATION as u64;
 	pub const MaxIpfsOwned: u32 = 5;
 	pub const DefaultAssetLifetime: BlockNumber = DEFAULT_ASSET_LIFETIME;
 }
