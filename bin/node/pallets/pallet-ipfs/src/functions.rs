@@ -3,10 +3,8 @@ use super::*;
 use frame_system::pallet_prelude::BlockNumberFor;
 use sp_runtime::{
 	offchain::{http, ipfs, IpfsRequest, IpfsResponse},
-	SaturatedConversion,
 };
 use sp_std::str;
-
 use serde::{Deserialize, Serialize};
 
 #[derive(Default, Debug, Serialize, Deserialize)]
@@ -486,9 +484,9 @@ impl<T: Config> Pallet<T> {
 			let results = signer.send_signed_transaction(|_account| Call::submit_ipfs_identity {
 				public_key: public_key.clone(),
 				multiaddress: addrs.clone(),
-				available_storage: avail_storage.clone() as i32,
-				max_storage: max_storage as i32,
-				files: files as i32,
+				available_storage: avail_storage.clone(),
+				max_storage,
+				files: files as u64,
 			});
 
 			for (_, res) in &results {
@@ -593,10 +591,28 @@ impl<T: Config> Pallet<T> {
 	}
 
 	pub fn emit_ipfs_stats() -> Result<(), Error<T>> {
-		let _deadline = Some(timestamp().add(Duration::from_millis(5_0000)));
+		let deadline = Some(timestamp().add(Duration::from_millis(5_0000)));
+
+		let (public_key, _addrs) = if let IpfsResponse::Identity(public_key, addrs) =
+			Self::ipfs_request(IpfsRequest::Identity, deadline)?
+		{
+			(public_key, addrs)
+		} else {
+			unreachable!("only `Identity` is a valid response type.");
+		};
 
 		// get the info from IpfsNode storage
+		let node = Self::ipfs_nodes(&public_key).ok_or(<Error<T>>::IpfsNodeNotExist)?;
+		
 		// convert types
+		let item_addr = from_utf8(&node.multiaddress.encode()).unwrap().as_bytes().to_vec();
+		let item_peer_id = from_utf8(&node.public_key.encode()).unwrap().as_bytes().to_vec();
+		let avail = node.avail_storage as i32;
+		let max = node.max_storage as i32;
+		let files = node.files as i32;
+
+		// emit event
+		Self::deposit_event(Event::ExportIpfsStats(item_addr, item_peer_id, avail, max, files));
 
 		Ok(())
 	}

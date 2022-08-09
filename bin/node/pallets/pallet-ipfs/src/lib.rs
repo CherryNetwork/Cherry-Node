@@ -80,7 +80,7 @@ pub mod pallet {
 		offchain::{AppCrypto, CreateSignedTransaction},
 		pallet_prelude::*,
 	};
-	use scale_info::{prelude::string::String, TypeInfo};
+	use scale_info::TypeInfo;
 	use sp_core::offchain::OpaqueMultiaddr;
 	use sp_std::{collections::btree_map::BTreeMap, vec::Vec};
 
@@ -106,9 +106,9 @@ pub mod pallet {
 	pub struct IpfsNode {
 		pub public_key: Vec<u8>,
 		pub multiaddress: Vec<OpaqueMultiaddr>,
-		pub avail_storage: i32,
-		pub max_storage: i32,
-		pub files: i32,
+		pub avail_storage: u64,
+		pub max_storage: u64,
+		pub files: u64,
 	}
 
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
@@ -199,6 +199,7 @@ pub mod pallet {
 		RequestFailed,
 		FeeOutOfBounds,
 		HttpFetchingError,
+		IpfsNodeNotExist,
 	}
 
 	#[pallet::event]
@@ -221,7 +222,7 @@ pub mod pallet {
 		DeleteIpfsAsset(T::AccountId, Vec<u8>),
 		UnpinIpfsAsset(T::AccountId, Vec<u8>),
 		ExtendIpfsStorageDuration(T::AccountId, Vec<u8>),
-		ExportIpfsStats(T::AccountId),
+		ExportIpfsStats(Vec<u8>, Vec<u8>, i32, i32, i32),
 	}
 
 	// Storage items.
@@ -276,7 +277,8 @@ pub mod pallet {
 				}
 			}
 
-			if block_no % T::UpdateDuration::get().try_into().ok().unwrap() == 0u32.into() {
+			let x: T::BlockNumber = T::UpdateDuration::get().try_into().ok().unwrap();
+			if block_no % x == 0u32.into() {
 				if let Err(e) = Self::emit_ipfs_stats() {
 					log::error!("IPFS: Encountered an error while publishing metadata {:?}", e);
 				}
@@ -475,14 +477,11 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			public_key: Vec<u8>,
 			multiaddress: Vec<OpaqueMultiaddr>,
-			available_storage: i32,
-			max_storage: i32,
-			files: i32,
+			available_storage: u64,
+			max_storage: u64,
+			files: u64,
 		) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
-
-			// let addr = from_utf8(&multiaddress.encode()).unwrap();
-			// let peer_id = from_utf8(&public_key.encode()).unwrap();
 
 			let ipfs_node: IpfsNode = IpfsNode {
 				public_key: public_key.clone(),
