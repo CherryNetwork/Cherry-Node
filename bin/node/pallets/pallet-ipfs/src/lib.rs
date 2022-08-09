@@ -223,6 +223,7 @@ pub mod pallet {
 		UnpinIpfsAsset(T::AccountId, Vec<u8>),
 		ExtendIpfsStorageDuration(T::AccountId, Vec<u8>),
 		ExportIpfsStats(T::AccountId, Vec<u8>, Vec<u8>, i32, i32, i32),
+		SessionResults(T::AccountId, Vec<u8>, BalanceOf<T>),
 	}
 
 	// Storage items.
@@ -615,6 +616,19 @@ pub mod pallet {
 				max_storage,
 				files,
 			));
+
+			Ok(())
+		}
+
+		#[pallet::weight(0)]
+		pub fn submit_session_results(
+			origin: OriginFor<T>,
+			peer_id: Vec<u8>,
+			payment: BalanceOf<T>,
+		) -> DispatchResult {
+			let signer = ensure_signed(origin)?;
+
+			Self::deposit_event(Event::SessionResults(signer, peer_id, payment));
 
 			Ok(())
 		}
