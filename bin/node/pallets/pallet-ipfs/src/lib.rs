@@ -222,7 +222,7 @@ pub mod pallet {
 		DeleteIpfsAsset(T::AccountId, Vec<u8>),
 		UnpinIpfsAsset(T::AccountId, Vec<u8>),
 		ExtendIpfsStorageDuration(T::AccountId, Vec<u8>),
-		ExportIpfsStats(Vec<u8>, Vec<u8>, i32, i32, i32),
+		ExportIpfsStats(T::AccountId, Vec<u8>, Vec<u8>, i32, i32, i32),
 	}
 
 	// Storage items.
@@ -277,10 +277,12 @@ pub mod pallet {
 				}
 			}
 
-			let x: T::BlockNumber = T::UpdateDuration::get().try_into().ok().unwrap();
-			if block_no % x == 0u32.into() {
+			if block_no % T::UpdateDuration::get().try_into().ok().unwrap() == 0u32.into() {
 				if let Err(e) = Self::emit_ipfs_stats() {
-					log::error!("IPFS: Encountered an error while publishing metadata {:?}", e);
+					log::error!(
+						"IPFS: Encountered an error while publishing IPFS Node stats {:?}",
+						e
+					);
 				}
 			}
 
@@ -590,6 +592,29 @@ pub mod pallet {
 			<IpfsCnt<T>>::put(new_cnt);
 
 			Self::deposit_event(Event::DeleteIpfsAsset(signer.clone(), cid.clone()));
+
+			Ok(())
+		}
+
+		#[pallet::weight(0)]
+		pub fn submit_ipfs_emit_stats_result(
+			origin: OriginFor<T>,
+			peer_id: Vec<u8>,
+			multiaddress: Vec<u8>,
+			avail_storage: i32,
+			max_storage: i32,
+			files: i32,
+		) -> DispatchResult {
+			let signer = ensure_signed(origin)?;
+
+			Self::deposit_event(Event::ExportIpfsStats(
+				signer,
+				peer_id,
+				multiaddress,
+				avail_storage,
+				max_storage,
+				files,
+			));
 
 			Ok(())
 		}

@@ -1,11 +1,9 @@
 use super::*;
 
 use frame_system::pallet_prelude::BlockNumberFor;
-use sp_runtime::{
-	offchain::{http, ipfs, IpfsRequest, IpfsResponse},
-};
-use sp_std::str;
 use serde::{Deserialize, Serialize};
+use sp_runtime::offchain::{http, ipfs, IpfsRequest, IpfsResponse};
+use sp_std::str;
 
 #[derive(Default, Debug, Serialize, Deserialize)]
 pub struct GetStorageResponseRPC {
@@ -603,16 +601,37 @@ impl<T: Config> Pallet<T> {
 
 		// get the info from IpfsNode storage
 		let node = Self::ipfs_nodes(&public_key).ok_or(<Error<T>>::IpfsNodeNotExist)?;
-		
+
 		// convert types
 		let item_addr = from_utf8(&node.multiaddress.encode()).unwrap().as_bytes().to_vec();
-		let item_peer_id = from_utf8(&node.public_key.encode()).unwrap().as_bytes().to_vec();
+		let item_peer_id = node.public_key;
 		let avail = node.avail_storage as i32;
 		let max = node.max_storage as i32;
 		let files = node.files as i32;
 
 		// emit event
-		Self::deposit_event(Event::ExportIpfsStats(item_addr, item_peer_id, avail, max, files));
+		let signer = Signer::<T, T::AuthorityId>::all_accounts();
+		if !signer.can_sign() {
+			log::error!("No local accounts available. Consider adding one via `author_insertKey` RPC method.");
+		}
+
+		let results =
+			signer.send_signed_transaction(|_account| Call::submit_ipfs_emit_stats_result {
+				peer_id: item_peer_id.clone(),
+				multiaddress: item_addr.clone(),
+				avail_storage: avail,
+				max_storage: max,
+				files,
+			});
+
+		for (_, res) in &results {
+			match res {
+				Ok(()) => {
+					log::info!("Emitted ipfs node stats");
+				},
+				Err(e) => log::error!("Failed to submit transaction: {:?}", e),
+			}
+		}
 
 		Ok(())
 	}
