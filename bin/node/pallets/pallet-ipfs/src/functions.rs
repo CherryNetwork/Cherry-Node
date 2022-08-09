@@ -443,7 +443,7 @@ impl<T: Config> Pallet<T> {
 
 		if !IPFSNodes::<T>::contains_key(public_key.clone()) {
 			if let Some(ipfs_node) = &IPFSNodes::<T>::iter().nth(0) {
-				if let Some(ipfs_maddr) = ipfs_node.1.addr.clone().pop() {
+				if let Some(ipfs_maddr) = ipfs_node.1.multiaddress.clone().pop() {
 					if let IpfsResponse::Success =
 						Self::ipfs_request(IpfsRequest::Connect(ipfs_maddr.clone()), deadline)?
 					{
@@ -454,7 +454,7 @@ impl<T: Config> Pallet<T> {
 							&ipfs_node.0
 						);
 
-						if let Some(next_ipfs_maddr) = ipfs_node.1.addr.clone().pop() {
+						if let Some(next_ipfs_maddr) = ipfs_node.1.multiaddress.clone().pop() {
 							if let IpfsResponse::Success = Self::ipfs_request(
 								IpfsRequest::Connect(next_ipfs_maddr.clone()),
 								deadline,
@@ -593,10 +593,10 @@ impl<T: Config> Pallet<T> {
 	}
 
 	pub fn emit_ipfs_stats() -> Result<(), Error<T>> {
-		let _deadline = Some(timestamp().add(Duration::from_millis(5_000)));
+		let _deadline = Some(timestamp().add(Duration::from_millis(5_0000)));
 
 		// get the info from IpfsNode storage
-		// convert types to match IpfsNodeBD struct
+		// convert types
 
 		Ok(())
 	}

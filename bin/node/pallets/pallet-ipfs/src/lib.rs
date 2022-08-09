@@ -104,20 +104,10 @@ pub mod pallet {
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
 	#[scale_info(skip_type_params(T))]
 	pub struct IpfsNode {
-		pub peer_id: Vec<u8>,
-		pub addr: Vec<OpaqueMultiaddr>,
-		pub avail: i32,
-		pub max: i32,
-		pub files: i32,
-	}
-
-	// #[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
-	// #[scale_info(skip_type_params(T))]
-	pub struct IpfsNodeDB {
-		pub peer_id: String,
-		pub addr: String,
-		pub avail: i32,
-		pub max: i32,
+		pub public_key: Vec<u8>,
+		pub multiaddress: Vec<OpaqueMultiaddr>,
+		pub avail_storage: i32,
+		pub max_storage: i32,
 		pub files: i32,
 	}
 
@@ -495,10 +485,10 @@ pub mod pallet {
 			// let peer_id = from_utf8(&public_key.encode()).unwrap();
 
 			let ipfs_node: IpfsNode = IpfsNode {
-				peer_id: public_key.clone(),
-				addr: multiaddress,
-				avail: available_storage,
-				max: max_storage,
+				public_key: public_key.clone(),
+				multiaddress,
+				avail_storage: available_storage,
+				max_storage,
 				files,
 			};
 
