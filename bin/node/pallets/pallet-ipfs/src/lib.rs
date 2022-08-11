@@ -608,6 +608,25 @@ pub mod pallet {
 		) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
 
+			let multiaddr = OpaqueMultiaddr(multiaddress.clone());
+			let mut multiaddr_vec: Vec<OpaqueMultiaddr> = Vec::new();
+			multiaddr_vec.push(multiaddr);
+
+			let ipfs_node_new: IpfsNode = IpfsNode {
+				public_key: peer_id.clone(),
+				multiaddress: multiaddr_vec.clone(),
+				avail_storage: avail_storage as u64,
+				max_storage: max_storage as u64,
+				files: files as u64,
+			};
+
+			if let Some(_ipfs_node) = Self::ipfs_nodes(&peer_id) {
+				<IPFSNodes<T>>::remove(&peer_id);
+				<IPFSNodes<T>>::insert(&peer_id, ipfs_node_new);
+			} else {
+				<IPFSNodes<T>>::insert(&peer_id, ipfs_node_new);
+			}
+
 			Self::deposit_event(Event::ExportIpfsStats(
 				signer,
 				peer_id,
