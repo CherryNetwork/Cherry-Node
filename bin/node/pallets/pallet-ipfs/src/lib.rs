@@ -222,7 +222,7 @@ pub mod pallet {
 		DeleteIpfsAsset(T::AccountId, Vec<u8>),
 		UnpinIpfsAsset(T::AccountId, Vec<u8>),
 		ExtendIpfsStorageDuration(T::AccountId, Vec<u8>),
-		ExportIpfsStats(T::AccountId, Vec<u8>, Vec<u8>, i32, i32, i32),
+		ExportIpfsStats(T::AccountId, Vec<u8>, Vec<u8>, i64, i64, i32),
 		SessionResults(T::AccountId, Vec<u8>, BalanceOf<T>),
 	}
 
@@ -602,8 +602,8 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			peer_id: Vec<u8>,
 			multiaddress: Vec<u8>,
-			avail_storage: i32,
-			max_storage: i32,
+			avail_storage: i64,
+			max_storage: i64,
 			files: i32,
 		) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
