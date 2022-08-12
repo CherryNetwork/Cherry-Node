@@ -603,10 +603,10 @@ impl<T: Config> Pallet<T> {
 		let node = Self::ipfs_nodes(&public_key).ok_or(<Error<T>>::IpfsNodeNotExist)?;
 
 		// convert types
-		let item_addr = from_utf8(&node.multiaddress.encode()).unwrap().as_bytes().to_vec();
+		let item_addr = node.multiaddress.encode();
 		let item_peer_id = node.public_key;
-		let avail = node.avail_storage as i32;
-		let max = node.max_storage as i32;
+		let avail = node.avail_storage as i64;
+		let max = node.max_storage as i64;
 		let files = node.files as i32;
 
 		// emit event
