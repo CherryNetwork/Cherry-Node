@@ -598,7 +598,7 @@ impl<T: Config> Pallet<T> {
 			log::error!("No local accounts available. Consider adding one via `author_insertKey` RPC method.");
 		}
 
-		let results = signer.send_signed_transaction(move |_account| {
+		let results = signer.send_signed_transaction(|_account| {
 			Call::submit_ipfs_emit_stats_result { nodes: IPFSNodes::<T>::iter_values().collect() }
 		});
 
