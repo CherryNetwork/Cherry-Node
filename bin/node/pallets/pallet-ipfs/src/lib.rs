@@ -22,7 +22,7 @@ use sp_core::{
 	Bytes,
 };
 use sp_io::offchain::timestamp;
-use sp_std::{convert::TryInto, str::from_utf8, vec::Vec};
+use sp_std::{convert::TryInto, vec::Vec};
 
 pub const KEY_TYPE: KeyTypeId = KeyTypeId(*b"chfs");
 
@@ -222,7 +222,7 @@ pub mod pallet {
 		DeleteIpfsAsset(T::AccountId, Vec<u8>),
 		UnpinIpfsAsset(T::AccountId, Vec<u8>),
 		ExtendIpfsStorageDuration(T::AccountId, Vec<u8>),
-		ExportIpfsStats(T::AccountId, Vec<u8>, Vec<u8>, i64, i64, i32),
+		ExportIpfsStats(Vec<IpfsNode>),
 		SessionResults(T::AccountId, Vec<u8>, BalanceOf<T>),
 	}
 
@@ -600,22 +600,11 @@ pub mod pallet {
 		#[pallet::weight(0)]
 		pub fn submit_ipfs_emit_stats_result(
 			origin: OriginFor<T>,
-			peer_id: Vec<u8>,
-			multiaddress: Vec<u8>,
-			avail_storage: i64,
-			max_storage: i64,
-			files: i32,
+			nodes: Vec<IpfsNode>,
 		) -> DispatchResult {
-			let signer = ensure_signed(origin)?;
+			ensure_signed(origin)?;
 
-			Self::deposit_event(Event::ExportIpfsStats(
-				signer,
-				peer_id,
-				multiaddress,
-				avail_storage,
-				max_storage,
-				files,
-			));
+			Self::deposit_event(Event::ExportIpfsStats(nodes));
 
 			Ok(())
 		}

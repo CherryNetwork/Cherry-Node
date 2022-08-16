@@ -591,38 +591,16 @@ impl<T: Config> Pallet<T> {
 	pub fn emit_ipfs_stats() -> Result<(), Error<T>> {
 		let deadline = Some(timestamp().add(Duration::from_millis(5_0000)));
 
-		let (public_key, _addrs) = if let IpfsResponse::Identity(public_key, addrs) =
-			Self::ipfs_request(IpfsRequest::Identity, deadline)?
-		{
-			(public_key, addrs)
-		} else {
-			unreachable!("only `Identity` is a valid response type.");
-		};
-
-		// get the info from IpfsNode storage
-		let node = Self::ipfs_nodes(&public_key).ok_or(<Error<T>>::IpfsNodeNotExist)?;
-
-		// convert types
-		let item_addr = node.multiaddress.encode();
-		let item_peer_id = node.public_key;
-		let avail = node.avail_storage as i64;
-		let max = node.max_storage as i64;
-		let files = node.files as i32;
-
+		Self::ipfs_request(IpfsRequest::Identity, deadline)?;
 		// emit event
 		let signer = Signer::<T, T::AuthorityId>::all_accounts();
 		if !signer.can_sign() {
 			log::error!("No local accounts available. Consider adding one via `author_insertKey` RPC method.");
 		}
 
-		let results =
-			signer.send_signed_transaction(|_account| Call::submit_ipfs_emit_stats_result {
-				peer_id: item_peer_id.clone(),
-				multiaddress: item_addr.clone(),
-				avail_storage: avail,
-				max_storage: max,
-				files,
-			});
+		let results = signer.send_signed_transaction(move |_account| {
+			Call::submit_ipfs_emit_stats_result { nodes: IPFSNodes::<T>::iter_values().collect() }
+		});
 
 		for (_, res) in &results {
 			match res {
