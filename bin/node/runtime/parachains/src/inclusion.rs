@@ -1344,8 +1344,8 @@ mod tests {
 				core if core == CoreIndex::from(0) => Some(chain_a),
 				core if core == CoreIndex::from(1) => Some(chain_b),
 				core if core == CoreIndex::from(2) => Some(thread_a),
-				core if core == CoreIndex::from(3) => None, /* for the expected_cores() + 1 test
-				                                              * below. */
+				core if core == CoreIndex::from(3) => None, /* for the expected_cores() + 1 test */
+				// below.
 				_ => panic!("out of bounds for testing"),
 			};
 

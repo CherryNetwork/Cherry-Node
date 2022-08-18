@@ -32,7 +32,6 @@ sp-runtime = { version = "4.0.0-dev", path = "../../primitives/runtime" }
 sc-utils = { version = "4.0.0-dev", path = "../utils" }
 threadpool = "1.7"
 cid = "0.5"
-ipfs = { git = "https://github.com/rs-ipfs/rust-ipfs", branch="master" }
 tokio = { version = "1.10", default-features = false }
 
 [target.'cfg(not(target_os = "unknown"))'.dependencies]

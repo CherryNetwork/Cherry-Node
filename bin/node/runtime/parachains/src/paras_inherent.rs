@@ -114,7 +114,7 @@ pub mod pallet {
 					Err(_) => {
 						log::warn!(target: LOG_TARGET, "ParachainsInherentData failed to decode");
 
-						return None;
+						return None
 					},
 				};
 
@@ -193,7 +193,7 @@ pub mod pallet {
 					// The relay chain we are currently on is invalid. Proceed no further on
 					// parachains.
 					Included::<T>::set(Some(()));
-					return Ok(Some(MINIMAL_INCLUSION_INHERENT_WEIGHT).into());
+					return Ok(Some(MINIMAL_INCLUSION_INHERENT_WEIGHT).into())
 				}
 
 				let mut freed_disputed = if !new_current_dispute_sets.is_empty() {
@@ -299,10 +299,10 @@ pub mod pallet {
 			Included::<T>::set(Some(()));
 
 			Ok(Some(
-				MINIMAL_INCLUSION_INHERENT_WEIGHT
-					+ (backed_candidates_len * BACKED_CANDIDATE_WEIGHT),
+				MINIMAL_INCLUSION_INHERENT_WEIGHT +
+					(backed_candidates_len * BACKED_CANDIDATE_WEIGHT),
 			)
-			   .into())
+			.into())
 		}
 	}
 }
@@ -330,7 +330,7 @@ fn limit_backed_candidates<T: Config>(
 		backed_candidates.retain(|c| {
 			if c.candidate.commitments.new_validation_code.is_some() {
 				if code_upgrades >= MAX_CODE_UPGRADES {
-					return false;
+					return false
 				}
 
 				code_upgrades += 1;
@@ -342,8 +342,8 @@ fn limit_backed_candidates<T: Config>(
 
 	// the weight of the paras inherent is already included in the current block weight,
 	// so our operation is simple: if the block is currently overloaded, make this intrinsic smaller
-	if frame_system::Pallet::<T>::block_weight().total()
-		> <T as frame_system::Config>::BlockWeights::get().max_block
+	if frame_system::Pallet::<T>::block_weight().total() >
+		<T as frame_system::Config>::BlockWeights::get().max_block
 	{
 		Vec::new()
 	} else {
@@ -456,8 +456,8 @@ mod tests {
 				let backed_candidates = vec![BackedCandidate::default(); 10];
 
 				// the expected weight can always be computed by this formula
-				let expected_weight = MINIMAL_INCLUSION_INHERENT_WEIGHT
-					+ (backed_candidates.len() as Weight * BACKED_CANDIDATE_WEIGHT);
+				let expected_weight = MINIMAL_INCLUSION_INHERENT_WEIGHT +
+					(backed_candidates.len() as Weight * BACKED_CANDIDATE_WEIGHT);
 
 				// we've used half the block weight; there's plenty of margin
 				let max_block_weight =

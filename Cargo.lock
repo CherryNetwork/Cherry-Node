@@ -332,27 +332,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "async-stream"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "171374e7e3b2504e0e5236e3b59260560f9fe94bfe9ac39ba5e4e929c5590625"
-dependencies = [
- "async-stream-impl",
- "futures-core",
-]
-
-[[package]]
-name = "async-stream-impl"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "648ed8c8d2ce5409ccd57453d9d1b214b342a0d69376a6feda1fd6cae3299308"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
-]
-
-[[package]]
 name = "async-task"
 version = "4.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1026,7 +1005,7 @@ version = "0.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8709d481fb78b9808f34a1b4b4fadd08a15a0971052c18bc2b751faefaed595e"
 dependencies = [
- "multibase 0.8.0",
+ "multibase",
  "multihash 0.11.4",
  "unsigned-varint 0.3.3",
 ]
@@ -1037,7 +1016,7 @@ version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ff0e3bc0b6446b3f9663c1a6aba6ef06c5aeaa1bc92bd18077be337198ab9768"
 dependencies = [
- "multibase 0.8.0",
+ "multibase",
  "multihash 0.13.2",
  "unsigned-varint 0.5.1",
 ]
@@ -2033,18 +2012,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "filetime"
-version = "0.2.15"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "975ccf83d8d9d0d84682850a38c8169027be83368805971cc4f238c2b245bc98"
-dependencies = [
- "cfg-if 1.0.0",
- "libc",
- "redox_syscall 0.2.10",
- "winapi 0.3.9",
-]
-
-[[package]]
 name = "finality-grandpa"
 version = "0.14.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2560,15 +2527,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fxhash"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c31b6d751ae2c7f11320402d34e41349dd1016f8d5d45e48c4312bc8625af50c"
-dependencies = [
- "byteorder",
-]
-
-[[package]]
 name = "generate-bags"
 version = "3.0.0"
 dependencies = [
@@ -2745,12 +2703,6 @@ checksum = "92c171d55b98633f4ed3860808f004099b36c1cc29c42cfc53aa8591b21efcf2"
 dependencies = [
  "crunchy",
 ]
-
-[[package]]
-name = "hash_hasher"
-version = "2.0.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74721d007512d0cb3338cd20f0654ac913920061a4c4d0d8708edb3f2a698c0c"
 
 [[package]]
 name = "hashbrown"
@@ -3159,146 +3111,6 @@ dependencies = [
  "widestring",
  "winapi 0.3.9",
  "winreg",
-]
-
-[[package]]
-name = "ipfs"
-version = "0.2.1"
-source = "git+https://github.com/rs-ipfs/rust-ipfs?branch=master#ad3ab49b4d9236363969b0f74f14aabc7c906b3b"
-dependencies = [
- "anyhow",
- "async-stream",
- "async-trait",
- "base64 0.13.0",
- "byteorder",
- "bytes 1.1.0",
- "cid 0.5.1",
- "either",
- "fs2",
- "futures 0.3.19",
- "hash_hasher",
- "ipfs-bitswap 0.1.0 (git+https://github.com/rs-ipfs/rust-ipfs?branch=master)",
- "ipfs-unixfs 0.2.0 (git+https://github.com/rs-ipfs/rust-ipfs?branch=master)",
- "libp2p",
- "multibase 0.9.1",
- "multihash 0.11.4",
- "once_cell",
- "prost",
- "prost-build",
- "serde",
- "serde_json",
- "sled",
- "thiserror",
- "tokio",
- "tokio-stream",
- "tokio-util",
- "tracing",
- "tracing-futures",
- "trust-dns-resolver",
- "void",
-]
-
-[[package]]
-name = "ipfs"
-version = "0.2.1"
-source = "git+https://github.com/rs-ipfs/rust-ipfs#ad3ab49b4d9236363969b0f74f14aabc7c906b3b"
-dependencies = [
- "anyhow",
- "async-stream",
- "async-trait",
- "base64 0.13.0",
- "byteorder",
- "bytes 1.1.0",
- "cid 0.5.1",
- "either",
- "fs2",
- "futures 0.3.19",
- "hash_hasher",
- "ipfs-bitswap 0.1.0 (git+https://github.com/rs-ipfs/rust-ipfs)",
- "ipfs-unixfs 0.2.0 (git+https://github.com/rs-ipfs/rust-ipfs)",
- "libp2p",
- "multibase 0.9.1",
- "multihash 0.11.4",
- "once_cell",
- "prost",
- "prost-build",
- "serde",
- "serde_json",
- "sled",
- "thiserror",
- "tokio",
- "tokio-stream",
- "tokio-util",
- "tracing",
- "tracing-futures",
- "trust-dns-resolver",
- "void",
-]
-
-[[package]]
-name = "ipfs-bitswap"
-version = "0.1.0"
-source = "git+https://github.com/rs-ipfs/rust-ipfs?branch=master#ad3ab49b4d9236363969b0f74f14aabc7c906b3b"
-dependencies = [
- "cid 0.5.1",
- "fnv",
- "futures 0.3.19",
- "hash_hasher",
- "libp2p-core",
- "libp2p-swarm",
- "multihash 0.11.4",
- "prost",
- "prost-build",
- "thiserror",
- "tokio",
- "tracing",
- "unsigned-varint 0.3.3",
-]
-
-[[package]]
-name = "ipfs-bitswap"
-version = "0.1.0"
-source = "git+https://github.com/rs-ipfs/rust-ipfs#ad3ab49b4d9236363969b0f74f14aabc7c906b3b"
-dependencies = [
- "cid 0.5.1",
- "fnv",
- "futures 0.3.19",
- "hash_hasher",
- "libp2p-core",
- "libp2p-swarm",
- "multihash 0.11.4",
- "prost",
- "prost-build",
- "thiserror",
- "tokio",
- "tracing",
- "unsigned-varint 0.3.3",
-]
-
-[[package]]
-name = "ipfs-unixfs"
-version = "0.2.0"
-source = "git+https://github.com/rs-ipfs/rust-ipfs?branch=master#ad3ab49b4d9236363969b0f74f14aabc7c906b3b"
-dependencies = [
- "cid 0.5.1",
- "either",
- "filetime",
- "multihash 0.11.4",
- "quick-protobuf",
- "sha2 0.9.8",
-]
-
-[[package]]
-name = "ipfs-unixfs"
-version = "0.2.0"
-source = "git+https://github.com/rs-ipfs/rust-ipfs#ad3ab49b4d9236363969b0f74f14aabc7c906b3b"
-dependencies = [
- "cid 0.5.1",
- "either",
- "filetime",
- "multihash 0.11.4",
- "quick-protobuf",
- "sha2 0.9.8",
 ]
 
 [[package]]
@@ -4060,14 +3872,12 @@ dependencies = [
  "async-io",
  "futures 0.3.19",
  "futures-timer 3.0.2",
- "if-addrs",
  "if-watch",
  "ipnet",
  "libc",
  "libp2p-core",
  "log 0.4.14",
  "socket2 0.4.2",
- "tokio",
 ]
 
 [[package]]
@@ -4669,17 +4479,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "multibase"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9b3539ec3c1f04ac9748a260728e855f261b4977f5c3406612c884564f329404"
-dependencies = [
- "base-x",
- "data-encoding",
- "data-encoding-macro",
-]
-
-[[package]]
 name = "multihash"
 version = "0.11.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4885,7 +4684,6 @@ dependencies = [
  "frame-system",
  "futures 0.3.19",
  "hex-literal",
- "ipfs 0.2.1 (git+https://github.com/rs-ipfs/rust-ipfs)",
  "jsonrpsee-ws-client",
  "log 0.4.14",
  "nix",
@@ -5883,26 +5681,6 @@ dependencies = [
  "sp-core",
  "sp-io",
  "sp-keyring",
- "sp-runtime",
- "sp-std",
-]
-
-[[package]]
-name = "pallet-ipfs"
-version = "4.0.0-dev"
-dependencies = [
- "frame-benchmarking",
- "frame-support",
- "frame-system",
- "log 0.4.14",
- "pallet-assets",
- "pallet-balances",
- "parity-scale-codec",
- "scale-info",
- "serde",
- "sp-core",
- "sp-io",
- "sp-keystore",
  "sp-runtime",
  "sp-std",
 ]
@@ -7334,15 +7112,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a993555f31e5a609f617c12db6250dedcac1b0a85076912c436e6fc9b2c8e6a3"
 
 [[package]]
-name = "quick-protobuf"
-version = "0.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6ca6639207ac869e31cca06b8adbc7676278f22b321e51115766009b4f192dbb"
-dependencies = [
- "byteorder",
-]
-
-[[package]]
 name = "quickcheck"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8710,7 +8479,6 @@ dependencies = [
  "hex",
  "hyper 0.14.16",
  "hyper-rustls",
- "ipfs 0.2.1 (git+https://github.com/rs-ipfs/rust-ipfs?branch=master)",
  "lazy_static",
  "log 0.4.14",
  "num_cpus",
@@ -9427,22 +9195,6 @@ name = "slab"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9def91fd1e018fe007022791f865d0ccc9b3a0d5001e01aabb8b40e46000afb5"
-
-[[package]]
-name = "sled"
-version = "0.34.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f96b4737c2ce5987354855aed3797279def4ebf734436c6aa4552cf8e169935"
-dependencies = [
- "crc32fast",
- "crossbeam-epoch",
- "crossbeam-utils 0.8.5",
- "fs2",
- "fxhash",
- "libc",
- "log 0.4.14",
- "parking_lot 0.11.2",
-]
 
 [[package]]
 name = "slog"
@@ -11145,7 +10897,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "375a639232caf30edfc78e8d89b2d4c375515393e7af7e16f01cd96917fb2105"
 dependencies = [
  "cfg-if 1.0.0",
- "log 0.4.14",
  "pin-project-lite 0.2.8",
  "tracing-attributes",
  "tracing-core",
@@ -11177,8 +10928,6 @@ version = "0.2.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97d095ae15e245a057c8e8451bab9b3ee1e1f68e9ba2b4fbc18d0ac5237835f2"
 dependencies = [
- "futures 0.3.19",
- "futures-task",
  "pin-project 1.0.10",
  "tracing",
 ]
@@ -11301,7 +11050,6 @@ dependencies = [
  "smallvec 1.7.0",
  "thiserror",
  "tinyvec",
- "tokio",
  "url 2.2.2",
 ]
 
@@ -11321,7 +11069,6 @@ dependencies = [
  "resolv-conf",
  "smallvec 1.7.0",
  "thiserror",
- "tokio",
  "trust-dns-proto",
 ]
 

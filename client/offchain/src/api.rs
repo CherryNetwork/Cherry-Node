@@ -20,21 +20,19 @@ use std::{collections::HashSet, convert::TryFrom, str::FromStr, sync::Arc, threa
 
 use crate::NetworkProvider;
 use codec::{Decode, Encode};
+use futures::Future;
 pub use http::SharedClient;
 use sc_network::{Multiaddr, PeerId};
 use sp_core::{
 	offchain::{
-		self, HttpError, HttpRequestId, HttpRequestStatus, IpfsRequest, IpfsRequestId,
-		IpfsRequestStatus, OffchainStorage, OpaqueMultiaddr, OpaqueNetworkState, StorageKind,
-		Timestamp,
+		self, HttpError, HttpRequestId, HttpRequestStatus, OffchainStorage, OpaqueMultiaddr,
+		OpaqueNetworkState, StorageKind, Timestamp,
 	},
 	OpaquePeerId,
 };
 pub use sp_offchain::STORAGE_PREFIX;
 
 mod http;
-
-mod ipfs;
 
 mod timestamp;
 
@@ -147,8 +145,6 @@ pub(crate) struct Api {
 	is_validator: bool,
 	/// Everything HTTP-related is handled by a different struct.
 	http: http::HttpApi,
-	/// Everything IPFS-related is handled by a different struct.
-	ipfs: ipfs::IpfsApi,
 }
 
 impl offchain::Externalities for Api {
@@ -223,18 +219,6 @@ impl offchain::Externalities for Api {
 		self.http.response_read_body(request_id, buffer, deadline)
 	}
 
-	fn ipfs_request_start(&mut self, request: IpfsRequest) -> Result<IpfsRequestId, ()> {
-		self.ipfs.request_start(request)
-	}
-
-	fn ipfs_response_wait(
-		&mut self,
-		ids: &[IpfsRequestId],
-		deadline: Option<Timestamp>,
-	) -> Vec<IpfsRequestStatus> {
-		self.ipfs.response_wait(ids, deadline)
-	}
-
 	fn set_authorized_nodes(&mut self, nodes: Vec<OpaquePeerId>, authorized_only: bool) {
 		let peer_ids: HashSet<PeerId> =
 			nodes.into_iter().filter_map(|node| PeerId::from_bytes(&node.0).ok()).collect();
@@ -304,36 +288,32 @@ impl TryFrom<OpaqueNetworkState> for NetworkState {
 /// Offchain extensions implementation API
 ///
 /// This is the asynchronous processing part of the API.
-pub(crate) struct AsyncApi<I: ::ipfs::IpfsTypes> {
+pub(crate) struct AsyncApi {
 	/// Everything HTTP-related is handled by a different struct.
 	http: Option<http::HttpWorker>,
-	ipfs: Option<ipfs::IpfsWorker<I>>,
 }
 
-impl<I: ::ipfs::IpfsTypes> AsyncApi<I> {
+impl AsyncApi {
 	/// Creates new Offchain extensions API implementation an the asynchronous processing part.
 	pub fn new(
 		network_provider: Arc<dyn NetworkProvider + Send + Sync>,
 		is_validator: bool,
 		shared_client: SharedClient,
-		ipfs_node: ::ipfs::Ipfs<I>,
 	) -> (Api, Self) {
 		let (http_api, http_worker) = http::http(shared_client);
 
-		let (ipfs_api, ipfs_worker) = ipfs::ipfs(ipfs_node);
+		let api = Api { network_provider, is_validator, http: http_api };
 
-		let api = Api { network_provider, is_validator, http: http_api, ipfs: ipfs_api };
-
-		let async_api = Self { http: Some(http_worker), ipfs: Some(ipfs_worker) };
+		let async_api = Self { http: Some(http_worker) };
 
 		(api, async_api)
 	}
 
 	/// Run a processing task for the API
-	pub async fn process(mut self) {
+	pub fn process(mut self) -> impl Future<Output = ()> {
 		let http = self.http.take().expect("Take invoked only once.");
-		let ipfs = self.ipfs.take().expect("Take invoked only once.");
-		futures::join!(http, ipfs);
+
+		http
 	}
 }
 
@@ -375,16 +355,7 @@ mod tests {
 		let mock = Arc::new(TestNetwork());
 		let shared_client = SharedClient::new();
 
-		let options = ::ipfs::IpfsOptions::default();
-		let mut rt = tokio::runtime::Runtime::new().unwrap();
-		let ipfs_node = rt.block_on(async move {
-			let (ipfs, fut) =
-				::ipfs::UninitializedIpfs::new(options, None).await.start().await.unwrap();
-			tokio::task::spawn(fut);
-			ipfs
-		});
-
-		AsyncApi::new(ipfs_node, mock, false, shared_client)
+		AsyncApi::new(mock, false, shared_client)
 	}
 
 	fn offchain_db() -> Db<LocalStorage> {

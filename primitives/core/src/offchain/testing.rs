@@ -23,9 +23,8 @@
 use crate::{
 	offchain::{
 		self, storage::InMemOffchainStorage, HttpError, HttpRequestId as RequestId,
-		HttpRequestStatus as RequestStatus, IpfsRequest, IpfsRequestId, IpfsRequestStatus,
-		IpfsResponse, OffchainOverlayedChange, OffchainStorage, OpaqueNetworkState, StorageKind,
-		Timestamp, TransactionPool,
+		HttpRequestStatus as RequestStatus, OffchainOverlayedChange, OffchainStorage,
+		OpaqueNetworkState, StorageKind, Timestamp, TransactionPool,
 	},
 	OpaquePeerId,
 };
@@ -57,15 +56,6 @@ pub struct PendingRequest {
 	pub read: usize,
 	/// Response headers
 	pub response_headers: Vec<(String, String)>,
-}
-
-/// Pending IPFS request.
-#[derive(Debug, Default, PartialEq, Eq, Clone)]
-pub struct IpfsPendingRequest {
-	/// Request id
-	pub id: IpfsRequestId,
-	/// response body
-	pub response: Option<IpfsResponse>,
 }
 
 /// Sharable "persistent" offchain storage for test.
@@ -136,11 +126,6 @@ pub struct OffchainState {
 	pub requests: BTreeMap<RequestId, PendingRequest>,
 	// Queue of requests that the test is expected to perform (in order).
 	expected_requests: VecDeque<PendingRequest>,
-	/// List of pending IPFS requests
-	pub ipfs_requests: BTreeMap<IpfsRequestId, IpfsPendingRequest>,
-	/// Map of  requests that the test is expected to perform
-	// expected_ipfs_requests: BTreeMap<IpfsRequestId, IpfsPendingRequest>,
-	expected_ipfs_requests: VecDeque<IpfsPendingRequest>,
 	/// Persistent local storage
 	pub persistent_storage: TestPersistentOffchainDB,
 	/// Local storage
@@ -152,7 +137,6 @@ pub struct OffchainState {
 }
 
 impl OffchainState {
-	// for http
 	/// Asserts that pending request has been submitted and fills it's response.
 	pub fn fulfill_pending_request(
 		&mut self,
@@ -193,48 +177,6 @@ impl OffchainState {
 			panic!("Expected request needs to have a response.");
 		}
 		self.expected_requests.push_front(expected);
-	}
-
-	// for ipfs
-	/// Asserts that pending request has been submitted and fills it's response.
-	pub fn fulfill_pending_ipfs_request(
-		&mut self,
-		id: u16,
-		expected: IpfsPendingRequest,
-		response: impl Into<IpfsResponse>,
-		// response_headers: impl IntoIterator<Item = (String, String)>,
-	) {
-		match self.ipfs_requests.get_mut(&IpfsRequestId(id)) {
-			None => {
-				panic!("Missing pending ipfs request: {:?}.\n\nAll: {:?}", id, self.ipfs_requests);
-			},
-			Some(req) => {
-				assert_eq!(*req, expected);
-				req.response = Some(response.into());
-			},
-		}
-	}
-
-	#[allow(missing_docs)]
-	pub fn fulfill_ipfs_expected(&mut self, id: u16) {
-		if let Some(mut req) = self.expected_ipfs_requests.pop_back() {
-			let response = req.response.take().expect("Response checked when added.");
-			self.fulfill_pending_ipfs_request(id, req, response);
-		}
-	}
-
-	/// Add expected IPFS request
-	///
-	/// This method can be used to initialize expected IPFS requests and their responses
-	/// before running the actual code that utilizes them (for instance before calling into
-	/// runtime). Expected request has to be fulfilled before this struct is dropped,
-	/// the `ipfs_response` and `response_headers` fields will be used to return results to the
-	/// callers. Requests are expected to be performed in the insertion order.
-	pub fn expect_ipfs_request(&mut self, expected: IpfsPendingRequest) {
-		if expected.response.is_none() {
-			panic!("Expected ipfs request needs to have a response");
-		}
-		self.expected_ipfs_requests.push_front(expected);
 	}
 }
 
@@ -408,43 +350,7 @@ impl offchain::Externalities for TestOffchainExt {
 		}
 	}
 
-	fn ipfs_request_start(&mut self, _request: IpfsRequest) -> Result<IpfsRequestId, ()> {
-		let mut state = self.0.write();
-		let len = state.ipfs_requests.len();
-		let id = IpfsRequestId(len as u16);
-		if let Some(mut req) = state.expected_ipfs_requests.pop_back() {
-			let response = req.response.take().expect("Response checked when added.");
-			state
-				.ipfs_requests
-				.insert(id.clone(), IpfsPendingRequest { id, response: Some(response) });
-		} else {
-			panic!("No response provided for ipfs request id: {:?}", len)
-		}
-		Ok(id)
-	}
-
-	fn ipfs_response_wait(
-		&mut self,
-		ids: &[IpfsRequestId],
-		_deadline: Option<Timestamp>,
-	) -> Vec<IpfsRequestStatus> {
-		let state = self.0.read();
-		ids.iter()
-			.map(|id| match state.ipfs_requests.get(id) {
-				Some(req) => {
-					if req.response.is_none() {
-						panic!("No `response` provided for request with id: {:?}", id)
-					}
-					IpfsRequestStatus::Finished(req.response.clone().unwrap())
-				},
-				#[allow(unreachable_patterns)]
-				Some(_) => IpfsRequestStatus::Finished(IpfsResponse::Success),
-				None => IpfsRequestStatus::Invalid,
-			})
-			.collect()
-	}
-
-	fn set_authorized_nodes(&mut self, _nodes: Vec<OpaquePeerId>, _authorized_oy: bool) {
+	fn set_authorized_nodes(&mut self, _nodes: Vec<OpaquePeerId>, _authorized_only: bool) {
 		unimplemented!()
 	}
 }
