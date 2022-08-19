@@ -132,6 +132,7 @@ parameter_types! {
 	pub const TreasuryPalletId: PalletId = PalletId(*b"py/trsry");
 	pub const MaximumReasonLength: u32 = 16384;
 	pub const MaxApprovals: u32 = 100;
+	pub const AllowedProposalPeriod: u64 = 2;
 }
 impl pallet_treasury::Config for Test {
 	type PalletId = TreasuryPalletId;
@@ -148,6 +149,7 @@ impl pallet_treasury::Config for Test {
 	type WeightInfo = ();
 	type SpendFunds = ();
 	type MaxApprovals = MaxApprovals;
+	type AllowedProposalPeriod = AllowedProposalPeriod;
 }
 parameter_types! {
 	pub const TipCountdown: u64 = 1;

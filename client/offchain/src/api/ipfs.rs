@@ -526,12 +526,12 @@ mod tests {
 
 	#[test]
 	fn metadata_calls() {
-		let options = ipfs::IpfsOptions::default();
+		let options = ipfs::IpfsOptions::inmemory_with_generated_keys();
 
-		let mut rt = tokio::runtime::Runtime::new().unwrap();
+		let rt = tokio::runtime::Runtime::new().unwrap();
 		let ipfs_node = rt.block_on(async move {
 			let (ipfs, fut): (Ipfs<ipfs::TestTypes>, _) =
-				ipfs::UninitializedIpfs::new(options, None).await.start().await.unwrap();
+				ipfs::UninitializedIpfs::new(options).start().await.unwrap();
 			tokio::task::spawn(fut);
 			ipfs
 		});
