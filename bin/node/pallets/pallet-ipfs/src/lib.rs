@@ -104,11 +104,11 @@ pub mod pallet {
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
 	#[scale_info(skip_type_params(T))]
 	pub struct IpfsNode {
-		pub multiaddress: Vec<OpaqueMultiaddr>,
 		pub public_key: Vec<u8>,
+		pub multiaddress: Vec<OpaqueMultiaddr>,
 		pub avail_storage: u64,
+		pub max_storage: u64,
 		pub files: u64,
-		pub files_total: u64,
 	}
 
 	#[derive(Clone, Encode, Decode, PartialEq, RuntimeDebug, TypeInfo)]
@@ -154,6 +154,9 @@ pub mod pallet {
 		#[pallet::constant]
 		type DefaultAssetLifetime: Get<Self::BlockNumber>;
 
+		#[pallet::constant]
+		type UpdateDuration: Get<u64>;
+
 		type Call: From<Call<Self>>;
 
 		type AuthorityId: AppCrypto<Self::Public, Self::Signature>;
@@ -196,6 +199,7 @@ pub mod pallet {
 		RequestFailed,
 		FeeOutOfBounds,
 		HttpFetchingError,
+		IpfsNodeNotExist,
 	}
 
 	#[pallet::event]
@@ -218,6 +222,8 @@ pub mod pallet {
 		DeleteIpfsAsset(T::AccountId, Vec<u8>),
 		UnpinIpfsAsset(T::AccountId, Vec<u8>),
 		ExtendIpfsStorageDuration(T::AccountId, Vec<u8>),
+		ExportIpfsStats(Vec<IpfsNode>),
+		SessionResults(T::AccountId, Vec<u8>, BalanceOf<T>),
 	}
 
 	// Storage items.
@@ -267,6 +273,15 @@ pub mod pallet {
 				if let Err(e) = Self::get_validator_storage() {
 					log::error!(
 						"IPFS: Encountered an error while requesting data from remote API: {:?}",
+						e
+					);
+				}
+			}
+
+			if block_no % T::UpdateDuration::get().try_into().ok().unwrap() == 0u32.into() {
+				if let Err(e) = Self::emit_ipfs_stats() {
+					log::error!(
+						"IPFS: Encountered an error while publishing IPFS Node stats {:?}",
 						e
 					);
 				}
@@ -465,22 +480,23 @@ pub mod pallet {
 			origin: OriginFor<T>,
 			public_key: Vec<u8>,
 			multiaddress: Vec<OpaqueMultiaddr>,
-			storage_size: u64,
+			available_storage: u64,
+			max_storage: u64,
 			files: u64,
-			files_total: u64,
 		) -> DispatchResult {
 			let signer = ensure_signed(origin)?;
 
 			let ipfs_node: IpfsNode = IpfsNode {
-				multiaddress,
 				public_key: public_key.clone(),
-				avail_storage: storage_size,
+				multiaddress,
+				avail_storage: available_storage,
+				max_storage,
 				files,
-				files_total,
 			};
-			<IPFSNodes<T>>::insert(public_key.clone(), ipfs_node.clone());
 
-			Self::deposit_event(Event::PublishedIdentity(signer.clone()));
+			<IPFSNodes<T>>::insert(public_key, ipfs_node);
+
+			Self::deposit_event(Event::PublishedIdentity(signer));
 
 			Ok(())
 		}
@@ -577,6 +593,31 @@ pub mod pallet {
 			<IpfsCnt<T>>::put(new_cnt);
 
 			Self::deposit_event(Event::DeleteIpfsAsset(signer.clone(), cid.clone()));
+
+			Ok(())
+		}
+
+		#[pallet::weight(0)]
+		pub fn submit_ipfs_emit_stats_result(
+			origin: OriginFor<T>,
+			nodes: Vec<IpfsNode>,
+		) -> DispatchResult {
+			ensure_signed(origin)?;
+
+			Self::deposit_event(Event::ExportIpfsStats(nodes));
+
+			Ok(())
+		}
+
+		#[pallet::weight(0)]
+		pub fn submit_session_results(
+			origin: OriginFor<T>,
+			peer_id: Vec<u8>,
+			payment: BalanceOf<T>,
+		) -> DispatchResult {
+			let signer = ensure_signed(origin)?;
+
+			Self::deposit_event(Event::SessionResults(signer, peer_id, payment));
 
 			Ok(())
 		}

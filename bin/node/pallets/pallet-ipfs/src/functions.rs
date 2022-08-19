@@ -1,19 +1,15 @@
 use super::*;
 
 use frame_system::pallet_prelude::BlockNumberFor;
-use sp_runtime::{
-	offchain::{http, ipfs, IpfsRequest, IpfsResponse},
-	SaturatedConversion,
-};
-use sp_std::str;
-
 use serde::{Deserialize, Serialize};
+use sp_runtime::offchain::{http, ipfs, IpfsRequest, IpfsResponse};
+use sp_std::str;
 
 #[derive(Default, Debug, Serialize, Deserialize)]
 pub struct GetStorageResponseRPC {
 	pub available_storage: u64,
+	pub maximum_storage: u64,
 	pub files: usize,
-	pub total_files: usize,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -480,20 +476,25 @@ impl<T: Config> Pallet<T> {
 			}
 
 			let avail_storage = Self::get_validator_storage().unwrap().result.available_storage;
+			let max_storage = Self::get_validator_storage().unwrap().result.maximum_storage;
 			let files = Self::get_validator_storage().unwrap().result.files;
-			let files_total = Self::get_validator_storage().unwrap().result.total_files;
 
 			let results = signer.send_signed_transaction(|_account| Call::submit_ipfs_identity {
 				public_key: public_key.clone(),
 				multiaddress: addrs.clone(),
-				storage_size: avail_storage.clone(),
+				available_storage: avail_storage.clone(),
+				max_storage,
 				files: files as u64,
-				files_total: files_total as u64,
 			});
 
 			for (_, res) in &results {
 				match res {
-					Ok(()) => log::info!("Submitted ipfs identity results"),
+					Ok(()) => {
+						log::info!("Submitted ipfs identity results");
+						// log::info!("\n\navailable storage: {:?}", avail_storage);
+						// log::info!("\nmax storage: {:?}", max_storage);
+						// log::info!("\nfiles: {:?}", files);
+					},
 					Err(e) => log::error!("Failed to submit tx: {:?}", e),
 				}
 			}
@@ -585,5 +586,31 @@ impl<T: Config> Pallet<T> {
 		.unwrap();
 
 		Ok(resp)
+	}
+
+	pub fn emit_ipfs_stats() -> Result<(), Error<T>> {
+		let deadline = Some(timestamp().add(Duration::from_millis(5_0000)));
+
+		Self::ipfs_request(IpfsRequest::Identity, deadline)?;
+		// emit event
+		let signer = Signer::<T, T::AuthorityId>::all_accounts();
+		if !signer.can_sign() {
+			log::error!("No local accounts available. Consider adding one via `author_insertKey` RPC method.");
+		}
+
+		let results = signer.send_signed_transaction(|_account| {
+			Call::submit_ipfs_emit_stats_result { nodes: IPFSNodes::<T>::iter_values().collect() }
+		});
+
+		for (_, res) in &results {
+			match res {
+				Ok(()) => {
+					log::info!("Emitted ipfs node stats");
+				},
+				Err(e) => log::error!("Failed to submit transaction: {:?}", e),
+			}
+		}
+
+		Ok(())
 	}
 }

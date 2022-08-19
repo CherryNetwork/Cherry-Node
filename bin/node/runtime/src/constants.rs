@@ -72,6 +72,9 @@ pub mod time_dev {
 	//       Attempting to do so will brick block production.
 	pub const EPOCH_DURATION_IN_BLOCKS: BlockNumber = 2 * MINUTES;
 	pub const EPOCH_DURATION_IN_SLOTS: BlockNumber = EPOCH_DURATION_IN_BLOCKS;
+
+	pub const UPDATE_DURATION: BlockNumber = EPOCH_DURATION_IN_SLOTS * 3;
+
 	pub const SESSIONS_PER_ERA: sp_staking::SessionIndex = 3;
 	pub const BONDING_DURATION: pallet_staking::EraIndex = 24 * 8;
 	pub const SLASH_DEFER_DURATION: pallet_staking::EraIndex = 24 * 2;
@@ -137,6 +140,7 @@ pub mod time_prod {
 	pub const EPOCH_DURATION_IN_BLOCKS: BlockNumber = 10 * MINUTES;
 	pub const EPOCH_DURATION_IN_SLOTS: BlockNumber = EPOCH_DURATION_IN_BLOCKS;
 
+	pub const UPDATE_DURATION: BlockNumber = EPOCH_DURATION_IN_SLOTS * 6;
 	// NOTE: Currently it is not possible to change the epoch duration after the chain has started.
 	//       Attempting to do so will brick block production.
 	pub const SESSIONS_PER_ERA: sp_staking::SessionIndex = 6;
