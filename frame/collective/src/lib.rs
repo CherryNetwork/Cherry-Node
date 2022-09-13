@@ -53,7 +53,8 @@ use frame_support::{
 	dispatch::{DispatchError, DispatchResultWithPostInfo},
 	ensure,
 	traits::{
-		UnfilteredDispatchable, Backing, ChangeMembers, EnsureOrigin, Get, GetBacking, InitializeMembers, StorageVersion,
+		Backing, ChangeMembers, EnsureOrigin, Get, GetBacking, InitializeMembers, StorageVersion,
+		UnfilteredDispatchable,
 	},
 	weights::{GetDispatchInfo, Weight},
 };
@@ -181,9 +182,8 @@ pub mod pallet {
 
 		/// The outer call dispatch type.
 		type Proposal: Parameter
-			+ UnfilteredDispatchable<
-				Origin = <Self as frame_system::Config>::Origin,
-			> + From<frame_system::Call<Self>>
+			+ UnfilteredDispatchable<Origin = <Self as frame_system::Config>::Origin>
+			+ From<frame_system::Call<Self>>
 			+ GetDispatchInfo;
 
 		/// The outer event type.
