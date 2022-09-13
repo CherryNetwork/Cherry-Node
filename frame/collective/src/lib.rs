@@ -50,10 +50,10 @@ use sp_std::{marker::PhantomData, prelude::*, result};
 
 use frame_support::{
 	codec::{Decode, Encode},
-	dispatch::{DispatchError, DispatchResultWithPostInfo, Dispatchable, PostDispatchInfo},
+	dispatch::{DispatchError, DispatchResultWithPostInfo},
 	ensure,
 	traits::{
-		Backing, ChangeMembers, EnsureOrigin, Get, GetBacking, InitializeMembers, StorageVersion,
+		UnfilteredDispatchable, Backing, ChangeMembers, EnsureOrigin, Get, GetBacking, InitializeMembers, StorageVersion,
 	},
 	weights::{GetDispatchInfo, Weight},
 };
@@ -181,9 +181,8 @@ pub mod pallet {
 
 		/// The outer call dispatch type.
 		type Proposal: Parameter
-			+ Dispatchable<
+			+ UnfilteredDispatchable<
 				Origin = <Self as frame_system::Config>::Origin,
-				PostInfo = PostDispatchInfo,
 			> + From<frame_system::Call<Self>>
 			+ GetDispatchInfo;
 
@@ -436,7 +435,7 @@ pub mod pallet {
 			ensure!(proposal_len <= length_bound as usize, Error::<T, I>::WrongProposalLength);
 
 			let proposal_hash = T::Hashing::hash_of(&proposal);
-			let result = proposal.dispatch(frame_system::RawOrigin::Root.into());
+			let result = proposal.dispatch_bypass_filter(frame_system::RawOrigin::Root.into());
 			Self::deposit_event(Event::MemberExecuted(
 				proposal_hash,
 				result.map(|_| ()).map_err(|e| e.error),
@@ -515,7 +514,7 @@ pub mod pallet {
 
 			if threshold < 2 {
 				// let seats = Self::members().len() as MemberCount;
-				let result = proposal.dispatch(frame_system::RawOrigin::Root.into());
+				let result = proposal.dispatch_bypass_filter(frame_system::RawOrigin::Root.into());
 				Self::deposit_event(Event::Executed(
 					proposal_hash,
 					result.map(|_| ()).map_err(|e| e.error),
@@ -847,7 +846,7 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 
 		let dispatch_weight = proposal.get_dispatch_info().weight;
 		// let origin = RawOrigin::Members(yes_votes, seats).into();
-		let result = proposal.dispatch(frame_system::RawOrigin::Root.into());
+		let result = proposal.dispatch_bypass_filter(frame_system::RawOrigin::Root.into());
 		Self::deposit_event(Event::Executed(
 			proposal_hash,
 			result.map(|_| ()).map_err(|e| e.error),

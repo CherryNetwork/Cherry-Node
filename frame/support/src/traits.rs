@@ -81,7 +81,7 @@ pub use storage::{
 	Instance, PartialStorageInfoTrait, StorageInfo, StorageInfoTrait, StorageInstance,
 };
 
-mod dispatch;
+pub mod dispatch;
 pub use dispatch::{EnsureOrigin, OriginTrait, UnfilteredDispatchable};
 
 mod voting;
