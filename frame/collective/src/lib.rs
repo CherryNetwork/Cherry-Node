@@ -657,25 +657,12 @@ pub mod pallet {
 		///  - any mutations done while executing `proposal` (`P1`)
 		/// - up to 3 events
 		/// # </weight>
-		#[pallet::weight((
-			{
-				let b = *length_bound;
-				let m = T::MaxMembers::get();
-				let p1 = *proposal_weight_bound;
-				let p2 = T::MaxProposals::get();
-				T::WeightInfo::close_early_approved(b, m, p2)
-					.max(T::WeightInfo::close_early_disapproved(m, p2))
-					.max(T::WeightInfo::close_approved(b, m, p2))
-					.max(T::WeightInfo::close_disapproved(m, p2))
-					.saturating_add(p1)
-			},
-			DispatchClass::Operational
-		))]
+		#[pallet::weight((*proposal_weight_bound, DispatchClass::Operational))]
 		pub fn close(
 			origin: OriginFor<T>,
 			proposal_hash: T::Hash,
 			#[pallet::compact] index: ProposalIndex,
-			#[pallet::compact] proposal_weight_bound: Weight,
+			proposal_weight_bound: Weight,
 			#[pallet::compact] length_bound: u32,
 		) -> DispatchResultWithPostInfo {
 			let _ = ensure_signed(origin)?;
@@ -811,13 +798,13 @@ impl<T: Config<I>, I: 'static> Pallet<T, I> {
 		length_bound: u32,
 		weight_bound: Weight,
 	) -> Result<(<T as Config<I>>::Proposal, usize), DispatchError> {
-		let key = ProposalOf::<T, I>::hashed_key_for(hash);
+		let _key = ProposalOf::<T, I>::hashed_key_for(hash);
 		// read the length of the proposal storage entry directly
-		let proposal_len =
-			storage::read(&key, &mut [0; 0], 0).ok_or(Error::<T, I>::ProposalMissing)?;
+		let proposal_len = 0;		
+		// storage::read(&key, &mut [0; 0], 0).ok_or(Error::<T, I>::ProposalMissing)?;
 		ensure!(proposal_len <= length_bound, Error::<T, I>::WrongProposalLength);
 		let proposal = ProposalOf::<T, I>::get(hash).ok_or(Error::<T, I>::ProposalMissing)?;
-		let proposal_weight = proposal.get_dispatch_info().weight;
+		let proposal_weight = 0;
 		ensure!(proposal_weight <= weight_bound, Error::<T, I>::WrongProposalWeight);
 		Ok((proposal, proposal_len as usize))
 	}
