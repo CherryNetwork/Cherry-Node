@@ -15,7 +15,7 @@
     "tokenSymbol": "tCHER"
   },
   "forkBlocks": null,
-  "badBlocks": null,
+  "badBlocks": "0x3abe5de3a7715bbab0d95e57cbd1c2c0579a471be1751c77ead4dd7cc8447e7d",
   "lightSyncState": null,
   "consensusEngine": null,
   "codeSubstitutes": {},
