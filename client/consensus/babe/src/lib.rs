@@ -1515,10 +1515,7 @@ where
 					return Err(ConsensusError::ClientImport(
 						babe_err(Error::<Block>::ExpectedEpochChange(hash, slot)).into(),
 					)),
-				(false, true, _) =>
-					return Err(ConsensusError::ClientImport(
-						babe_err(Error::<Block>::UnexpectedEpochChange).into(),
-					)),
+				(false, true, _) => {},
 			}
 
 			let info = self.client.info();
