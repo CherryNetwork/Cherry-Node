@@ -206,7 +206,7 @@ pub fn cherry_testnet_config() -> Result<ChainSpec, String> {
 
 /// Cherry testnet config.
 pub fn cherry_mainnet_config() -> Result<ChainSpec, String> {
-	ChainSpec::from_json_bytes(&include_bytes!("../../../../customSpecRaw_mainnet.json")[..])
+	ChainSpec::from_json_bytes(&include_bytes!("../../../../regenesisSpecRaw.json")[..])
 }
 
 /// Helper function to generate a crypto pair from seed
