@@ -72,8 +72,8 @@ pub mod time_dev {
 	pub const EPOCH_DURATION_IN_BLOCKS: BlockNumber = 2 * MINUTES;
 	pub const EPOCH_DURATION_IN_SLOTS: BlockNumber = EPOCH_DURATION_IN_BLOCKS;
 	pub const SESSIONS_PER_ERA: sp_staking::SessionIndex = 3;
-	pub const BONDING_DURATION: pallet_staking::EraIndex = 24 * 8;
-	pub const SLASH_DEFER_DURATION: pallet_staking::EraIndex = 24 * 2;
+	pub const BONDING_DURATION: pallet_staking::EraIndex = 6 * 28;
+	pub const SLASH_DEFER_DURATION: pallet_staking::EraIndex = 5 * 28;
 	pub const REPORT_LONGEVITY: u64 =
 		BONDING_DURATION as u64 * SESSIONS_PER_ERA as u64 * EPOCH_DURATION_IN_SLOTS as u64;
 
