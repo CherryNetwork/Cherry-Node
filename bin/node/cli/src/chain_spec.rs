@@ -201,7 +201,7 @@ pub fn staging_testnet_config() -> ChainSpec {
 
 /// Cherry testnet config.
 pub fn cherry_testnet_config() -> Result<ChainSpec, String> {
-	ChainSpec::from_json_bytes(&include_bytes!("../../../../customSpecRaw.json")[..])
+	ChainSpec::from_json_bytes(&include_bytes!("../../../../customSpecRaw_testnet.json")[..])
 }
 
 /// Cherry testnet config.
