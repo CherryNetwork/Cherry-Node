@@ -37,10 +37,17 @@ mod multiplier_tests {
 	};
 
 	use crate::{
-		constants::{currency::*, time::*},
+		constants::currency::*,
 		AdjustmentVariable, MinimumMultiplier, Runtime, RuntimeBlockWeights as BlockWeights,
 		System, TargetBlockFullness, TransactionPayment,
 	};
+
+	#[cfg(not(feature = "dev"))]
+	use constants::time_prod::*;
+	
+	#[cfg(feature = "dev")]
+	use constants::time_dev::*;
+
 	use frame_support::weights::{DispatchClass, Weight, WeightToFeePolynomial};
 
 	fn max_normal() -> Weight {
