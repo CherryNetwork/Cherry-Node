@@ -11,8 +11,8 @@ use sp_std::vec;
 pub fn migrate<T: frame_system::Config + crate::Config, P: GetStorageVersion + PalletInfoAccess>() -> Weight {
     let on_chain_storage_version = <P as GetStorageVersion>::on_chain_storage_version();
 	log::info!(
-		target: "runtime::collective",
-		"Running migration to v2 for collective with storage version {:?}",
+		target: "runtime::gilt",
+		"Running migration to v2 for gilt with storage version {:?}",
 		on_chain_storage_version,
 	);
 
