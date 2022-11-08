@@ -409,7 +409,6 @@ fn era_payout(
 	period_fraction: Perquintill,
 	auctioned_slots: u64,
 ) -> (Balance, Balance) {
-	use sp_arithmetic::traits::Saturating;
 	use pallet_staking_reward_fn::compute_inflation;
 
 	let min_annual_inflation = Perquintill::from_rational(25u64, 1000u64);
