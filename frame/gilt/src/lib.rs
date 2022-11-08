@@ -68,12 +68,12 @@
 pub use pallet::*;
 
 mod benchmarking;
+pub mod migrations;
 #[cfg(test)]
 mod mock;
 #[cfg(test)]
 mod tests;
 pub mod weights;
-pub mod migrations;
 
 #[frame_support::pallet]
 pub mod pallet {

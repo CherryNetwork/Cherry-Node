@@ -57,10 +57,9 @@ use sp_core::{
 };
 use sp_inherents::{CheckInherentsResult, InherentData};
 use sp_runtime::{
-	create_runtime_str,
-	generic, impl_opaque_keys,
+	create_runtime_str, generic, impl_opaque_keys,
 	traits::{
-		self, BlakeTwo256, Block as BlockT, NumberFor, OpaqueKeys, Saturating, SaturatedConversion,
+		self, BlakeTwo256, Block as BlockT, NumberFor, OpaqueKeys, SaturatedConversion, Saturating,
 		StaticLookup,
 	},
 	transaction_validity::{TransactionPriority, TransactionSource, TransactionValidity},
@@ -125,7 +124,7 @@ pub const VERSION: RuntimeVersion = RuntimeVersion {
 	// and set impl_version to 0. If only runtime
 	// implementation changes and behavior does not, then leave spec_version as
 	// is and increment impl_version.
-	spec_version: 274,
+	spec_version: 275,
 	impl_version: 1,
 	apis: RUNTIME_API_VERSIONS,
 	transaction_version: 2,
@@ -417,15 +416,15 @@ fn era_payout(
 	// 30% reserved for up to 60 slots.
 	let auction_proportion = Perquintill::from_rational(auctioned_slots.min(60), 200u64);
 
-	// Therefore the ideal amount at stake (as a percentage of total issuance) is 75% less the amount that we expect
-	// to be taken up with auctions.
-	let ideal_stake = Perquintill::from_percent(75)
-		.saturating_sub(auction_proportion);
+	// Therefore the ideal amount at stake (as a percentage of total issuance) is 75% less the
+	// amount that we expect to be taken up with auctions.
+	let ideal_stake = Perquintill::from_percent(75).saturating_sub(auction_proportion);
 
 	let stake = Perquintill::from_rational(total_staked, non_gilt_issuance);
 	let falloff = Perquintill::from_percent(5);
 	let adjustment = compute_inflation(stake, ideal_stake, falloff);
-	let staking_inflation = min_annual_inflation.saturating_add(delta_annual_inflation * adjustment);
+	let staking_inflation =
+		min_annual_inflation.saturating_add(delta_annual_inflation * adjustment);
 
 	let max_payout = period_fraction * max_annual_inflation * non_gilt_issuance;
 	let staking_payout = (period_fraction * staking_inflation) * non_gilt_issuance;
@@ -434,8 +433,8 @@ fn era_payout(
 	let other_issuance = non_gilt_issuance.saturating_sub(total_staked);
 	if total_staked > other_issuance {
 		let _cap_rest = Perquintill::from_rational(other_issuance, total_staked) * staking_payout;
-		// We don't do anything with this, but if we wanted to, we could introduce a cap on the treasury amount
-		// with: `rest = rest.min(cap_rest);`
+		// We don't do anything with this, but if we wanted to, we could introduce a cap on the
+		// treasury amount with: `rest = rest.min(cap_rest);`
 	}
 	(staking_payout, rest)
 }
