@@ -409,7 +409,7 @@ fn era_payout(
 ) -> (Balance, Balance) {
 	use pallet_staking_reward_fn::compute_inflation;
 
-	let min_annual_inflation = Perquintill::from_rational(10u64, 30u64);
+	let min_annual_inflation = Perquintill::from_rational(10u64, 1000u64);
 	let delta_annual_inflation = max_annual_inflation.saturating_sub(min_annual_inflation);
 
 	// Therefore the ideal amount at stake (as a percentage of total issuance) is 75% less the
