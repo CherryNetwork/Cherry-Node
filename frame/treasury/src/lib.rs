@@ -275,10 +275,7 @@ pub mod pallet {
 			let initial_supply: u128 = 863866837478877089986318;
 			let min = initial_supply.saturated_into();
 			if T::Currency::free_balance(&account_id) < min {
-				let _ = T::Currency::make_free_balance_be(
-					&account_id,
-					min,
-				);
+				let _ = T::Currency::make_free_balance_be(&account_id, min);
 			}
 		}
 	}

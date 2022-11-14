@@ -37,14 +37,13 @@ mod multiplier_tests {
 	};
 
 	use crate::{
-		constants::currency::*,
-		AdjustmentVariable, MinimumMultiplier, Runtime, RuntimeBlockWeights as BlockWeights,
-		System, TargetBlockFullness, TransactionPayment,
+		constants::currency::*, AdjustmentVariable, MinimumMultiplier, Runtime,
+		RuntimeBlockWeights as BlockWeights, System, TargetBlockFullness, TransactionPayment,
 	};
 
 	#[cfg(not(feature = "dev"))]
 	use constants::time_prod::*;
-	
+
 	#[cfg(feature = "dev")]
 	use constants::time_dev::*;
 

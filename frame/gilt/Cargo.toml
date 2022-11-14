@@ -21,6 +21,7 @@ sp-arithmetic = { version = "4.0.0-dev", default-features = false, path = "../..
 frame-benchmarking = { version = "4.0.0-dev", default-features = false, path = "../benchmarking", optional = true }
 frame-support = { version = "4.0.0-dev", default-features = false, path = "../support" }
 frame-system = { version = "4.0.0-dev", default-features = false, path = "../system" }
+log = { version = "0.4.14", default-features = false }
 
 [dev-dependencies]
 sp-io = { version = "4.0.0-dev", path = "../../primitives/io" }
@@ -31,6 +32,7 @@ pallet-balances = { version = "4.0.0-dev", path = "../balances" }
 default = ["std"]
 std = [
 	"codec/std",
+	"log/std",
 	"scale-info/std",
 	"sp-std/std",
 	"sp-runtime/std",
