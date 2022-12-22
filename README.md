@@ -4,6 +4,8 @@
   <img src="/docs/media/cherry-horizontal.png">
 </p>
 
+🚧 **Warning** 🚧 This repo has been archived. Follow [Cherry Relay Node repository](https://github.com/CherryNetwork/cherry-relay-node) for all the updates of this project.
+
 Decentralized File Storage, Smarter.
 
 ## Trying it out
